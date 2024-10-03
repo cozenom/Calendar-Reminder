@@ -1,13 +1,24 @@
-package com.example.calendarapp
+package com.example.calendarapp.data.database
 
 import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
+import com.example.calendarapp.data.dao.MedicationReminderDao
+import com.example.calendarapp.data.dao.MedicationIntakeDao
+import com.example.calendarapp.data.model.MedicationReminder
+import com.example.calendarapp.data.model.MedicationIntake
 
-@Database(entities = [MedicationReminder::class], version = 1, exportSchema = false)
+@Database(
+    entities = [MedicationReminder::class, MedicationIntake::class],
+    version = 1,
+    exportSchema = false
+)
+@TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun medicationReminderDao(): MedicationReminderDao
+    abstract fun medicationIntakeDao(): MedicationIntakeDao
 
     companion object {
         @Volatile
@@ -19,7 +30,9 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "app_database"
-                ).build()
+                )
+                    .fallbackToDestructiveMigration()
+                    .build()
                 INSTANCE = instance
                 instance
             }
