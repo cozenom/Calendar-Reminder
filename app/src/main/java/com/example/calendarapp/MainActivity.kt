@@ -1,3 +1,5 @@
+package com.example.calendarapp
+
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -14,8 +16,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.calendarapp.data.model.MedicationReminder
 import com.example.calendarapp.viewmodel.MedicationReminderViewModel
 import com.example.calendarapp.viewmodel.MedicationReminderViewModelFactory
+import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 
 class MainActivity : ComponentActivity() {
     private lateinit var viewModel: MedicationReminderViewModel
@@ -37,17 +42,72 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun MedicationReminderApp(viewModel: MedicationReminderViewModel) {
-    val viewModel: MedicationReminderViewModel = viewModel()
+    var selectedTab by remember { mutableStateOf(0) }
+    val tabs = listOf("Medications", "Calendar", "Add Medication")
+
+    Column {
+        TabRow(selectedTabIndex = selectedTab) {
+            tabs.forEachIndexed { index, title ->
+                Tab(
+                    text = { Text(title) },
+                    selected = selectedTab == index,
+                    onClick = { selectedTab = index }
+                )
+            }
+        }
+        when (selectedTab) {
+            0 -> MedicationsTab(viewModel)
+            1 -> CalendarTab(viewModel)
+            2 -> AddMedicationTab(viewModel)
+        }
+    }
+}
+
+@Composable
+fun MedicationsTab(viewModel: MedicationReminderViewModel) {
     val reminders by viewModel.allReminders.collectAsState(initial = emptyList())
 
     Column(modifier = Modifier.padding(16.dp)) {
-        Text("Medication Reminders", style = MaterialTheme.typography.headlineMedium)
+        Text("Your Medications", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(16.dp))
         ReminderList(
             reminders = reminders,
             onDeleteReminder = { viewModel.delete(it) },
             onEditReminder = { viewModel.update(it) }
         )
+    }
+}
+
+@Composable
+fun CalendarTab(viewModel: MedicationReminderViewModel) {
+    var selectedDate by remember { mutableStateOf(LocalDate.now()) }
+    val activeReminders by viewModel.getActiveReminders(selectedDate).collectAsState(initial = emptyList())
+
+    Column(modifier = Modifier.padding(16.dp)) {
+        Text("Medication Calendar", style = MaterialTheme.typography.headlineMedium)
+        Spacer(modifier = Modifier.height(16.dp))
+        DatePicker(
+            date = selectedDate,
+            onDateSelected = { it?.let { selectedDate = it } },
+            label = "Select Date"
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        LazyColumn {
+            items(activeReminders) { reminder ->
+                ReminderItem(
+                    reminder = reminder,
+                    onDelete = { viewModel.delete(reminder) },
+                    onEdit = { viewModel.update(it) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun AddMedicationTab(viewModel: MedicationReminderViewModel) {
+    Column(modifier = Modifier.padding(16.dp)) {
+        Text("Add New Medication", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(16.dp))
         AddReminderForm(onAddReminder = { viewModel.insert(it) })
     }
@@ -139,6 +199,12 @@ fun AddReminderForm(onAddReminder: (MedicationReminder) -> Unit) {
     var medicationName by remember { mutableStateOf("") }
     var reminderTime by remember { mutableStateOf(LocalTime.now()) }
     var isMorning by remember { mutableStateOf(true) }
+    var dosage by remember { mutableStateOf("") }
+    var unit by remember { mutableStateOf("") }
+    var frequency by remember { mutableStateOf("") }
+    var startDate by remember { mutableStateOf(LocalDate.now()) }
+    var endDate by remember { mutableStateOf<LocalDate?>(null) }
+    var reminderDays by remember { mutableStateOf(setOf(1, 2, 3, 4, 5, 6, 7)) }
 
     Column {
         OutlinedTextField(
@@ -157,18 +223,61 @@ fun AddReminderForm(onAddReminder: (MedicationReminder) -> Unit) {
             )
             Text("Morning")
         }
+        OutlinedTextField(
+            value = dosage,
+            onValueChange = { dosage = it },
+            label = { Text("Dosage") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+        )
+        OutlinedTextField(
+            value = unit,
+            onValueChange = { unit = it },
+            label = { Text("Unit") }
+        )
+        OutlinedTextField(
+            value = frequency,
+            onValueChange = { frequency = it },
+            label = { Text("Frequency") }
+        )
+        DatePicker(
+            date = startDate,
+            onDateSelected = { startDate = it },
+            label = "Start Date"
+        )
+        DatePicker(
+            date = endDate,
+            onDateSelected = { endDate = it },
+            label = "End Date (Optional)"
+        )
+        WeekdayPicker(
+            selectedDays = reminderDays,
+            onDaysChanged = { reminderDays = it }
+        )
         Button(onClick = {
             if (medicationName.isNotBlank()) {
                 onAddReminder(
                     MedicationReminder(
-                    medicationName = medicationName,
-                    reminderTime = reminderTime,
-                    isMorning = isMorning
+                        medicationName = medicationName,
+                        reminderTime = reminderTime,
+                        isMorning = isMorning,
+                        dosage = dosage.toFloatOrNull(),
+                        unit = unit,
+                        frequency = frequency,
+                        startDate = startDate,
+                        endDate = endDate,
+                        reminderDays = reminderDays.joinToString(",")
+                    )
                 )
-                )
+                // Reset form fields
                 medicationName = ""
                 reminderTime = LocalTime.now()
                 isMorning = true
+                dosage = ""
+                unit = ""
+                frequency = ""
+                startDate = LocalDate.now()
+                endDate = null
+                reminderDays = setOf(1, 2, 3, 4, 5, 6, 7)
             }
         }) {
             Text("Add Reminder")
@@ -252,6 +361,114 @@ fun NumberPicker(
         Text(value.toString().padStart(2, '0'))
         Button(onClick = { if (value < range.last) onValueChange(value + 1) }) {
             Text("+")
+        }
+    }
+}
+
+@Composable
+fun DatePicker(
+    date: LocalDate?,
+    onDateSelected: (LocalDate?) -> Unit,
+    label: String
+) {
+    var showDialog by remember { mutableStateOf(false) }
+
+    Button(onClick = { showDialog = true }) {
+        Text("$label: ${date?.format(DateTimeFormatter.ISO_LOCAL_DATE) ?: "Not set"}")
+    }
+
+    if (showDialog) {
+        DatePickerDialog(
+            onDismissRequest = { showDialog = false },
+            onDateSelected = {
+                onDateSelected(it)
+                showDialog = false
+            },
+            initialDate = date ?: LocalDate.now()
+        )
+    }
+}
+
+@Composable
+fun DatePickerDialog(
+    onDismissRequest: () -> Unit,
+    onDateSelected: (LocalDate) -> Unit,
+    initialDate: LocalDate
+) {
+    var selectedDate by remember { mutableStateOf(initialDate) }
+
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        title = { Text("Select Date") },
+        text = {
+            Column {
+                Row {
+                    Button(onClick = { selectedDate = selectedDate.minusYears(1) }) {
+                        Text("◀")
+                    }
+                    Text(selectedDate.year.toString(), modifier = Modifier.weight(1f))
+                    Button(onClick = { selectedDate = selectedDate.plusYears(1) }) {
+                        Text("▶")
+                    }
+                }
+                Row {
+                    Button(onClick = { selectedDate = selectedDate.minusMonths(1) }) {
+                        Text("◀")
+                    }
+                    Text(selectedDate.month.toString(), modifier = Modifier.weight(1f))
+                    Button(onClick = { selectedDate = selectedDate.plusMonths(1) }) {
+                        Text("▶")
+                    }
+                }
+                Row {
+                    Button(onClick = { selectedDate = selectedDate.minusDays(1) }) {
+                        Text("◀")
+                    }
+                    Text(selectedDate.dayOfMonth.toString(), modifier = Modifier.weight(1f))
+                    Button(onClick = { selectedDate = selectedDate.plusDays(1) }) {
+                        Text("▶")
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onDateSelected(selectedDate) }) {
+                Text("OK")
+            }
+        },
+        dismissButton = {
+            Button(onClick = onDismissRequest) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun WeekdayPicker(
+    selectedDays: Set<Int>,
+    onDaysChanged: (Set<Int>) -> Unit
+) {
+    val weekdays = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+    Row {
+        weekdays.forEachIndexed { index, day ->
+            val isSelected = selectedDays.contains(index + 1)
+            Button(
+                onClick = {
+                    val newSet = if (isSelected) {
+                        selectedDays - (index + 1)
+                    } else {
+                        selectedDays + (index + 1)
+                    }
+                    onDaysChanged(newSet)
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+                    contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                )
+            ) {
+                Text(day)
+            }
         }
     }
 }
