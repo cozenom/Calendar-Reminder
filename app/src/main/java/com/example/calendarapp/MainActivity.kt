@@ -4,7 +4,6 @@ import android.app.TimePickerDialog
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,9 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -29,6 +26,9 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.unit.sp
 
 class MainActivity : ComponentActivity() {
     private lateinit var viewModel: MedicationReminderViewModel
@@ -196,8 +196,16 @@ fun ReminderItem(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Button(onClick = { showEndDatePicker = true }) {
-                    Text("Select End Date: ${editedEndDate?.format(DateTimeFormatter.ISO_LOCAL_DATE) ?: "Not set"}")
+                Row {
+                    Button(onClick = { showEndDatePicker = true }) {
+                        Text("Select End Date: ${editedEndDate?.format(DateTimeFormatter.ISO_LOCAL_DATE) ?: "Not set"}")
+                    }
+                    if (editedEndDate != null) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(onClick = { editedEndDate = null }) {
+                            Text("Clear End Date")
+                        }
+                    }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -323,8 +331,16 @@ fun AddReminderForm(onAddReminder: (MedicationReminder) -> Unit) {
         }
         Spacer(modifier = Modifier.height(8.dp))
 
-        Button(onClick = { showEndDatePicker = true }) {
-            Text("Select End Date: ${endDate?.format(DateTimeFormatter.ISO_LOCAL_DATE) ?: "Not set"}")
+        Row {
+            Button(onClick = { showEndDatePicker = true }) {
+                Text("Select End Date: ${endDate?.format(DateTimeFormatter.ISO_LOCAL_DATE) ?: "Not set"}")
+            }
+            if (endDate != null) {
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(onClick = { endDate = null }) {
+                    Text("Clear End Date")
+                }
+            }
         }
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -383,7 +399,6 @@ fun AddReminderForm(onAddReminder: (MedicationReminder) -> Unit) {
         }
     }
 }
-
 @Composable
 fun FrequencySelector(frequency: Int, onFrequencyChange: (Int) -> Unit) {
     Row(
@@ -424,14 +439,15 @@ fun WeekdaySelector(selectedDays: Set<Int>, onDaysChanged: (Set<Int>) -> Unit) {
                     containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
                     contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
                 ),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(2.dp)
             ) {
-                Text(day)
+                Text(day, fontSize = 12.sp)
             }
         }
     }
 }
-
 @Composable
 fun AndroidTimePicker(
     initialTime: LocalTime,
@@ -497,7 +513,8 @@ fun CalendarDialog(
 @Composable
 fun CalendarView(
     currentMonth: YearMonth,
-    onDateSelected: (LocalDate) -> Unit
+    onDateSelected: (LocalDate) -> Unit,
+    selectedDate: LocalDate? = null
 ) {
     val daysInMonth = currentMonth.lengthOfMonth()
     val firstDayOfMonth = currentMonth.atDay(1).dayOfWeek.value
@@ -517,12 +534,20 @@ fun CalendarView(
                 if (index >= firstDayOfMonth - 1) {
                     val day = index - firstDayOfMonth + 2
                     val date = currentMonth.atDay(day)
+                    val isSelected = date == selectedDate
                     Text(
                         text = day.toString(),
                         textAlign = TextAlign.Center,
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier
                             .padding(4.dp)
                             .clickable { onDateSelected(date) }
+                            .background(
+                                if (isSelected) MaterialTheme.colorScheme.primaryContainer
+                                else Color.Transparent,
+                                shape = CircleShape
+                            )
+                            .padding(4.dp)
                     )
                 } else {
                     Text("")
