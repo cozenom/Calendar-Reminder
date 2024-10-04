@@ -51,4 +51,15 @@ class Converters {
     fun toSetInt(value: String?): Set<Int> {
         return value?.split(",")?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet()
     }
+
+    // New converters for List<LocalTime>
+    @TypeConverter
+    fun fromListLocalTime(value: List<LocalTime>?): String? {
+        return value?.joinToString(",") { it.format(timeFormatter) }
+    }
+
+    @TypeConverter
+    fun toListLocalTime(value: String?): List<LocalTime> {
+        return value?.split(",")?.mapNotNull { LocalTime.parse(it, timeFormatter) } ?: emptyList()
+    }
 }

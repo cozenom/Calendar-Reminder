@@ -9,7 +9,7 @@ import java.time.LocalTime
 data class MedicationReminder(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val medicationName: String,
-    val reminderTime: LocalTime,
+    val reminderTimes: List<LocalTime>, // Changed from single reminderTime to list of reminderTimes
     val frequency: Int, // Number of times to take the medication daily
     val startDate: LocalDate = LocalDate.now(),
     val endDate: LocalDate? = null,

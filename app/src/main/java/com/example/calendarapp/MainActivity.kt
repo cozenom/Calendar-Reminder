@@ -19,6 +19,16 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
+import kotlin.math.PI
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
 class MainActivity : ComponentActivity() {
     private lateinit var viewModel: MedicationReminderViewModel
 
@@ -127,118 +137,6 @@ fun ReminderList(
     }
 }
 
-@Composable
-fun ReminderItem(
-    reminder: MedicationReminder,
-    onDelete: () -> Unit,
-    onEdit: (MedicationReminder) -> Unit
-) {
-    var isEditing by remember { mutableStateOf(false) }
-    var editedName by remember { mutableStateOf(reminder.medicationName) }
-    var editedTime by remember { mutableStateOf(reminder.reminderTime) }
-    var editedFrequency by remember { mutableStateOf(reminder.frequency) }
-    var editedStartDate by remember { mutableStateOf(reminder.startDate) }
-    var editedEndDate by remember { mutableStateOf(reminder.endDate ?: LocalDate.now()) }
-    var hasEndDate by remember { mutableStateOf(reminder.endDate != null) }
-    var editedReminderDays by remember { mutableStateOf(reminder.reminderDays) }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            if (isEditing) {
-                OutlinedTextField(
-                    value = editedName,
-                    onValueChange = { editedName = it },
-                    label = { Text("Medication Name") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                TimePicker(
-                    time = editedTime,
-                    onTimeSelected = { editedTime = it }
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                FrequencySelector(
-                    frequency = editedFrequency,
-                    onFrequencyChange = { editedFrequency = it }
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                DatePicker(
-                    date = editedStartDate,
-                    onDateSelected = { editedStartDate = it },
-                    label = "Start Date"
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(
-                        checked = hasEndDate,
-                        onCheckedChange = { hasEndDate = it }
-                    )
-                    Text("Set End Date")
-                }
-
-                if (hasEndDate) {
-                    DatePicker(
-                        date = editedEndDate,
-                        onDateSelected = { editedEndDate = it },
-                        label = "End Date"
-                    )
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-
-                WeekdaySelector(
-                    selectedDays = editedReminderDays,
-                    onDaysChanged = { editedReminderDays = it }
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row {
-                    Button(onClick = {
-                        onEdit(reminder.copy(
-                            medicationName = editedName,
-                            reminderTime = editedTime,
-                            frequency = editedFrequency,
-                            startDate = editedStartDate,
-                            endDate = if (hasEndDate) editedEndDate else null,
-                            reminderDays = editedReminderDays
-                        ))
-                        isEditing = false
-                    }) {
-                        Text("Save")
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(onClick = { isEditing = false }) {
-                        Text("Cancel")
-                    }
-                }
-            } else {
-                Text(reminder.medicationName, style = MaterialTheme.typography.headlineSmall)
-                Text("Time: ${reminder.reminderTime.format(DateTimeFormatter.ofPattern("HH:mm"))}")
-                Text("Frequency: ${reminder.frequency} times daily")
-                Text("Start Date: ${reminder.startDate}")
-                reminder.endDate?.let { Text("End Date: $it") }
-                Text("Days: ${reminder.reminderDays.sorted().joinToString(", ") { getDayName(it) }}")
-                Row {
-                    Button(onClick = { isEditing = true }) {
-                        Text("Edit")
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(onClick = onDelete) {
-                        Text("Delete")
-                    }
-                }
-            }
-        }
-    }
-}
-
 fun getDayName(day: Int): String {
     return when (day) {
         1 -> "Mon"
@@ -256,8 +154,8 @@ fun getDayName(day: Int): String {
 @Composable
 fun AddReminderForm(onAddReminder: (MedicationReminder) -> Unit) {
     var medicationName by remember { mutableStateOf("") }
-    var reminderTime by remember { mutableStateOf(LocalTime.now()) }
     var frequency by remember { mutableStateOf(1) }
+    var reminderTimes by remember { mutableStateOf(listOf(LocalTime.now())) }
     var startDate by remember { mutableStateOf(LocalDate.now()) }
     var endDate by remember { mutableStateOf(LocalDate.now()) }
     var hasEndDate by remember { mutableStateOf(false) }
@@ -272,17 +170,26 @@ fun AddReminderForm(onAddReminder: (MedicationReminder) -> Unit) {
         )
         Spacer(modifier = Modifier.height(8.dp))
 
-        TimePicker(
-            time = reminderTime,
-            onTimeSelected = { reminderTime = it }
+        FrequencySelector(
+            frequency = frequency,
+            onFrequencyChange = {
+                frequency = it
+                reminderTimes = List(it) { index ->
+                    if (index < reminderTimes.size) reminderTimes[index] else LocalTime.now()
+                }
+            }
         )
         Spacer(modifier = Modifier.height(8.dp))
 
-        FrequencySelector(
-            frequency = frequency,
-            onFrequencyChange = { frequency = it }
-        )
-        Spacer(modifier = Modifier.height(8.dp))
+        reminderTimes.forEachIndexed { index, time ->
+            ClockTimePicker(
+                time = time,
+                onTimeSelected = { newTime ->
+                    reminderTimes = reminderTimes.toMutableList().also { it[index] = newTime }
+                }
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
 
         DatePicker(
             date = startDate,
@@ -319,7 +226,7 @@ fun AddReminderForm(onAddReminder: (MedicationReminder) -> Unit) {
                 if (medicationName.isNotBlank()) {
                     val reminder = MedicationReminder(
                         medicationName = medicationName,
-                        reminderTime = reminderTime,
+                        reminderTimes = reminderTimes,
                         frequency = frequency,
                         startDate = startDate,
                         endDate = if (hasEndDate) endDate else null,
@@ -328,8 +235,8 @@ fun AddReminderForm(onAddReminder: (MedicationReminder) -> Unit) {
                     onAddReminder(reminder)
                     // Reset form fields
                     medicationName = ""
-                    reminderTime = LocalTime.now()
                     frequency = 1
+                    reminderTimes = listOf(LocalTime.now())
                     startDate = LocalDate.now()
                     endDate = LocalDate.now()
                     hasEndDate = false
@@ -342,6 +249,266 @@ fun AddReminderForm(onAddReminder: (MedicationReminder) -> Unit) {
         }
     }
 }
+
+@Composable
+fun ReminderItem(
+    reminder: MedicationReminder,
+    onDelete: () -> Unit,
+    onEdit: (MedicationReminder) -> Unit
+) {
+    var isEditing by remember { mutableStateOf(false) }
+    var editedName by remember { mutableStateOf(reminder.medicationName) }
+    var editedTimes by remember { mutableStateOf(reminder.reminderTimes) }
+    var editedFrequency by remember { mutableStateOf(reminder.frequency) }
+    var editedStartDate by remember { mutableStateOf(reminder.startDate) }
+    var editedEndDate by remember { mutableStateOf(reminder.endDate ?: LocalDate.now()) }
+    var hasEndDate by remember { mutableStateOf(reminder.endDate != null) }
+    var editedReminderDays by remember { mutableStateOf(reminder.reminderDays) }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            if (isEditing) {
+                OutlinedTextField(
+                    value = editedName,
+                    onValueChange = { editedName = it },
+                    label = { Text("Medication Name") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                FrequencySelector(
+                    frequency = editedFrequency,
+                    onFrequencyChange = {
+                        editedFrequency = it
+                        editedTimes = List(it) { index ->
+                            if (index < editedTimes.size) editedTimes[index] else LocalTime.now()
+                        }
+                    }
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                editedTimes.forEachIndexed { index, time ->
+                    ClockTimePicker(
+                        time = time,
+                        onTimeSelected = { newTime ->
+                            editedTimes = editedTimes.toMutableList().also { it[index] = newTime }
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                DatePicker(
+                    date = editedStartDate,
+                    onDateSelected = { editedStartDate = it },
+                    label = "Start Date"
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(
+                        checked = hasEndDate,
+                        onCheckedChange = { hasEndDate = it }
+                    )
+                    Text("Set End Date")
+                }
+
+                if (hasEndDate) {
+                    DatePicker(
+                        date = editedEndDate,
+                        onDateSelected = { editedEndDate = it },
+                        label = "End Date"
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+
+                WeekdaySelector(
+                    selectedDays = editedReminderDays,
+                    onDaysChanged = { editedReminderDays = it }
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row {
+                    Button(onClick = {
+                        onEdit(reminder.copy(
+                            medicationName = editedName,
+                            reminderTimes = editedTimes,
+                            frequency = editedFrequency,
+                            startDate = editedStartDate,
+                            endDate = if (hasEndDate) editedEndDate else null,
+                            reminderDays = editedReminderDays
+                        ))
+                        isEditing = false
+                    }) {
+                        Text("Save")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(onClick = { isEditing = false }) {
+                        Text("Cancel")
+                    }
+                }
+            } else {
+                Text(reminder.medicationName, style = MaterialTheme.typography.headlineSmall)
+                reminder.reminderTimes.forEachIndexed { index, time ->
+                    Text("Time ${index + 1}: ${time.format(DateTimeFormatter.ofPattern("HH:mm"))}")
+                }
+                Text("Frequency: ${reminder.frequency} times daily")
+                Text("Start Date: ${reminder.startDate}")
+                reminder.endDate?.let { Text("End Date: $it") }
+                Text("Days: ${reminder.reminderDays.sorted().joinToString(", ") { getDayName(it) }}")
+                Row {
+                    Button(onClick = { isEditing = true }) {
+                        Text("Edit")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(onClick = onDelete) {
+                        Text("Delete")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ClockTimePicker(time: LocalTime, onTimeSelected: (LocalTime) -> Unit) {
+    var showDialog by remember { mutableStateOf(false) }
+
+    Button(onClick = { showDialog = true }) {
+        Text("Select Time: ${time.format(DateTimeFormatter.ofPattern("HH:mm"))}")
+    }
+
+    if (showDialog) {
+        ClockTimePickerDialog(
+            onDismissRequest = { showDialog = false },
+            onConfirm = {
+                onTimeSelected(it)
+                showDialog = false
+            },
+            initialTime = time
+        )
+    }
+}
+
+@Composable
+fun ClockTimePickerDialog(
+    onDismissRequest: () -> Unit,
+    onConfirm: (LocalTime) -> Unit,
+    initialTime: LocalTime
+) {
+    var selectedHour by remember { mutableStateOf(initialTime.hour) }
+    var selectedMinute by remember { mutableStateOf(initialTime.minute) }
+
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        title = { Text("Select Time") },
+        text = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                ClockFace(
+                    selectedHour = selectedHour,
+                    selectedMinute = selectedMinute,
+                    onHourSelected = { selectedHour = it },
+                    onMinuteSelected = { selectedMinute = it }
+                )
+                Text(
+                    "${selectedHour.toString().padStart(2, '0')}:${selectedMinute.toString().padStart(2, '0')}",
+                    style = MaterialTheme.typography.headlineMedium
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onConfirm(LocalTime.of(selectedHour, selectedMinute))
+                }
+            ) {
+                Text("OK")
+            }
+        },
+        dismissButton = {
+            Button(onClick = onDismissRequest) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun ClockFace(
+    selectedHour: Int,
+    selectedMinute: Int,
+    onHourSelected: (Int) -> Unit,
+    onMinuteSelected: (Int) -> Unit
+) {
+    var isHourSelection by remember { mutableStateOf(true) }
+
+    Box(
+        modifier = Modifier
+            .size(250.dp)
+            .pointerInput(Unit) {
+                detectDragGestures { change, dragAmount ->
+                    val center = Offset(size.width / 2f, size.height / 2f)
+                    val touchPoint = change.position - center
+                    val angle = (atan2(touchPoint.y, touchPoint.x) * 180f / PI).toFloat()
+                    val normalizedAngle = (angle + 360f) % 360f
+
+                    if (isHourSelection) {
+                        val hour = ((normalizedAngle + 15f) / 30f).toInt() % 12
+                        onHourSelected(if (hour == 0) 12 else hour)
+                    } else {
+                        val minute = ((normalizedAngle + 3f) / 6f).toInt() % 60
+                        onMinuteSelected(minute)
+                    }
+                }
+            }
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val center = Offset(size.width / 2f, size.height / 2f)
+            val radius = size.width / 2f - 20.dp.toPx()
+
+            // Draw clock face
+            drawCircle(
+                color = Color.LightGray,
+                center = center,
+                radius = radius,
+                style = Stroke(width = 2.dp.toPx())
+            )
+
+            // Draw clock numbers
+            val numberRadius = radius - 30.dp.toPx()
+            for (i in 1..12) {
+                val angle = i * 30f * (PI / 180f).toFloat()
+                val x = center.x + cos(angle) * numberRadius
+                val y = center.y + sin(angle) * numberRadius
+                drawCircle(Color.Gray, 5.dp.toPx(), Offset(x, y))
+            }
+
+            // Draw selected time indicator
+            val selectedAngle = if (isHourSelection) {
+                (selectedHour % 12) * 30f
+            } else {
+                selectedMinute * 6f
+            }
+            val radians = selectedAngle * (PI / 180f).toFloat()
+            val lineEnd = Offset(
+                x = center.x + cos(radians) * radius,
+                y = center.y + sin(radians) * radius
+            )
+            drawLine(Color.Blue, center, lineEnd, strokeWidth = 4.dp.toPx())
+        }
+
+        Button(
+            onClick = { isHourSelection = !isHourSelection },
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
+            Text(if (isHourSelection) "Switch to Minutes" else "Switch to Hours")
+        }
+    }
+}
+
 @Composable
 fun FrequencySelector(frequency: Int, onFrequencyChange: (Int) -> Unit) {
     Row(
