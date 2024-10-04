@@ -12,16 +12,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.calendarapp.data.model.MedicationReminder
 import com.example.calendarapp.viewmodel.MedicationReminderViewModel
 import com.example.calendarapp.viewmodel.MedicationReminderViewModelFactory
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.text.input.KeyboardType
-
+import androidx.compose.foundation.selection.toggleable
 class MainActivity : ComponentActivity() {
     private lateinit var viewModel: MedicationReminderViewModel
 
@@ -139,7 +136,11 @@ fun ReminderItem(
     var isEditing by remember { mutableStateOf(false) }
     var editedName by remember { mutableStateOf(reminder.medicationName) }
     var editedTime by remember { mutableStateOf(reminder.reminderTime) }
-    var editedIsMorning by remember { mutableStateOf(reminder.isMorning) }
+    var editedFrequency by remember { mutableStateOf(reminder.frequency) }
+    var editedStartDate by remember { mutableStateOf(reminder.startDate) }
+    var editedEndDate by remember { mutableStateOf(reminder.endDate ?: LocalDate.now()) }
+    var hasEndDate by remember { mutableStateOf(reminder.endDate != null) }
+    var editedReminderDays by remember { mutableStateOf(reminder.reminderDays) }
 
     Card(
         modifier = Modifier
@@ -151,22 +152,63 @@ fun ReminderItem(
                 OutlinedTextField(
                     value = editedName,
                     onValueChange = { editedName = it },
-                    label = { Text("Medication Name") }
+                    label = { Text("Medication Name") },
+                    modifier = Modifier.fillMaxWidth()
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+
                 TimePicker(
                     time = editedTime,
                     onTimeSelected = { editedTime = it }
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                FrequencySelector(
+                    frequency = editedFrequency,
+                    onFrequencyChange = { editedFrequency = it }
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                DatePicker(
+                    date = editedStartDate,
+                    onDateSelected = { editedStartDate = it },
+                    label = "Start Date"
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(
-                        checked = editedIsMorning,
-                        onCheckedChange = { editedIsMorning = it }
+                        checked = hasEndDate,
+                        onCheckedChange = { hasEndDate = it }
                     )
-                    Text("Morning")
+                    Text("Set End Date")
                 }
+
+                if (hasEndDate) {
+                    DatePicker(
+                        date = editedEndDate,
+                        onDateSelected = { editedEndDate = it },
+                        label = "End Date"
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+
+                WeekdaySelector(
+                    selectedDays = editedReminderDays,
+                    onDaysChanged = { editedReminderDays = it }
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
                 Row {
                     Button(onClick = {
-                        onEdit(reminder.copy(medicationName = editedName, reminderTime = editedTime, isMorning = editedIsMorning))
+                        onEdit(reminder.copy(
+                            medicationName = editedName,
+                            reminderTime = editedTime,
+                            frequency = editedFrequency,
+                            startDate = editedStartDate,
+                            endDate = if (hasEndDate) editedEndDate else null,
+                            reminderDays = editedReminderDays
+                        ))
                         isEditing = false
                     }) {
                         Text("Save")
@@ -179,7 +221,10 @@ fun ReminderItem(
             } else {
                 Text(reminder.medicationName, style = MaterialTheme.typography.headlineSmall)
                 Text("Time: ${reminder.reminderTime.format(DateTimeFormatter.ofPattern("HH:mm"))}")
-                Text(if (reminder.isMorning) "Morning" else "Evening")
+                Text("Frequency: ${reminder.frequency} times daily")
+                Text("Start Date: ${reminder.startDate}")
+                reminder.endDate?.let { Text("End Date: $it") }
+                Text("Days: ${reminder.reminderDays.sorted().joinToString(", ") { getDayName(it) }}")
                 Row {
                     Button(onClick = { isEditing = true }) {
                         Text("Edit")
@@ -194,97 +239,166 @@ fun ReminderItem(
     }
 }
 
+fun getDayName(day: Int): String {
+    return when (day) {
+        1 -> "Mon"
+        2 -> "Tue"
+        3 -> "Wed"
+        4 -> "Thu"
+        5 -> "Fri"
+        6 -> "Sat"
+        7 -> "Sun"
+        else -> ""
+    }
+}
+
+
 @Composable
 fun AddReminderForm(onAddReminder: (MedicationReminder) -> Unit) {
     var medicationName by remember { mutableStateOf("") }
     var reminderTime by remember { mutableStateOf(LocalTime.now()) }
-    var isMorning by remember { mutableStateOf(true) }
-    var dosage by remember { mutableStateOf("") }
-    var unit by remember { mutableStateOf("") }
-    var frequency by remember { mutableStateOf("") }
+    var frequency by remember { mutableStateOf(1) }
     var startDate by remember { mutableStateOf(LocalDate.now()) }
-    var endDate by remember { mutableStateOf<LocalDate?>(null) }
+    var endDate by remember { mutableStateOf(LocalDate.now()) }
+    var hasEndDate by remember { mutableStateOf(false) }
     var reminderDays by remember { mutableStateOf(setOf(1, 2, 3, 4, 5, 6, 7)) }
 
-    Column {
+    Column(modifier = Modifier.padding(16.dp)) {
         OutlinedTextField(
             value = medicationName,
             onValueChange = { medicationName = it },
-            label = { Text("Medication Name") }
+            label = { Text("Medication Name") },
+            modifier = Modifier.fillMaxWidth()
         )
+        Spacer(modifier = Modifier.height(8.dp))
+
         TimePicker(
             time = reminderTime,
             onTimeSelected = { reminderTime = it }
         )
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(
-                checked = isMorning,
-                onCheckedChange = { isMorning = it }
-            )
-            Text("Morning")
-        }
-        OutlinedTextField(
-            value = dosage,
-            onValueChange = { dosage = it },
-            label = { Text("Dosage") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        FrequencySelector(
+            frequency = frequency,
+            onFrequencyChange = { frequency = it }
         )
-        OutlinedTextField(
-            value = unit,
-            onValueChange = { unit = it },
-            label = { Text("Unit") }
-        )
-        OutlinedTextField(
-            value = frequency,
-            onValueChange = { frequency = it },
-            label = { Text("Frequency") }
-        )
+        Spacer(modifier = Modifier.height(8.dp))
+
         DatePicker(
             date = startDate,
             onDateSelected = { startDate = it },
             label = "Start Date"
         )
-        DatePicker(
-            date = endDate,
-            onDateSelected = { endDate = it },
-            label = "End Date (Optional)"
-        )
-        WeekdayPicker(
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(
+                checked = hasEndDate,
+                onCheckedChange = { hasEndDate = it }
+            )
+            Text("Set End Date")
+        }
+
+        if (hasEndDate) {
+            DatePicker(
+                date = endDate,
+                onDateSelected = { endDate = it },
+                label = "End Date"
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+
+        WeekdaySelector(
             selectedDays = reminderDays,
             onDaysChanged = { reminderDays = it }
         )
-        Button(onClick = {
-            if (medicationName.isNotBlank()) {
-                onAddReminder(
-                    MedicationReminder(
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = {
+                if (medicationName.isNotBlank()) {
+                    val reminder = MedicationReminder(
                         medicationName = medicationName,
                         reminderTime = reminderTime,
-                        isMorning = isMorning,
-                        dosage = dosage.toFloatOrNull(),
-                        unit = unit,
                         frequency = frequency,
                         startDate = startDate,
-                        endDate = endDate,
-                        reminderDays = reminderDays.joinToString(",")
+                        endDate = if (hasEndDate) endDate else null,
+                        reminderDays = reminderDays
                     )
-                )
-                // Reset form fields
-                medicationName = ""
-                reminderTime = LocalTime.now()
-                isMorning = true
-                dosage = ""
-                unit = ""
-                frequency = ""
-                startDate = LocalDate.now()
-                endDate = null
-                reminderDays = setOf(1, 2, 3, 4, 5, 6, 7)
-            }
-        }) {
+                    onAddReminder(reminder)
+                    // Reset form fields
+                    medicationName = ""
+                    reminderTime = LocalTime.now()
+                    frequency = 1
+                    startDate = LocalDate.now()
+                    endDate = LocalDate.now()
+                    hasEndDate = false
+                    reminderDays = setOf(1, 2, 3, 4, 5, 6, 7)
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
             Text("Add Reminder")
         }
     }
 }
+@Composable
+fun FrequencySelector(frequency: Int, onFrequencyChange: (Int) -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text("Daily Frequency:")
+        Spacer(modifier = Modifier.width(8.dp))
+        Button(onClick = { if (frequency > 1) onFrequencyChange(frequency - 1) }) {
+            Text("-")
+        }
+        Text(
+            text = frequency.toString(),
+            modifier = Modifier.padding(horizontal = 8.dp)
+        )
+        Button(onClick = { onFrequencyChange(frequency + 1) }) {
+            Text("+")
+        }
+    }
+}
 
+@Composable
+fun WeekdaySelector(selectedDays: Set<Int>, onDaysChanged: (Set<Int>) -> Unit) {
+    val weekdays = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+    Column {
+        Text("Select days:", style = MaterialTheme.typography.bodyLarge)
+        Row(modifier = Modifier.fillMaxWidth()) {
+            weekdays.forEachIndexed { index, day ->
+                val isSelected = selectedDays.contains(index + 1)
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .toggleable(
+                            value = isSelected,
+                            onValueChange = {
+                                val newSet = if (it) {
+                                    selectedDays + (index + 1)
+                                } else {
+                                    selectedDays - (index + 1)
+                                }
+                                onDaysChanged(newSet)
+                            }
+                        )
+                        .padding(4.dp)
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Checkbox(
+                            checked = isSelected,
+                            onCheckedChange = null
+                        )
+                        Text(day)
+                    }
+                }
+            }
+        }
+    }
+}
 @Composable
 fun TimePicker(time: LocalTime, onTimeSelected: (LocalTime) -> Unit) {
     var showDialog by remember { mutableStateOf(false) }
@@ -367,14 +481,14 @@ fun NumberPicker(
 
 @Composable
 fun DatePicker(
-    date: LocalDate?,
-    onDateSelected: (LocalDate?) -> Unit,
+    date: LocalDate,
+    onDateSelected: (LocalDate) -> Unit,
     label: String
 ) {
     var showDialog by remember { mutableStateOf(false) }
 
     Button(onClick = { showDialog = true }) {
-        Text("$label: ${date?.format(DateTimeFormatter.ISO_LOCAL_DATE) ?: "Not set"}")
+        Text("$label: ${date.format(DateTimeFormatter.ISO_LOCAL_DATE)}")
     }
 
     if (showDialog) {
@@ -384,7 +498,7 @@ fun DatePicker(
                 onDateSelected(it)
                 showDialog = false
             },
-            initialDate = date ?: LocalDate.now()
+            initialDate = date
         )
     }
 }

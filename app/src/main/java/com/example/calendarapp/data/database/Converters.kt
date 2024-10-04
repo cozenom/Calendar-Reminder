@@ -40,4 +40,15 @@ class Converters {
     fun toLocalDate(date: LocalDate?): String? {
         return date?.format(dateFormatter)
     }
+
+    // New converters for Set<Int>
+    @TypeConverter
+    fun fromSetInt(value: Set<Int>?): String? {
+        return value?.joinToString(",")
+    }
+
+    @TypeConverter
+    fun toSetInt(value: String?): Set<Int> {
+        return value?.split(",")?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet()
+    }
 }
