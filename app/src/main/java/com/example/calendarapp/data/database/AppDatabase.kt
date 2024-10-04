@@ -8,7 +8,7 @@ import androidx.room.TypeConverters
 import com.example.calendarapp.data.dao.MedicationReminderDao
 import com.example.calendarapp.data.model.MedicationReminder
 
-@Database(entities = [MedicationReminder::class], version = 2, exportSchema = false)
+@Database(entities = [MedicationReminder::class], version = 3, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun medicationReminderDao(): MedicationReminderDao
