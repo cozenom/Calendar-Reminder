@@ -12,7 +12,6 @@ import com.example.calendarapp.data.model.MedicationIntake
 
 // TODO : Database migrations
 
-
 @Database(entities = [MedicationReminder::class, MedicationIntake::class], version = 5, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
