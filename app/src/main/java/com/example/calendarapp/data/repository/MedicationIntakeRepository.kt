@@ -21,4 +21,13 @@ class MedicationIntakeRepository(private val medicationIntakeDao: MedicationInta
     fun getIntakesForDateRange(start: LocalDateTime, end: LocalDateTime): Flow<List<MedicationIntake>> {
         return medicationIntakeDao.getIntakesForDateRange(start, end)
     }
+
+    suspend fun updateTakenStatus(intakeId: Int, taken: Boolean) {
+        medicationIntakeDao.updateTakenStatus(intakeId, taken)
+    }
+
+    fun getMissedIntakes(dateTime: LocalDateTime): Flow<List<MedicationIntake>> {
+        return medicationIntakeDao.getMissedIntakes(dateTime)
+    }
+
 }

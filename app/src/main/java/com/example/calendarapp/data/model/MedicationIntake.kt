@@ -21,5 +21,6 @@ data class MedicationIntake(
     val status: String,
     val actualIntakeDateTime: LocalDateTime? = null,
     val notes: String? = null,
-    val location: String? = null
+    val location: String? = null,
+    val taken: Boolean = false
 )
