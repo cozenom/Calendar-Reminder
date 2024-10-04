@@ -4,41 +4,66 @@ import android.app.TimePickerDialog
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
+import com.example.calendarapp.data.model.MedicationIntake
 import com.example.calendarapp.data.model.MedicationReminder
+import com.example.calendarapp.data.notification.MedicationReminderWorker
 import com.example.calendarapp.viewmodel.MedicationReminderViewModel
 import com.example.calendarapp.viewmodel.MedicationReminderViewModelFactory
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
-import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.KeyboardArrowRight
-import com.example.calendarapp.data.model.MedicationIntake
-import com.example.calendarapp.data.notification.MedicationReminderWorker
-import androidx.compose.foundation.border
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.draw.clip
 
 class MainActivity : ComponentActivity() {
     private lateinit var viewModel: MedicationReminderViewModel
@@ -47,8 +72,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         MedicationReminderWorker.schedule(this)
         viewModel = ViewModelProvider(
-            this,
-            MedicationReminderViewModelFactory(application)
+            this, MedicationReminderViewModelFactory(application)
         )[MedicationReminderViewModel::class.java]
 
         setContent {
@@ -62,23 +86,40 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MedicationReminderApp(viewModel: MedicationReminderViewModel) {
     var selectedTab by remember { mutableStateOf(0) }
-    val tabs = listOf("Medications", "Calendar", "Add Medication")
+    val tabs = listOf("Medications", "Calendar")
+    var showAddMedicationDialog by remember { mutableStateOf(false) }
 
-    Column {
+    Scaffold(topBar = {
         TabRow(selectedTabIndex = selectedTab) {
             tabs.forEachIndexed { index, title ->
-                Tab(
-                    text = { Text(title) },
+                Tab(text = { Text(title) },
                     selected = selectedTab == index,
-                    onClick = { selectedTab = index }
-                )
+                    onClick = { selectedTab = index })
             }
         }
-        when (selectedTab) {
-            0 -> MedicationsTab(viewModel)
-            1 -> CalendarTab(viewModel)
-            2 -> AddMedicationTab(viewModel)
+    }, floatingActionButton = {
+        if (selectedTab == 0) {
+            FloatingActionButton(onClick = { showAddMedicationDialog = true }) {
+                Icon(Icons.Filled.Add, contentDescription = "Add Medication")
+            }
         }
+    }) { paddingValues ->
+        Box(modifier = Modifier.padding(paddingValues)) {
+            when (selectedTab) {
+                0 -> MedicationsTab(viewModel)
+                1 -> CalendarTab(viewModel)
+            }
+        }
+    }
+
+    if (showAddMedicationDialog) {
+        AddMedicationDialog(onDismiss = { showAddMedicationDialog = false },
+            onAddReminder = { reminder ->
+                viewModel.insert(reminder)
+                showAddMedicationDialog = false
+            },
+            reminders = viewModel.allReminders.collectAsState(initial = emptyList()).value
+        )
     }
 }
 
@@ -91,27 +132,28 @@ fun MedicationsTab(viewModel: MedicationReminderViewModel) {
     Column(modifier = Modifier.padding(16.dp)) {
         Text("Your Medications", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(16.dp))
-        ReminderList(
-            reminders = reminders,
+        ReminderList(reminders = reminders,
             intakes = intakes,
             onDeleteReminder = { viewModel.delete(it) },
-            onEditReminder = { viewModel.update(it) }
-        )
+            onEditReminder = { viewModel.update(it) })
     }
 }
 
 @Composable
-fun AddMedicationTab(viewModel: MedicationReminderViewModel) {
-    val reminders by viewModel.allReminders.collectAsState(initial = emptyList())
-
-    Column(modifier = Modifier.padding(16.dp)) {
-        Text("Add New Medication", style = MaterialTheme.typography.headlineMedium)
-        Spacer(modifier = Modifier.height(16.dp))
+fun AddMedicationDialog(
+    onDismiss: () -> Unit,
+    onAddReminder: (MedicationReminder) -> Unit,
+    reminders: List<MedicationReminder>
+) {
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("Add New Medication") }, text = {
         AddReminderForm(
-            onAddReminder = { viewModel.insert(it) },
-            reminders = reminders
+            onAddReminder = onAddReminder, reminders = reminders
         )
-    }
+    }, confirmButton = {}, dismissButton = {
+        TextButton(onClick = onDismiss) {
+            Text("Cancel")
+        }
+    })
 }
 
 @Composable
@@ -123,12 +165,10 @@ fun ReminderList(
 ) {
     LazyColumn {
         items(reminders) { reminder ->
-            ReminderItem(
-                reminder = reminder,
+            ReminderItem(reminder = reminder,
                 intakes = intakes.filter { it.reminderId == reminder.id },
                 onDelete = { onDeleteReminder(reminder) },
-                onEdit = { onEditReminder(it) }
-            )
+                onEdit = { onEditReminder(it) })
         }
     }
 }
@@ -161,30 +201,23 @@ fun ReminderItem(
         Column(modifier = Modifier.padding(16.dp)) {
             if (isEditing) {
                 // Editing mode UI
-                OutlinedTextField(
-                    value = editedName,
+                OutlinedTextField(value = editedName,
                     onValueChange = { editedName = it },
                     label = { Text("Medication Name") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                FrequencySelector(
-                    frequency = editedFrequency,
-                    onFrequencyChange = {
-                        editedFrequency = it
-                        editedTimes = List(it) { index ->
-                            if (index < editedTimes.size) editedTimes[index] else LocalTime.now()
-                        }
+                FrequencySelector(frequency = editedFrequency, onFrequencyChange = {
+                    editedFrequency = it
+                    editedTimes = List(it) { index ->
+                        if (index < editedTimes.size) editedTimes[index] else LocalTime.now()
                     }
-                )
+                })
                 Spacer(modifier = Modifier.height(8.dp))
                 editedTimes.forEachIndexed { index, time ->
-                    AndroidTimePicker(
-                        initialTime = time,
-                        onTimeSelected = { newTime ->
-                            editedTimes = editedTimes.toMutableList().also { it[index] = newTime }
-                        }
-                    )
+                    AndroidTimePicker(initialTime = time, onTimeSelected = { newTime ->
+                        editedTimes = editedTimes.toMutableList().also { it[index] = newTime }
+                    })
                     Spacer(modifier = Modifier.height(8.dp))
                 }
                 Button(onClick = { showStartDatePicker = true }) {
@@ -206,20 +239,20 @@ fun ReminderItem(
                 WeekdaySelector(
 
                     // ... (keep the existing editing mode UI)
-                    selectedDays = editedReminderDays,
-                    onDaysChanged = { editedReminderDays = it }
-                )
+                    selectedDays = editedReminderDays, onDaysChanged = { editedReminderDays = it })
                 Spacer(modifier = Modifier.height(16.dp))
                 Row {
                     Button(onClick = {
-                        onEdit(reminder.copy(
-                            medicationName = editedName,
-                            reminderTimes = editedTimes,
-                            frequency = editedFrequency,
-                            startDate = editedStartDate,
-                            endDate = editedEndDate,
-                            reminderDays = editedReminderDays
-                        ))
+                        onEdit(
+                            reminder.copy(
+                                medicationName = editedName,
+                                reminderTimes = editedTimes,
+                                frequency = editedFrequency,
+                                startDate = editedStartDate,
+                                endDate = editedEndDate,
+                                reminderDays = editedReminderDays
+                            )
+                        )
                         isEditing = false
                     }) {
                         Text("Save")
@@ -247,11 +280,9 @@ fun ReminderItem(
                 Text("Frequency: ${reminder.frequency} times daily")
                 Text("Start Date: ${reminder.startDate}")
                 reminder.endDate?.let { Text("End Date: $it") }
-                Text(
-                    "Days: ${
-                        reminder.reminderDays.sorted().joinToString(", ") { getDayName(it) }
-                    }"
-                )
+                Text("Days: ${
+                    reminder.reminderDays.sorted().joinToString(", ") { getDayName(it) }
+                }")
 
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -273,17 +304,19 @@ fun ReminderItem(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .background(backgroundColor)
-                                .padding(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                                .padding(8.dp), verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Intake at ${intake.intakeDateTime.format(DateTimeFormatter.ofPattern("HH:mm"))}",
-                                modifier = Modifier.weight(1f),
-                                color = textColor
+                                text = "Intake at ${
+                                    intake.intakeDateTime.format(
+                                        DateTimeFormatter.ofPattern(
+                                            "HH:mm"
+                                        )
+                                    )
+                                }", modifier = Modifier.weight(1f), color = textColor
                             )
                             Text(
-                                text = if (intake.taken) "Taken" else "Not Taken",
-                                color = textColor
+                                text = if (intake.taken) "Taken" else "Not Taken", color = textColor
                             )
                         }
                     }
@@ -307,8 +340,7 @@ fun ReminderItem(
     }
 
     if (showStartDatePicker) {
-        CalendarDialog(
-            onDismissRequest = { showStartDatePicker = false },
+        CalendarDialog(onDismissRequest = { showStartDatePicker = false },
             onDateSelected = {
                 editedStartDate = it
                 showStartDatePicker = false
@@ -318,8 +350,7 @@ fun ReminderItem(
         )
     }
     if (showEndDatePicker) {
-        CalendarDialog(
-            onDismissRequest = { showEndDatePicker = false },
+        CalendarDialog(onDismissRequest = { showEndDatePicker = false },
             onDateSelected = {
                 editedEndDate = it
                 showEndDatePicker = false
@@ -331,7 +362,10 @@ fun ReminderItem(
 }
 
 @Composable
-fun AddReminderForm(onAddReminder: (MedicationReminder) -> Unit, reminders: List<MedicationReminder>) {    var medicationName by remember { mutableStateOf("") }
+fun AddReminderForm(
+    onAddReminder: (MedicationReminder) -> Unit, reminders: List<MedicationReminder>
+) {
+    var medicationName by remember { mutableStateOf("") }
     var frequency by remember { mutableStateOf(1) }
     var reminderTimes by remember { mutableStateOf(listOf(LocalTime.now())) }
     var startDate by remember { mutableStateOf(LocalDate.now()) }
@@ -341,32 +375,25 @@ fun AddReminderForm(onAddReminder: (MedicationReminder) -> Unit, reminders: List
     var reminderDays by remember { mutableStateOf(setOf(1, 2, 3, 4, 5, 6, 7)) }
 
     Column(modifier = Modifier.padding(16.dp)) {
-        OutlinedTextField(
-            value = medicationName,
+        OutlinedTextField(value = medicationName,
             onValueChange = { medicationName = it },
             label = { Text("Medication Name") },
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(8.dp))
 
-        FrequencySelector(
-            frequency = frequency,
-            onFrequencyChange = {
-                frequency = it
-                reminderTimes = List(it) { index ->
-                    if (index < reminderTimes.size) reminderTimes[index] else LocalTime.now()
-                }
+        FrequencySelector(frequency = frequency, onFrequencyChange = {
+            frequency = it
+            reminderTimes = List(it) { index ->
+                if (index < reminderTimes.size) reminderTimes[index] else LocalTime.now()
             }
-        )
+        })
         Spacer(modifier = Modifier.height(8.dp))
 
         reminderTimes.forEachIndexed { index, time ->
-            AndroidTimePicker(
-                initialTime = time,
-                onTimeSelected = { newTime ->
-                    reminderTimes = reminderTimes.toMutableList().also { it[index] = newTime }
-                }
-            )
+            AndroidTimePicker(initialTime = time, onTimeSelected = { newTime ->
+                reminderTimes = reminderTimes.toMutableList().also { it[index] = newTime }
+            })
             Spacer(modifier = Modifier.height(8.dp))
         }
 
@@ -389,33 +416,22 @@ fun AddReminderForm(onAddReminder: (MedicationReminder) -> Unit, reminders: List
         Spacer(modifier = Modifier.height(8.dp))
 
         if (showStartDatePicker) {
-            CalendarDialog(
-                onDismissRequest = { showStartDatePicker = false },
-                onDateSelected = {
-                    startDate = it
-                    showStartDatePicker = false
-                },
-                initialDate = startDate,
-                reminders = reminders
+            CalendarDialog(onDismissRequest = { showStartDatePicker = false }, onDateSelected = {
+                startDate = it
+                showStartDatePicker = false
+            }, initialDate = startDate, reminders = reminders
             )
         }
 
         if (showEndDatePicker) {
-            CalendarDialog(
-                onDismissRequest = { showEndDatePicker = false },
-                onDateSelected = {
-                    endDate = it
-                    showEndDatePicker = false
-                },
-                initialDate = endDate ?: LocalDate.now(),
-                reminders = reminders
+            CalendarDialog(onDismissRequest = { showEndDatePicker = false }, onDateSelected = {
+                endDate = it
+                showEndDatePicker = false
+            }, initialDate = endDate ?: LocalDate.now(), reminders = reminders
             )
         }
 
-        WeekdaySelector(
-            selectedDays = reminderDays,
-            onDaysChanged = { reminderDays = it }
-        )
+        WeekdaySelector(selectedDays = reminderDays, onDaysChanged = { reminderDays = it })
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
@@ -438,18 +454,17 @@ fun AddReminderForm(onAddReminder: (MedicationReminder) -> Unit, reminders: List
                     endDate = null
                     reminderDays = setOf(1, 2, 3, 4, 5, 6, 7)
                 }
-            },
-            modifier = Modifier.fillMaxWidth()
+            }, modifier = Modifier.fillMaxWidth()
         ) {
             Text("Add Reminder")
         }
     }
 }
+
 @Composable
 fun FrequencySelector(frequency: Int, onFrequencyChange: (Int) -> Unit) {
     Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth()
+        verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()
     ) {
         Text("Daily Frequency:")
         Spacer(modifier = Modifier.width(8.dp))
@@ -457,8 +472,7 @@ fun FrequencySelector(frequency: Int, onFrequencyChange: (Int) -> Unit) {
             Text("-")
         }
         Text(
-            text = frequency.toString(),
-            modifier = Modifier.padding(horizontal = 8.dp)
+            text = frequency.toString(), modifier = Modifier.padding(horizontal = 8.dp)
         )
         Button(onClick = { onFrequencyChange(frequency + 1) }) {
             Text("+")
@@ -478,18 +492,14 @@ fun WeekdaySelector(selectedDays: Set<Int>, onDaysChanged: (Set<Int>) -> Unit) {
     ) {
         weekdays.forEachIndexed { index, day ->
             val isSelected = selectedDays.contains(index + 1)
-            WeekdayButton(
-                day = day,
-                isSelected = isSelected,
-                onClick = {
-                    val newSet = if (isSelected) {
-                        selectedDays - (index + 1)
-                    } else {
-                        selectedDays + (index + 1)
-                    }
-                    onDaysChanged(newSet)
+            WeekdayButton(day = day, isSelected = isSelected, onClick = {
+                val newSet = if (isSelected) {
+                    selectedDays - (index + 1)
+                } else {
+                    selectedDays + (index + 1)
                 }
-            )
+                onDaysChanged(newSet)
+            })
         }
     }
 }
@@ -514,38 +524,28 @@ fun WeekdayButton(day: String, isSelected: Boolean, onClick: () -> Unit) {
             .background(backgroundColor)
             .clickable(onClick = onClick)
             .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.primary,
-                shape = CircleShape
-            ),
-        contentAlignment = Alignment.Center
+                width = 1.dp, color = MaterialTheme.colorScheme.primary, shape = CircleShape
+            ), contentAlignment = Alignment.Center
     ) {
         Text(
-            text = day,
-            color = contentColor,
-            style = MaterialTheme.typography.bodyMedium
+            text = day, color = contentColor, style = MaterialTheme.typography.bodyMedium
         )
     }
 }
 
 @Composable
 fun AndroidTimePicker(
-    initialTime: LocalTime,
-    onTimeSelected: (LocalTime) -> Unit
+    initialTime: LocalTime, onTimeSelected: (LocalTime) -> Unit
 ) {
     val context = LocalContext.current
     var selectedTime by remember { mutableStateOf(initialTime) }
 
     Button(onClick = {
         TimePickerDialog(
-            context,
-            { _, hour, minute ->
+            context, { _, hour, minute ->
                 selectedTime = LocalTime.of(hour, minute)
                 onTimeSelected(selectedTime)
-            },
-            selectedTime.hour,
-            selectedTime.minute,
-            false // Set to true if you want 24-hour view
+            }, selectedTime.hour, selectedTime.minute, false // Set to true if you want 24-hour view
         ).show()
     }) {
         Text("Select Time: ${selectedTime.format(DateTimeFormatter.ofPattern("HH:mm"))}")
@@ -560,8 +560,7 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
 
     val activeReminders by viewModel.getActiveReminders(selectedDate)
         .collectAsState(initial = emptyList())
-    val intakes by viewModel.getIntakesForMonth(currentMonth)
-        .collectAsState(initial = emptyList())
+    val intakes by viewModel.getIntakesForMonth(currentMonth).collectAsState(initial = emptyList())
     val selectedDateIntakes by viewModel.getIntakesForDate(selectedDate)
         .collectAsState(initial = emptyList())
 
@@ -615,10 +614,7 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
             LazyColumn {
                 items(selectedDateIntakes.groupBy { it.medicationName }.values.toList()) { medicationIntakes ->
                     medicationIntakes.forEachIndexed { index, intake ->
-                        MedicationEventItem(
-                            intake = intake,
-                            onClick = { selectedIntake = intake }
-                        )
+                        MedicationEventItem(intake = intake, onClick = { selectedIntake = intake })
                     }
                 }
             }
@@ -626,14 +622,12 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
     }
 
     selectedIntake?.let { intake ->
-        EventDetailsDialog(
-            intake = intake,
+        EventDetailsDialog(intake = intake,
             onDismiss = { selectedIntake = null },
             onStatusChange = { newStatus ->
                 viewModel.updateIntakeTakenStatus(intake.id, newStatus)
                 selectedIntake = null
-            }
-        )
+            })
     }
 }
 
@@ -650,72 +644,63 @@ fun CalendarView(
     val firstDayOfMonth = currentMonth.atDay(1).dayOfWeek.value
     val totalDays = daysInMonth + firstDayOfMonth - 1
 
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(7),
-        content = {
-            items(7) { index ->
-                Text(
-                    text = listOf("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su")[index],
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(4.dp)
-                )
-            }
-            items(totalDays) { index ->
-                if (index >= firstDayOfMonth - 1) {
-                    val day = index - firstDayOfMonth + 2
-                    val date = currentMonth.atDay(day)
-                    val isSelected = date == selectedDate
-                    val dayIntakes = intakes.filter { it.intakeDateTime.toLocalDate() == date }
+    LazyVerticalGrid(columns = GridCells.Fixed(7), content = {
+        items(7) { index ->
+            Text(
+                text = listOf("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su")[index],
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(4.dp)
+            )
+        }
+        items(totalDays) { index ->
+            if (index >= firstDayOfMonth - 1) {
+                val day = index - firstDayOfMonth + 2
+                val date = currentMonth.atDay(day)
+                val isSelected = date == selectedDate
+                val dayIntakes = intakes.filter { it.intakeDateTime.toLocalDate() == date }
 
-                    Column(
+                Column(modifier = Modifier
+                    .padding(4.dp)
+                    .clickable { onDateSelected(date) }
+                    .background(
+                        if (isSelected) MaterialTheme.colorScheme.primaryContainer
+                        else Color.Transparent, shape = RoundedCornerShape(4.dp)
+                    )
+                    .padding(4.dp)) {
+                    Text(
+                        text = day.toString(),
+                        textAlign = TextAlign.Center,
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Row(
                         modifier = Modifier
-                            .padding(4.dp)
-                            .clickable { onDateSelected(date) }
-                            .background(
-                                if (isSelected) MaterialTheme.colorScheme.primaryContainer
-                                else Color.Transparent,
-                                shape = RoundedCornerShape(4.dp)
-                            )
-                            .padding(4.dp)
+                            .fillMaxWidth()
+                            .height(6.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        Text(
-                            text = day.toString(),
-                            textAlign = TextAlign.Center,
-                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(6.dp),
-                            horizontalArrangement = Arrangement.SpaceEvenly
-                        ) {
-                            dayIntakes.groupBy { it.medicationName }.values.forEachIndexed { index, medicationIntakes ->
-                                val intake = medicationIntakes.first()
-                                Box(
-                                    modifier = Modifier
-                                        .size(6.dp)
-                                        .background(
-                                            getColorForMedicationStatus(
-                                                intake.medicationName,
-                                                intake.taken,
-                                                index
-                                            ),
-                                            CircleShape
-                                        )
-                                )
-                                if (index < dayIntakes.size - 1) {
-                                    Spacer(modifier = Modifier.width(2.dp))
-                                }
+                        dayIntakes.groupBy { it.medicationName }.values.forEachIndexed { index, medicationIntakes ->
+                            val intake = medicationIntakes.first()
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .background(
+                                        getColorForMedicationStatus(
+                                            intake.medicationName, intake.taken, index
+                                        ), CircleShape
+                                    )
+                            )
+                            if (index < dayIntakes.size - 1) {
+                                Spacer(modifier = Modifier.width(2.dp))
                             }
                         }
                     }
-                } else {
-                    Text("")
                 }
+            } else {
+                Text("")
             }
         }
-    )
+    })
 }
 
 fun getColorForMedicationStatus(medicationName: String, taken: Boolean, index: Int = 0): Color {
@@ -747,8 +732,7 @@ fun CalendarDialog(
 
     val indicatorColor = MaterialTheme.colorScheme.secondary
 
-    AlertDialog(
-        onDismissRequest = onDismissRequest,
+    AlertDialog(onDismissRequest = onDismissRequest,
         title = { Text(currentMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy"))) },
         text = {
             Column {
@@ -780,15 +764,12 @@ fun CalendarDialog(
             Button(onClick = onDismissRequest) {
                 Text("Cancel")
             }
-        }
-    )
+        })
 }
 
 @Composable
 fun DayView(
-    date: LocalDate,
-    intakes: List<MedicationIntake>,
-    onIntakeClick: (MedicationIntake) -> Unit
+    date: LocalDate, intakes: List<MedicationIntake>, onIntakeClick: (MedicationIntake) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
@@ -797,18 +778,14 @@ fun DayView(
             modifier = Modifier.padding(vertical = 8.dp)
         )
         intakes.sortedBy { it.intakeDateTime }.forEach { intake ->
-            MedicationEventItem(
-                intake = intake,
-                onClick = { onIntakeClick(intake) }
-            )
+            MedicationEventItem(intake = intake, onClick = { onIntakeClick(intake) })
         }
     }
 }
 
 @Composable
 fun MedicationEventItem(
-    intake: MedicationIntake,
-    onClick: () -> Unit
+    intake: MedicationIntake, onClick: () -> Unit
 ) {
     val backgroundColor = if (intake.taken) {
         Color(200, 255, 200) // Light green background for taken
@@ -826,8 +803,7 @@ fun MedicationEventItem(
             .fillMaxWidth()
             .background(backgroundColor)
             .clickable(onClick = onClick)
-            .padding(8.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(8.dp), verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = intake.intakeDateTime.format(DateTimeFormatter.ofPattern("HH:mm")),
@@ -846,43 +822,33 @@ fun MedicationEventItem(
 
 @Composable
 fun EventDetailsDialog(
-    intake: MedicationIntake,
-    onDismiss: () -> Unit,
-    onStatusChange: (Boolean) -> Unit
+    intake: MedicationIntake, onDismiss: () -> Unit, onStatusChange: (Boolean) -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(intake.medicationName) },
-        text = {
-            Column {
-                Text("Time: ${intake.intakeDateTime.format(DateTimeFormatter.ofPattern("HH:mm"))}")
-                Text("Status: ${if (intake.taken) "Taken" else "Not Taken"}")
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+    AlertDialog(onDismissRequest = onDismiss, title = { Text(intake.medicationName) }, text = {
+        Column {
+            Text("Time: ${intake.intakeDateTime.format(DateTimeFormatter.ofPattern("HH:mm"))}")
+            Text("Status: ${if (intake.taken) "Taken" else "Not Taken"}")
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Button(
+                    onClick = { onStatusChange(true) }, enabled = !intake.taken
                 ) {
-                    Button(
-                        onClick = { onStatusChange(true) },
-                        enabled = !intake.taken
-                    ) {
-                        Text("Mark as Taken")
-                    }
-                    Button(
-                        onClick = { onStatusChange(false) },
-                        enabled = intake.taken
-                    ) {
-                        Text("Mark as Not Taken")
-                    }
+                    Text("Mark as Taken")
+                }
+                Button(
+                    onClick = { onStatusChange(false) }, enabled = intake.taken
+                ) {
+                    Text("Mark as Not Taken")
                 }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Close")
-            }
         }
-    )
+    }, confirmButton = {
+        TextButton(onClick = onDismiss) {
+            Text("Close")
+        }
+    })
 }
 
 fun getDayName(day: Int): String {
