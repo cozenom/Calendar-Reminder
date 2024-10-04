@@ -27,21 +27,26 @@ import java.time.LocalTime
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import androidx.compose.foundation.background
-import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import com.example.calendarapp.data.model.MedicationIntake
-
+import com.example.calendarapp.data.notification.MedicationReminderWorker
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.draw.clip
 
 class MainActivity : ComponentActivity() {
     private lateinit var viewModel: MedicationReminderViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
+        MedicationReminderWorker.schedule(this)
         viewModel = ViewModelProvider(
             this,
             MedicationReminderViewModelFactory(application)
@@ -429,10 +434,18 @@ fun FrequencySelector(frequency: Int, onFrequencyChange: (Int) -> Unit) {
 @Composable
 fun WeekdaySelector(selectedDays: Set<Int>, onDaysChanged: (Set<Int>) -> Unit) {
     val weekdays = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
-    Row(modifier = Modifier.fillMaxWidth()) {
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
         weekdays.forEachIndexed { index, day ->
             val isSelected = selectedDays.contains(index + 1)
-            Button(
+            WeekdayButton(
+                day = day,
+                isSelected = isSelected,
                 onClick = {
                     val newSet = if (isSelected) {
                         selectedDays - (index + 1)
@@ -440,20 +453,46 @@ fun WeekdaySelector(selectedDays: Set<Int>, onDaysChanged: (Set<Int>) -> Unit) {
                         selectedDays + (index + 1)
                     }
                     onDaysChanged(newSet)
-                },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
-                    contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
-                ),
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(2.dp)
-            ) {
-                Text(day, fontSize = 12.sp)
-            }
+                }
+            )
         }
     }
 }
+
+@Composable
+fun WeekdayButton(day: String, isSelected: Boolean, onClick: () -> Unit) {
+    val backgroundColor = if (isSelected) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.surface
+    }
+    val contentColor = if (isSelected) {
+        MaterialTheme.colorScheme.onPrimary
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
+
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(CircleShape)
+            .background(backgroundColor)
+            .clickable(onClick = onClick)
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.primary,
+                shape = CircleShape
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = day,
+            color = contentColor,
+            style = MaterialTheme.typography.bodyMedium
+        )
+    }
+}
+
 @Composable
 fun AndroidTimePicker(
     initialTime: LocalTime,
@@ -482,6 +521,9 @@ fun AndroidTimePicker(
 fun CalendarTab(viewModel: MedicationReminderViewModel) {
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
     var currentMonth by remember { mutableStateOf(YearMonth.from(selectedDate)) }
+    var showDayView by remember { mutableStateOf(false) }
+    var selectedIntake by remember { mutableStateOf<MedicationIntake?>(null) }
+
     val activeReminders by viewModel.getActiveReminders(selectedDate)
         .collectAsState(initial = emptyList())
     val intakes by viewModel.getIntakesForDate(selectedDate)
@@ -515,31 +557,35 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
 
         CalendarView(
             currentMonth = currentMonth,
-            onDateSelected = { selectedDate = it },
+            onDateSelected = {
+                selectedDate = it
+                showDayView = true
+            },
             selectedDate = selectedDate,
             reminders = activeReminders,
             indicatorColor = indicatorColor
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Display medications for the selected date
-        Text("Medications for ${selectedDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy"))}",
-            style = MaterialTheme.typography.titleMedium)
-        Spacer(modifier = Modifier.height(8.dp))
-        LazyColumn {
-            items(activeReminders) { reminder ->
-                ReminderItem(
-                    reminder = reminder,
-                    intakes = intakes.filter { it.reminderId == reminder.id },
-                    onDelete = { viewModel.delete(reminder) },
-                    onEdit = { viewModel.update(it) },
-                    onTakenChange = { intake, taken ->
-                        viewModel.updateIntakeTakenStatus(intake.id, taken)
-                    }
-                )
-            }
+        if (showDayView) {
+            DayView(
+                date = selectedDate,
+                intakes = intakes,
+                onIntakeClick = { intake ->
+                    selectedIntake = intake
+                }
+            )
         }
+    }
+
+    selectedIntake?.let { intake ->
+        EventDetailsDialog(
+            intake = intake,
+            onDismiss = { selectedIntake = null },
+            onStatusChange = { newStatus ->
+                viewModel.updateIntakeTakenStatus(intake.id, newStatus)
+                selectedIntake = null
+            }
+        )
     }
 }
 
@@ -657,9 +703,95 @@ fun CalendarDialog(
     )
 }
 
+@Composable
+fun DayView(
+    date: LocalDate,
+    intakes: List<MedicationIntake>,
+    onIntakeClick: (MedicationIntake) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = date.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+        intakes.sortedBy { it.intakeDateTime }.forEach { intake ->
+            MedicationEventItem(
+                intake = intake,
+                onClick = { onIntakeClick(intake) }
+            )
+        }
+    }
+}
 
+@Composable
+fun MedicationEventItem(
+    intake: MedicationIntake,
+    onClick: () -> Unit
+) {
+    val backgroundColor = if (intake.taken) Color.Green.copy(alpha = 0.2f) else Color.Red.copy(alpha = 0.2f)
 
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(backgroundColor)
+            .clickable(onClick = onClick)
+            .padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = intake.intakeDateTime.format(DateTimeFormatter.ofPattern("HH:mm")),
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.width(60.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = intake.medicationName,
+            style = MaterialTheme.typography.bodyLarge
+        )
+    }
+}
 
+@Composable
+fun EventDetailsDialog(
+    intake: MedicationIntake,
+    onDismiss: () -> Unit,
+    onStatusChange: (Boolean) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(intake.medicationName) },
+        text = {
+            Column {
+                Text("Time: ${intake.intakeDateTime.format(DateTimeFormatter.ofPattern("HH:mm"))}")
+                Text("Status: ${if (intake.taken) "Taken" else "Not Taken"}")
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Button(
+                        onClick = { onStatusChange(true) },
+                        enabled = !intake.taken
+                    ) {
+                        Text("Mark as Taken")
+                    }
+                    Button(
+                        onClick = { onStatusChange(false) },
+                        enabled = intake.taken
+                    ) {
+                        Text("Mark as Not Taken")
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        }
+    )
+}
 
 fun getDayName(day: Int): String {
     return when (day) {

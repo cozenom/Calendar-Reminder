@@ -20,11 +20,11 @@ class MedicationReminderViewModel(application: Application) : AndroidViewModel(a
 
     init {
         val database = AppDatabase.getDatabase(application)
-        val dao = database.medicationReminderDao()
+        val reminderDao = database.medicationReminderDao()
         val intakeDao = database.medicationIntakeDao()
-        repository = MedicationReminderRepository(dao)
-        intakeRepository = MedicationIntakeRepository(intakeDao)
+        repository = MedicationReminderRepository(reminderDao, intakeDao)
         allReminders = repository.allReminders
+        intakeRepository = MedicationIntakeRepository(intakeDao)
     }
 
     fun insert(reminder: MedicationReminder) = viewModelScope.launch {

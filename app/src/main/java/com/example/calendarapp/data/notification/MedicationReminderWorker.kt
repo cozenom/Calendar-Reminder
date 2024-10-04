@@ -1,4 +1,4 @@
-package com.example.calendarapp.notification
+package com.example.calendarapp.data.notification
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -7,18 +7,21 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import androidx.work.CoroutineWorker
-import androidx.work.WorkerParameters
+import androidx.work.*
 import com.example.calendarapp.MainActivity
 import com.example.calendarapp.R
 import com.example.calendarapp.data.database.AppDatabase
+import com.example.calendarapp.notification.NotificationActionReceiver
 import kotlinx.coroutines.flow.first
 import java.time.LocalDateTime
+import java.util.concurrent.TimeUnit
 
 class MedicationReminderWorker(
     context: Context,
     params: WorkerParameters
 ) : CoroutineWorker(context, params) {
+
+
 
     override suspend fun doWork(): Result {
         val database = AppDatabase.getDatabase(applicationContext)
@@ -30,23 +33,23 @@ class MedicationReminderWorker(
 
         upcoming.forEach { intake ->
             val reminder = reminderDao.getReminderById(intake.reminderId).first()
-            showNotification(intake.id, reminder.medicationName, intake.intakeDateTime)
+            showNotification(intake.id, reminder.medicationName)
         }
+
+        // Schedule the next check
+        scheduleNextCheck()
 
         return Result.success()
     }
-
-    private fun showNotification(intakeId: Int, medicationName: String, intakeTime: LocalDateTime) {
+    private fun showNotification(intakeId: Int, medicationName: String) {
         val notificationManager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "Medication Reminders",
-                NotificationManager.IMPORTANCE_HIGH
-            )
-            notificationManager.createNotificationChannel(channel)
-        }
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            "Medication Reminders",
+            NotificationManager.IMPORTANCE_HIGH
+        )
+        notificationManager.createNotificationChannel(channel)
 
         val intent = Intent(applicationContext, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -78,10 +81,26 @@ class MedicationReminderWorker(
         notificationManager.notify(intakeId, builder.build())
     }
 
+
+    private fun scheduleNextCheck() {
+        val workRequest = OneTimeWorkRequestBuilder<MedicationReminderWorker>()
+            .setInitialDelay(15, TimeUnit.MINUTES)
+            .build()
+
+        WorkManager.getInstance(applicationContext).enqueue(workRequest)
+    }
+
     companion object {
         private const val CHANNEL_ID = "MedicationReminderChannel"
         const val ACTION_TAKEN = "com.example.calendarapp.ACTION_TAKEN"
         const val ACTION_SNOOZE = "com.example.calendarapp.ACTION_SNOOZE"
         const val EXTRA_INTAKE_ID = "intake_id"
+
+        fun schedule(context: Context) {
+            val workRequest = OneTimeWorkRequestBuilder<MedicationReminderWorker>()
+                .build()
+
+            WorkManager.getInstance(context).enqueue(workRequest)
+        }
     }
 }

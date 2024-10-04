@@ -11,7 +11,7 @@ interface MedicationReminderDao {
     fun getAllReminders(): Flow<List<MedicationReminder>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertReminder(reminder: MedicationReminder)
+    suspend fun insertReminder(reminder: MedicationReminder): Long
 
     @Update
     suspend fun updateReminder(reminder: MedicationReminder)
@@ -21,7 +21,6 @@ interface MedicationReminderDao {
 
     @Query("SELECT * FROM medication_reminders WHERE startDate <= :date AND (endDate IS NULL OR endDate >= :date)")
     fun getActiveReminders(date: LocalDate): Flow<List<MedicationReminder>>
-
 
     @Query("SELECT * FROM medication_reminders WHERE id = :id")
     fun getReminderById(id: Int): Flow<MedicationReminder>
