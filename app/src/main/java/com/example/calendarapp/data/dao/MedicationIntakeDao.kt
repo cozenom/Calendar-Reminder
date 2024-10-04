@@ -24,4 +24,7 @@ interface MedicationIntakeDao {
 
     @Query("SELECT * FROM medication_intake WHERE intakeDateTime <= :dateTime AND taken = 0")
     fun getMissedIntakes(dateTime: LocalDateTime): Flow<List<MedicationIntake>>
+
+    @Query("SELECT * FROM medication_intake WHERE intakeDateTime BETWEEN :start AND :end")
+    fun getUpcomingIntakes(start: LocalDateTime, end: LocalDateTime): Flow<List<MedicationIntake>>
 }

@@ -21,4 +21,8 @@ interface MedicationReminderDao {
 
     @Query("SELECT * FROM medication_reminders WHERE startDate <= :date AND (endDate IS NULL OR endDate >= :date)")
     fun getActiveReminders(date: LocalDate): Flow<List<MedicationReminder>>
+
+
+    @Query("SELECT * FROM medication_reminders WHERE id = :id")
+    fun getReminderById(id: Int): Flow<MedicationReminder>
 }

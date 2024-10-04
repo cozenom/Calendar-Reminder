@@ -91,7 +91,10 @@ fun MedicationsTab(viewModel: MedicationReminderViewModel) {
             reminders = reminders,
             intakes = intakes,
             onDeleteReminder = { viewModel.delete(it) },
-            onEditReminder = { viewModel.update(it) }
+            onEditReminder = { viewModel.update(it) },
+            onTakenChange = { intake, taken ->
+                viewModel.updateIntakeTakenStatus(intake.id, taken)
+            }
         )
     }
 }
@@ -116,7 +119,8 @@ fun ReminderList(
     reminders: List<MedicationReminder>,
     intakes: List<MedicationIntake>,
     onDeleteReminder: (MedicationReminder) -> Unit,
-    onEditReminder: (MedicationReminder) -> Unit
+    onEditReminder: (MedicationReminder) -> Unit,
+    onTakenChange: (MedicationIntake, Boolean) -> Unit
 ) {
     LazyColumn {
         items(reminders) { reminder ->
@@ -124,7 +128,8 @@ fun ReminderList(
                 reminder = reminder,
                 intakes = intakes.filter { it.reminderId == reminder.id },
                 onDelete = { onDeleteReminder(reminder) },
-                onEdit = { onEditReminder(it) }
+                onEdit = { onEditReminder(it) },
+                onTakenChange = onTakenChange
             )
         }
     }
@@ -135,19 +140,18 @@ fun ReminderItem(
     reminder: MedicationReminder,
     intakes: List<MedicationIntake>,
     onDelete: () -> Unit,
-    onEdit: (MedicationReminder) -> Unit
+    onEdit: (MedicationReminder) -> Unit,
+    onTakenChange: (MedicationIntake, Boolean) -> Unit
 ) {
     var isEditing by remember { mutableStateOf(false) }
     var editedName by remember { mutableStateOf(reminder.medicationName) }
     var editedTimes by remember { mutableStateOf(reminder.reminderTimes) }
     var editedFrequency by remember { mutableIntStateOf(reminder.frequency) }
-    val editedStartDate by remember { mutableStateOf(reminder.startDate) }
+    var editedStartDate by remember { mutableStateOf(reminder.startDate) }
     var editedEndDate by remember { mutableStateOf(reminder.endDate) }
     var showStartDatePicker by remember { mutableStateOf(false) }
     var showEndDatePicker by remember { mutableStateOf(false) }
     var editedReminderDays by remember { mutableStateOf(reminder.reminderDays) }
-    val latestIntake = intakes.maxByOrNull { it.intakeDateTime }
-    val taken = latestIntake?.taken ?: false
 
     Card(
         modifier = Modifier
@@ -229,18 +233,10 @@ fun ReminderItem(
                     }
                 }
             } else {
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Canvas(modifier = Modifier.size(16.dp)) {
-                            drawCircle(
-                                color = if (taken) Color.Green else Color.Red,
-                                radius = size.minDimension / 2
-                            )
-                        }
-                    Spacer(modifier = Modifier.width(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     Text(
                         reminder.medicationName,
                         style = MaterialTheme.typography.headlineSmall,
@@ -258,6 +254,28 @@ fun ReminderItem(
                         reminder.reminderDays.sorted().joinToString(", ") { getDayName(it) }
                     }"
                 )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Display intakes with taken status
+                intakes.forEach { intake ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Intake at ${intake.intakeDateTime.format(DateTimeFormatter.ofPattern("HH:mm"))}",
+                            modifier = Modifier.weight(1f)
+                        )
+                        Switch(
+                            checked = intake.taken,
+                            onCheckedChange = { taken -> onTakenChange(intake, taken) }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
                 Row {
                     Button(onClick = { isEditing = true }) {
                         Text("Edit")
@@ -515,7 +533,10 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
                     reminder = reminder,
                     intakes = intakes.filter { it.reminderId == reminder.id },
                     onDelete = { viewModel.delete(reminder) },
-                    onEdit = { viewModel.update(it) }
+                    onEdit = { viewModel.update(it) },
+                    onTakenChange = { intake, taken ->
+                        viewModel.updateIntakeTakenStatus(intake.id, taken)
+                    }
                 )
             }
         }
