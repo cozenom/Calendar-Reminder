@@ -96,14 +96,10 @@ fun MedicationsTab(viewModel: MedicationReminderViewModel) {
             reminders = reminders,
             intakes = intakes,
             onDeleteReminder = { viewModel.delete(it) },
-            onEditReminder = { viewModel.update(it) },
-            onTakenChange = { intake, taken ->
-                viewModel.updateIntakeTakenStatus(intake.id, taken)
-            }
+            onEditReminder = { viewModel.update(it) }
         )
     }
 }
-
 
 @Composable
 fun AddMedicationTab(viewModel: MedicationReminderViewModel) {
@@ -124,8 +120,7 @@ fun ReminderList(
     reminders: List<MedicationReminder>,
     intakes: List<MedicationIntake>,
     onDeleteReminder: (MedicationReminder) -> Unit,
-    onEditReminder: (MedicationReminder) -> Unit,
-    onTakenChange: (MedicationIntake, Boolean) -> Unit
+    onEditReminder: (MedicationReminder) -> Unit
 ) {
     LazyColumn {
         items(reminders) { reminder ->
@@ -133,8 +128,7 @@ fun ReminderList(
                 reminder = reminder,
                 intakes = intakes.filter { it.reminderId == reminder.id },
                 onDelete = { onDeleteReminder(reminder) },
-                onEdit = { onEditReminder(it) },
-                onTakenChange = onTakenChange
+                onEdit = { onEditReminder(it) }
             )
         }
     }
@@ -145,8 +139,7 @@ fun ReminderItem(
     reminder: MedicationReminder,
     intakes: List<MedicationIntake>,
     onDelete: () -> Unit,
-    onEdit: (MedicationReminder) -> Unit,
-    onTakenChange: (MedicationIntake, Boolean) -> Unit
+    onEdit: (MedicationReminder) -> Unit
 ) {
     var isEditing by remember { mutableStateOf(false) }
     var editedName by remember { mutableStateOf(reminder.medicationName) }
@@ -158,6 +151,9 @@ fun ReminderItem(
     var showEndDatePicker by remember { mutableStateOf(false) }
     var editedReminderDays by remember { mutableStateOf(reminder.reminderDays) }
 
+    val currentDate = LocalDate.now()
+    val currentDayIntakes = intakes.filter { it.intakeDateTime.toLocalDate() == currentDate }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -165,6 +161,7 @@ fun ReminderItem(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             if (isEditing) {
+                // Editing mode UI
                 OutlinedTextField(
                     value = editedName,
                     onValueChange = { editedName = it },
@@ -172,7 +169,6 @@ fun ReminderItem(
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-
                 FrequencySelector(
                     frequency = editedFrequency,
                     onFrequencyChange = {
@@ -183,7 +179,6 @@ fun ReminderItem(
                     }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-
                 editedTimes.forEachIndexed { index, time ->
                     AndroidTimePicker(
                         initialTime = time,
@@ -193,12 +188,10 @@ fun ReminderItem(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                 }
-
                 Button(onClick = { showStartDatePicker = true }) {
                     Text("Select Start Date: ${editedStartDate.format(DateTimeFormatter.ISO_LOCAL_DATE)}")
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-
                 Row {
                     Button(onClick = { showEndDatePicker = true }) {
                         Text("Select End Date: ${editedEndDate?.format(DateTimeFormatter.ISO_LOCAL_DATE) ?: "Not set"}")
@@ -211,13 +204,13 @@ fun ReminderItem(
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-
                 WeekdaySelector(
+
+                    // ... (keep the existing editing mode UI)
                     selectedDays = editedReminderDays,
                     onDaysChanged = { editedReminderDays = it }
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-
                 Row {
                     Button(onClick = {
                         onEdit(reminder.copy(
@@ -238,6 +231,7 @@ fun ReminderItem(
                     }
                 }
             } else {
+                // Display mode UI
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
@@ -262,21 +256,26 @@ fun ReminderItem(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Display intakes with taken status
-                intakes.forEach { intake ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Intake at ${intake.intakeDateTime.format(DateTimeFormatter.ofPattern("HH:mm"))}",
-                            modifier = Modifier.weight(1f)
-                        )
-                        Switch(
-                            checked = intake.taken,
-                            onCheckedChange = { taken -> onTakenChange(intake, taken) }
-                        )
+                // Display intakes for the current day with status
+                Text("Today's intakes:", style = MaterialTheme.typography.titleMedium)
+                if (currentDayIntakes.isNotEmpty()) {
+                    currentDayIntakes.forEach { intake ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Intake at ${intake.intakeDateTime.format(DateTimeFormatter.ofPattern("HH:mm"))}",
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = if (intake.taken) "Taken" else "Not Taken",
+                                color = if (intake.taken) Color.Green else Color.Red
+                            )
+                        }
                     }
+                } else {
+                    Text("No intakes scheduled for today")
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -292,6 +291,29 @@ fun ReminderItem(
                 }
             }
         }
+    }
+
+    if (showStartDatePicker) {
+        CalendarDialog(
+            onDismissRequest = { showStartDatePicker = false },
+            onDateSelected = {
+                editedStartDate = it
+                showStartDatePicker = false
+            },
+            initialDate = editedStartDate,
+            reminders = emptyList() // You may want to pass actual reminders here
+        )
+    }
+    if (showEndDatePicker) {
+        CalendarDialog(
+            onDismissRequest = { showEndDatePicker = false },
+            onDateSelected = {
+                editedEndDate = it
+                showEndDatePicker = false
+            },
+            initialDate = editedEndDate ?: LocalDate.now(),
+            reminders = emptyList() // You may want to pass actual reminders here
+        )
     }
 }
 
@@ -521,12 +543,13 @@ fun AndroidTimePicker(
 fun CalendarTab(viewModel: MedicationReminderViewModel) {
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
     var currentMonth by remember { mutableStateOf(YearMonth.from(selectedDate)) }
-    var showDayView by remember { mutableStateOf(false) }
     var selectedIntake by remember { mutableStateOf<MedicationIntake?>(null) }
 
     val activeReminders by viewModel.getActiveReminders(selectedDate)
         .collectAsState(initial = emptyList())
-    val intakes by viewModel.getIntakesForDate(selectedDate)
+    val intakes by viewModel.getIntakesForMonth(currentMonth)
+        .collectAsState(initial = emptyList())
+    val selectedDateIntakes by viewModel.getIntakesForDate(selectedDate)
         .collectAsState(initial = emptyList())
 
     val indicatorColor = MaterialTheme.colorScheme.secondary
@@ -557,23 +580,33 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
 
         CalendarView(
             currentMonth = currentMonth,
-            onDateSelected = {
-                selectedDate = it
-                showDayView = true
-            },
+            onDateSelected = { selectedDate = it },
             selectedDate = selectedDate,
             reminders = activeReminders,
+            intakes = intakes,
             indicatorColor = indicatorColor
         )
 
-        if (showDayView) {
-            DayView(
-                date = selectedDate,
-                intakes = intakes,
-                onIntakeClick = { intake ->
-                    selectedIntake = intake
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Show selected date's intakes
+        Text(
+            text = selectedDate.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")),
+            style = MaterialTheme.typography.titleMedium
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        if (selectedDateIntakes.isEmpty()) {
+            Text("No medications scheduled for this day")
+        } else {
+            LazyColumn {
+                items(selectedDateIntakes) { intake ->
+                    MedicationEventItem(
+                        intake = intake,
+                        onClick = { selectedIntake = intake }
+                    )
                 }
-            )
+            }
         }
     }
 
@@ -595,6 +628,7 @@ fun CalendarView(
     onDateSelected: (LocalDate) -> Unit,
     selectedDate: LocalDate?,
     reminders: List<MedicationReminder>,
+    intakes: List<MedicationIntake>,
     indicatorColor: Color
 ) {
     val daysInMonth = currentMonth.lengthOfMonth()
@@ -616,9 +650,7 @@ fun CalendarView(
                     val day = index - firstDayOfMonth + 2
                     val date = currentMonth.atDay(day)
                     val isSelected = date == selectedDate
-                    val hasReminders = reminders.any { reminder ->
-                        reminder.startDate <= date && (reminder.endDate == null || reminder.endDate >= date)
-                    }
+                    val dayIntakes = intakes.filter { it.intakeDateTime.toLocalDate() == date }
 
                     Column(
                         modifier = Modifier
@@ -636,13 +668,17 @@ fun CalendarView(
                             textAlign = TextAlign.Center,
                             color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                         )
-                        if (hasReminders) {
-                            Canvas(modifier = Modifier
-                                .size(6.dp)
-                                .align(Alignment.CenterHorizontally)) {
-                                drawCircle(
-                                    color = indicatorColor,
-                                    radius = size.minDimension / 2
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(6.dp),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            dayIntakes.take(3).forEach { intake ->
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .background(getColorForMedicationStatus(intake.medicationName, intake.taken), CircleShape)
                                 )
                             }
                         }
@@ -653,6 +689,15 @@ fun CalendarView(
             }
         }
     )
+}
+
+fun getColorForMedicationStatus(medicationName: String, taken: Boolean): Color {
+    val hue = medicationName.hashCode() % 60 // Limit hue to 0-59 for red shades
+    return if (taken) {
+        Color.hsl(hue + 120f, 0.7f, 0.5f) // Add 120 to hue for green shades
+    } else {
+        Color.hsl(hue.toFloat(), 0.7f, 0.5f) // Red shades
+    }
 }
 
 @Composable
@@ -690,6 +735,7 @@ fun CalendarDialog(
                     },
                     selectedDate = selectedDate,
                     reminders = reminders,
+                    intakes = emptyList(), // You may want to pass actual intakes here
                     indicatorColor = indicatorColor
                 )
             }
@@ -729,7 +775,8 @@ fun MedicationEventItem(
     intake: MedicationIntake,
     onClick: () -> Unit
 ) {
-    val backgroundColor = if (intake.taken) Color.Green.copy(alpha = 0.2f) else Color.Red.copy(alpha = 0.2f)
+    val backgroundColor = if (intake.taken) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
+    val textColor = if (intake.taken) Color(0xFF388E3C) else Color(0xFFD32F2F)
 
     Row(
         modifier = Modifier
@@ -742,12 +789,14 @@ fun MedicationEventItem(
         Text(
             text = intake.intakeDateTime.format(DateTimeFormatter.ofPattern("HH:mm")),
             style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.width(60.dp)
+            modifier = Modifier.width(60.dp),
+            color = textColor
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = intake.medicationName,
-            style = MaterialTheme.typography.bodyLarge
+            style = MaterialTheme.typography.bodyLarge,
+            color = textColor
         )
     }
 }

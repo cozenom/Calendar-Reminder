@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.YearMonth
 
 class MedicationReminderViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: MedicationReminderRepository
@@ -49,6 +50,13 @@ class MedicationReminderViewModel(application: Application) : AndroidViewModel(a
 
     fun getMissedIntakes(dateTime: LocalDateTime): Flow<List<MedicationIntake>> {
         return intakeRepository.getMissedIntakes(dateTime)
+    }
+
+    fun getIntakesForMonth(yearMonth: YearMonth): Flow<List<MedicationIntake>> {
+        return intakeRepository.getIntakesForDateRange(
+            yearMonth.atDay(1).atStartOfDay(),
+            yearMonth.atEndOfMonth().plusDays(1).atStartOfDay().minusNanos(1)
+        )
     }
 
     fun getIntakesForDate(date: LocalDate): Flow<List<MedicationIntake>> {
