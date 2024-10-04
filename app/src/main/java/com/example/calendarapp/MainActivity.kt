@@ -27,7 +27,6 @@ import java.time.LocalTime
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import androidx.compose.foundation.background
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
@@ -260,17 +259,31 @@ fun ReminderItem(
                 Text("Today's intakes:", style = MaterialTheme.typography.titleMedium)
                 if (currentDayIntakes.isNotEmpty()) {
                     currentDayIntakes.forEach { intake ->
+                        val backgroundColor = if (intake.taken) {
+                            Color(200, 255, 200) // Light green background for taken
+                        } else {
+                            Color(255, 200, 200) // Light red background for not taken
+                        }
+                        val textColor = if (intake.taken) {
+                            Color(0, 100, 0) // Dark green text for taken
+                        } else {
+                            Color(150, 0, 0) // Dark red text for not taken
+                        }
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(backgroundColor)
+                                .padding(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 text = "Intake at ${intake.intakeDateTime.format(DateTimeFormatter.ofPattern("HH:mm"))}",
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
+                                color = textColor
                             )
                             Text(
                                 text = if (intake.taken) "Taken" else "Not Taken",
-                                color = if (intake.taken) Color.Green else Color.Red
+                                color = textColor
                             )
                         }
                     }
@@ -600,11 +613,13 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
             Text("No medications scheduled for this day")
         } else {
             LazyColumn {
-                items(selectedDateIntakes) { intake ->
-                    MedicationEventItem(
-                        intake = intake,
-                        onClick = { selectedIntake = intake }
-                    )
+                items(selectedDateIntakes.groupBy { it.medicationName }.values.toList()) { medicationIntakes ->
+                    medicationIntakes.forEachIndexed { index, intake ->
+                        MedicationEventItem(
+                            intake = intake,
+                            onClick = { selectedIntake = intake }
+                        )
+                    }
                 }
             }
         }
@@ -668,18 +683,30 @@ fun CalendarView(
                             textAlign = TextAlign.Center,
                             color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                         )
+                        Spacer(modifier = Modifier.height(2.dp))
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(6.dp),
                             horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
-                            dayIntakes.take(3).forEach { intake ->
+                            dayIntakes.groupBy { it.medicationName }.values.forEachIndexed { index, medicationIntakes ->
+                                val intake = medicationIntakes.first()
                                 Box(
                                     modifier = Modifier
                                         .size(6.dp)
-                                        .background(getColorForMedicationStatus(intake.medicationName, intake.taken), CircleShape)
+                                        .background(
+                                            getColorForMedicationStatus(
+                                                intake.medicationName,
+                                                intake.taken,
+                                                index
+                                            ),
+                                            CircleShape
+                                        )
                                 )
+                                if (index < dayIntakes.size - 1) {
+                                    Spacer(modifier = Modifier.width(2.dp))
+                                }
                             }
                         }
                     }
@@ -691,14 +718,22 @@ fun CalendarView(
     )
 }
 
-fun getColorForMedicationStatus(medicationName: String, taken: Boolean): Color {
-    val hue = medicationName.hashCode() % 60 // Limit hue to 0-59 for red shades
-    return if (taken) {
-        Color.hsl(hue + 120f, 0.7f, 0.5f) // Add 120 to hue for green shades
+fun getColorForMedicationStatus(medicationName: String, taken: Boolean, index: Int = 0): Color {
+    val baseColor = if (taken) {
+        Color(0, 180, 0) // Darker green for taken
     } else {
-        Color.hsl(hue.toFloat(), 0.7f, 0.5f) // Red shades
+        Color(180, 0, 0) // Pure red for not taken
     }
+
+    // Calculate a lighter shade based on the index
+    val lightenFactor = 0.15f * (index + 1)
+    return baseColor.copy(
+        red = (baseColor.red + (1 - baseColor.red) * lightenFactor).coerceIn(0f, 1f),
+        green = (baseColor.green + (1 - baseColor.green) * lightenFactor).coerceIn(0f, 1f),
+        blue = (baseColor.blue + (1 - baseColor.blue) * lightenFactor).coerceIn(0f, 1f)
+    )
 }
+
 
 @Composable
 fun CalendarDialog(
@@ -775,8 +810,16 @@ fun MedicationEventItem(
     intake: MedicationIntake,
     onClick: () -> Unit
 ) {
-    val backgroundColor = if (intake.taken) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
-    val textColor = if (intake.taken) Color(0xFF388E3C) else Color(0xFFD32F2F)
+    val backgroundColor = if (intake.taken) {
+        Color(200, 255, 200) // Light green background for taken
+    } else {
+        Color(255, 200, 200) // Light red background for not taken
+    }
+    val textColor = if (intake.taken) {
+        Color(0, 100, 0) // Dark green text for taken
+    } else {
+        Color(150, 0, 0) // Dark red text for not taken
+    }
 
     Row(
         modifier = Modifier
