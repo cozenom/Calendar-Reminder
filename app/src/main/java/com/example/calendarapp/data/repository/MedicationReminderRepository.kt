@@ -1,13 +1,12 @@
 package com.example.calendarapp.data.repository
 
-import com.example.calendarapp.data.dao.MedicationReminderDao
 import com.example.calendarapp.data.dao.MedicationIntakeDao
-import com.example.calendarapp.data.model.MedicationReminder
+import com.example.calendarapp.data.dao.MedicationReminderDao
 import com.example.calendarapp.data.model.MedicationIntake
+import com.example.calendarapp.data.model.MedicationReminder
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.LocalTime
 
 class MedicationReminderRepository(
     private val medicationReminderDao: MedicationReminderDao,
@@ -62,7 +61,10 @@ class MedicationReminderRepository(
         return medicationIntakeDao.getIntakesForReminder(reminderId)
     }
 
-    fun getIntakesForDateRange(start: LocalDateTime, end: LocalDateTime): Flow<List<MedicationIntake>> {
+    fun getIntakesForDateRange(
+        start: LocalDateTime,
+        end: LocalDateTime
+    ): Flow<List<MedicationIntake>> {
         return medicationIntakeDao.getIntakesForDateRange(start, end)
     }
 

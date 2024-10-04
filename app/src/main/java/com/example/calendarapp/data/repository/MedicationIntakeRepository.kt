@@ -18,7 +18,10 @@ class MedicationIntakeRepository(private val medicationIntakeDao: MedicationInta
         medicationIntakeDao.update(intake)
     }
 
-    fun getIntakesForDateRange(start: LocalDateTime, end: LocalDateTime): Flow<List<MedicationIntake>> {
+    fun getIntakesForDateRange(
+        start: LocalDateTime,
+        end: LocalDateTime
+    ): Flow<List<MedicationIntake>> {
         return medicationIntakeDao.getIntakesForDateRange(start, end)
     }
 
@@ -29,5 +32,4 @@ class MedicationIntakeRepository(private val medicationIntakeDao: MedicationInta
     fun getMissedIntakes(dateTime: LocalDateTime): Flow<List<MedicationIntake>> {
         return medicationIntakeDao.getMissedIntakes(dateTime)
     }
-
 }
