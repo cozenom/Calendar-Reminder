@@ -1,21 +1,20 @@
 package com.example.calendarapp.data.notification
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
+import android.annotation.SuppressLint
+import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.example.calendarapp.MainActivity
-import com.example.calendarapp.R
 import com.example.calendarapp.data.database.AppDatabase
-import com.example.calendarapp.notification.NotificationActionReceiver
-import kotlinx.coroutines.flow.first
+import com.example.calendarapp.data.model.MedicationIntake
+import java.time.Duration
+import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.LocalTime
 import java.util.concurrent.TimeUnit
 
 class MedicationReminderWorker(
@@ -23,92 +22,62 @@ class MedicationReminderWorker(
     params: WorkerParameters
 ) : CoroutineWorker(context, params) {
 
-
     override suspend fun doWork(): Result {
         val database = AppDatabase.getDatabase(applicationContext)
         val intakeDao = database.medicationIntakeDao()
-        val reminderDao = database.medicationReminderDao()
 
         val now = LocalDateTime.now()
-        val upcoming = intakeDao.getUpcomingIntakes(now, now.plusMinutes(15)).first()
+        val endOfDay = now.toLocalDate().atTime(LocalTime.MAX)
+        val upcomingIntakes = intakeDao.getUpcomingIntakes(now, endOfDay)
 
-        upcoming.forEach { intake ->
-            val reminder = reminderDao.getReminderById(intake.reminderId).first()
-            showNotification(intake.id, reminder.medicationName)
+        upcomingIntakes.forEach { intake ->
+            scheduleNotificationForIntake(intake)
         }
 
-        // Schedule the next check
-        scheduleNextCheck()
+        // Schedule the next day's check
+        scheduleNextDayCheck()
 
         return Result.success()
     }
 
-    private fun showNotification(intakeId: Int, medicationName: String) {
-        val notificationManager =
-            applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-        val channel = NotificationChannel(
-            CHANNEL_ID,
-            "Medication Reminders",
-            NotificationManager.IMPORTANCE_HIGH
-        )
-        notificationManager.createNotificationChannel(channel)
-
-        val intent = Intent(applicationContext, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        }
-        val pendingIntent =
-            PendingIntent.getActivity(applicationContext, 0, intent, PendingIntent.FLAG_IMMUTABLE)
-
-        val takenIntent = Intent(applicationContext, NotificationActionReceiver::class.java).apply {
-            action = ACTION_TAKEN
-            putExtra(EXTRA_INTAKE_ID, intakeId)
-        }
-        val takenPendingIntent = PendingIntent.getBroadcast(
-            applicationContext,
-            intakeId,
-            takenIntent,
-            PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val snoozeIntent =
+    @SuppressLint("ScheduleExactAlarm")
+    private fun scheduleNotificationForIntake(intake: MedicationIntake) {
+        val notificationIntent =
             Intent(applicationContext, NotificationActionReceiver::class.java).apply {
-                action = ACTION_SNOOZE
-                putExtra(EXTRA_INTAKE_ID, intakeId)
+                action = ACTION_SHOW_NOTIFICATION
+                putExtra(EXTRA_INTAKE_ID, intake.id)
             }
-        val snoozePendingIntent = PendingIntent.getBroadcast(
+        val pendingIntent = PendingIntent.getBroadcast(
             applicationContext,
-            intakeId + 1000,
-            snoozeIntent,
-            PendingIntent.FLAG_IMMUTABLE
+            intake.id,
+            notificationIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val builder = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_medication)
-            .setContentTitle("Medication Reminder")
-            .setContentText("Time to take $medicationName")
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
-            .addAction(R.drawable.ic_check, "Taken", takenPendingIntent)
-            .addAction(R.drawable.ic_snooze, "Snooze", snoozePendingIntent)
-
-        notificationManager.notify(intakeId, builder.build())
+        val delay = Duration.between(LocalDateTime.now(), intake.intakeDateTime).toMillis()
+        val alarmManager =
+            applicationContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        alarmManager.setExactAndAllowWhileIdle(
+            AlarmManager.RTC_WAKEUP,
+            System.currentTimeMillis() + delay,
+            pendingIntent
+        )
     }
 
+    private fun scheduleNextDayCheck() {
+        val nextDay = LocalDate.now().plusDays(1).atStartOfDay()
+        val delay = Duration.between(LocalDateTime.now(), nextDay).toMillis()
 
-    private fun scheduleNextCheck() {
         val workRequest = OneTimeWorkRequestBuilder<MedicationReminderWorker>()
-            .setInitialDelay(15, TimeUnit.MINUTES)
+            .setInitialDelay(delay, TimeUnit.MILLISECONDS)
             .build()
 
         WorkManager.getInstance(applicationContext).enqueue(workRequest)
     }
 
     companion object {
-        private const val CHANNEL_ID = "MedicationReminderChannel"
+        const val ACTION_SHOW_NOTIFICATION = "com.example.calendarapp.ACTION_SHOW_NOTIFICATION"
         const val ACTION_TAKEN = "com.example.calendarapp.ACTION_TAKEN"
-        const val ACTION_SNOOZE = "com.example.calendarapp.ACTION_SNOOZE"
         const val EXTRA_INTAKE_ID = "intake_id"
 
         fun schedule(context: Context) {

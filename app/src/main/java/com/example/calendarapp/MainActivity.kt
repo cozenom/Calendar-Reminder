@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -113,7 +114,8 @@ fun MedicationReminderApp(viewModel: MedicationReminderViewModel) {
     }
 
     if (showAddMedicationDialog) {
-        AddMedicationDialog(onDismiss = { showAddMedicationDialog = false },
+        AddMedicationDialog(
+            onDismiss = { showAddMedicationDialog = false },
             onAddReminder = { reminder ->
                 viewModel.insert(reminder)
                 showAddMedicationDialog = false
@@ -201,7 +203,8 @@ fun ReminderItem(
         Column(modifier = Modifier.padding(16.dp)) {
             if (isEditing) {
                 // Editing mode UI
-                OutlinedTextField(value = editedName,
+                OutlinedTextField(
+                    value = editedName,
                     onValueChange = { editedName = it },
                     label = { Text("Medication Name") },
                     modifier = Modifier.fillMaxWidth()
@@ -340,7 +343,8 @@ fun ReminderItem(
     }
 
     if (showStartDatePicker) {
-        CalendarDialog(onDismissRequest = { showStartDatePicker = false },
+        CalendarDialog(
+            onDismissRequest = { showStartDatePicker = false },
             onDateSelected = {
                 editedStartDate = it
                 showStartDatePicker = false
@@ -350,7 +354,8 @@ fun ReminderItem(
         )
     }
     if (showEndDatePicker) {
-        CalendarDialog(onDismissRequest = { showEndDatePicker = false },
+        CalendarDialog(
+            onDismissRequest = { showEndDatePicker = false },
             onDateSelected = {
                 editedEndDate = it
                 showEndDatePicker = false
@@ -375,7 +380,8 @@ fun AddReminderForm(
     var reminderDays by remember { mutableStateOf(setOf(1, 2, 3, 4, 5, 6, 7)) }
 
     Column(modifier = Modifier.padding(16.dp)) {
-        OutlinedTextField(value = medicationName,
+        OutlinedTextField(
+            value = medicationName,
             onValueChange = { medicationName = it },
             label = { Text("Medication Name") },
             modifier = Modifier.fillMaxWidth()
@@ -644,81 +650,111 @@ fun CalendarView(
     val firstDayOfMonth = currentMonth.atDay(1).dayOfWeek.value
     val totalDays = daysInMonth + firstDayOfMonth - 1
 
-    LazyVerticalGrid(columns = GridCells.Fixed(7), content = {
-        items(7) { index ->
-            Text(
-                text = listOf("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su")[index],
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(4.dp)
-            )
-        }
-        items(totalDays) { index ->
-            if (index >= firstDayOfMonth - 1) {
-                val day = index - firstDayOfMonth + 2
-                val date = currentMonth.atDay(day)
-                val isSelected = date == selectedDate
-                val dayIntakes = intakes.filter { it.intakeDateTime.toLocalDate() == date }
-
-                Column(modifier = Modifier
-                    .padding(4.dp)
-                    .clickable { onDateSelected(date) }
-                    .background(
-                        if (isSelected) MaterialTheme.colorScheme.primaryContainer
-                        else Color.Transparent, shape = RoundedCornerShape(4.dp)
-                    )
-                    .padding(4.dp)) {
-                    Text(
-                        text = day.toString(),
-                        textAlign = TextAlign.Center,
-                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(6.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        dayIntakes.groupBy { it.medicationName }.values.forEachIndexed { index, medicationIntakes ->
-                            val intake = medicationIntakes.first()
-                            Box(
-                                modifier = Modifier
-                                    .size(6.dp)
-                                    .background(
-                                        getColorForMedicationStatus(
-                                            intake.medicationName, intake.taken, index
-                                        ), CircleShape
-                                    )
-                            )
-                            if (index < dayIntakes.size - 1) {
-                                Spacer(modifier = Modifier.width(2.dp))
-                            }
-                        }
-                    }
-                }
-            } else {
-                Text("")
-            }
-        }
-    })
-}
-
-fun getColorForMedicationStatus(medicationName: String, taken: Boolean, index: Int = 0): Color {
-    val baseColor = if (taken) {
-        Color(0, 180, 0) // Darker green for taken
-    } else {
-        Color(180, 0, 0) // Pure red for not taken
+    // Generate a map of medication names to color offsets
+    val medicationColorOffsets = remember(intakes) {
+        intakes.map { it.medicationName }.distinct().mapIndexed { index, name ->
+            name to generateColorOffset(index, intakes.map { it.medicationName }.distinct().size)
+        }.toMap()
     }
 
-    // Calculate a lighter shade based on the index
-    val lightenFactor = 0.15f * (index + 1)
-    return baseColor.copy(
-        red = (baseColor.red + (1 - baseColor.red) * lightenFactor).coerceIn(0f, 1f),
-        green = (baseColor.green + (1 - baseColor.green) * lightenFactor).coerceIn(0f, 1f),
-        blue = (baseColor.blue + (1 - baseColor.blue) * lightenFactor).coerceIn(0f, 1f)
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(7),
+        content = {
+            items(7) { index ->
+                Text(
+                    text = listOf("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su")[index],
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(4.dp)
+                )
+            }
+            items(totalDays) { index ->
+                if (index >= firstDayOfMonth - 1) {
+                    val day = index - firstDayOfMonth + 2
+                    val date = currentMonth.atDay(day)
+                    val isSelected = date == selectedDate
+                    val dayIntakes = intakes.filter { it.intakeDateTime.toLocalDate() == date }
+
+                    Column(
+                        modifier = Modifier
+                            .padding(4.dp)
+                            .clickable { onDateSelected(date) }
+                            .background(
+                                if (isSelected) MaterialTheme.colorScheme.primaryContainer
+                                else Color.Transparent,
+                                shape = RoundedCornerShape(4.dp)
+                            )
+                            .padding(4.dp)
+                    ) {
+                        Text(
+                            text = day.toString(),
+                            textAlign = TextAlign.Center,
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        FlexibleDotRow(
+                            intakes = dayIntakes,
+                            medicationColorOffsets = medicationColorOffsets,
+                            maxDots = 8
+                        )
+                    }
+                } else {
+                    Text("")
+                }
+            }
+        }
     )
 }
 
+@Composable
+fun FlexibleDotRow(
+    intakes: List<MedicationIntake>,
+    medicationColorOffsets: Map<String, Float>,
+    maxDots: Int
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        val displayedIntakes = intakes.take(maxDots)
+        displayedIntakes.forEach { intake ->
+            val colorOffset = medicationColorOffsets[intake.medicationName] ?: 0f
+            val dotColor = if (intake.taken) {
+                generateGreenHue(colorOffset)
+            } else {
+                generateRedHue(colorOffset)
+            }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .padding(horizontal = 1.dp)
+                    .background(dotColor, CircleShape)
+            )
+        }
+        if (intakes.size > maxDots) {
+            Text(
+                "+",
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+fun generateColorOffset(index: Int, total: Int): Float {
+    return (index.toFloat() / total) * 30f // Generate offsets within a 30-degree range
+}
+
+fun generateGreenHue(offset: Float): Color {
+    return Color.hsl((120f + offset) % 360, 0.7f, 0.5f)
+}
+
+fun generateRedHue(offset: Float): Color {
+    return Color.hsl((0f + offset) % 360, 0.7f, 0.5f)
+}
 
 @Composable
 fun CalendarDialog(

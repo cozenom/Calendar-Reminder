@@ -76,7 +76,7 @@ class MedicationReminderRepository(
         return medicationIntakeDao.getMissedIntakes(dateTime)
     }
 
-    fun getUpcomingIntakes(start: LocalDateTime, end: LocalDateTime): Flow<List<MedicationIntake>> {
+    fun getUpcomingIntakes(start: LocalDateTime, end: LocalDateTime): List<MedicationIntake> {
         return medicationIntakeDao.getUpcomingIntakes(start, end)
     }
 }
