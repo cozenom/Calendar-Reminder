@@ -36,4 +36,7 @@ interface MedicationIntakeDao {
 
     @Query("SELECT * FROM medication_intake WHERE id = :intakeId")
     suspend fun getIntakeById(intakeId: Int): MedicationIntake?
+
+    @Query("SELECT * FROM medication_intake WHERE intakeDateTime <= :dateTime AND taken = 0")
+    suspend fun getMissedIntakesSync(dateTime: LocalDateTime): List<MedicationIntake>
 }

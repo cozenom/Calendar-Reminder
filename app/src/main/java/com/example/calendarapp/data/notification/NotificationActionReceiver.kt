@@ -50,8 +50,12 @@ class NotificationActionReceiver : BroadcastReceiver() {
                 val intent = Intent(context, MainActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                 }
-                val pendingIntent =
-                    PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_IMMUTABLE)
+                val pendingIntent = PendingIntent.getActivity(
+                    context,
+                    0,
+                    intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
 
                 val takenIntent = Intent(context, NotificationActionReceiver::class.java).apply {
                     action = MedicationReminderWorker.ACTION_TAKEN
@@ -61,7 +65,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
                     context,
                     intakeId,
                     takenIntent,
-                    PendingIntent.FLAG_IMMUTABLE
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
 
                 val builder = NotificationCompat.Builder(context, CHANNEL_ID)
@@ -74,6 +78,9 @@ class NotificationActionReceiver : BroadcastReceiver() {
                     .setAutoCancel(false)
                     .setOngoing(true)
                     .addAction(R.drawable.ic_check, "Take", takenPendingIntent)
+                    .setDefaults(NotificationCompat.DEFAULT_ALL)
+                    .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                    .setTimeoutAfter(Long.MAX_VALUE) // Prevents auto-cancellation
 
                 notificationManager.notify(intakeId, builder.build())
             }

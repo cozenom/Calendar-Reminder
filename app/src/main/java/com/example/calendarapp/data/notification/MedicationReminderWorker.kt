@@ -34,6 +34,12 @@ class MedicationReminderWorker(
             scheduleNotificationForIntake(intake)
         }
 
+        // Reschedule missed notifications
+        val missedIntakes = intakeDao.getMissedIntakesSync(now)
+        missedIntakes.forEach { intake ->
+            scheduleNotificationForIntake(intake, true)
+        }
+
         // Schedule the next day's check
         scheduleNextDayCheck()
 
@@ -41,7 +47,7 @@ class MedicationReminderWorker(
     }
 
     @SuppressLint("ScheduleExactAlarm")
-    private fun scheduleNotificationForIntake(intake: MedicationIntake) {
+    private fun scheduleNotificationForIntake(intake: MedicationIntake, isMissed: Boolean = false) {
         val notificationIntent =
             Intent(applicationContext, NotificationActionReceiver::class.java).apply {
                 action = ACTION_SHOW_NOTIFICATION
@@ -54,12 +60,18 @@ class MedicationReminderWorker(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val delay = Duration.between(LocalDateTime.now(), intake.intakeDateTime).toMillis()
+        val triggerTime = if (isMissed) {
+            System.currentTimeMillis() + 1000 // Schedule missed notifications to show immediately
+        } else {
+            intake.intakeDateTime.atZone(java.time.ZoneId.systemDefault()).toInstant()
+                .toEpochMilli()
+        }
+
         val alarmManager =
             applicationContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         alarmManager.setExactAndAllowWhileIdle(
             AlarmManager.RTC_WAKEUP,
-            System.currentTimeMillis() + delay,
+            triggerTime,
             pendingIntent
         )
     }
