@@ -14,9 +14,7 @@ import com.example.calendarapp.data.database.AppDatabase
 import com.example.calendarapp.data.model.MedicationIntake
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.time.Duration
 import java.time.LocalDateTime
-import java.time.LocalTime
 import java.time.ZoneId
 import java.util.concurrent.TimeUnit
 
@@ -30,18 +28,10 @@ class MedicationReminderWorker(
         val intakeDao = database.medicationIntakeDao()
 
         val now = LocalDateTime.now()
-        val endOfDay = now.toLocalDate().atTime(LocalTime.MAX)
-        val upcomingIntakes = intakeDao.getUpcomingIntakes(now, endOfDay)
+        val futureIntakes = intakeDao.getFutureIntakes(now)
 
-        upcomingIntakes.forEach { intake ->
-            scheduleNotificationForIntake(intake)
-        }
-
-        // Reschedule missed notifications
-        val missedIntakes = intakeDao.getMissedIntakesSync(now)
-        missedIntakes.forEach { intake ->
-            scheduleNotificationForIntake(intake, true)
-        }
+        cancelAllAlarms()
+        scheduleNotificationsForIntakes(futureIntakes)
 
         // Schedule the next check
         scheduleNextCheck()
@@ -49,59 +39,74 @@ class MedicationReminderWorker(
         Result.success()
     }
 
-    private fun scheduleNotificationForIntake(intake: MedicationIntake, isMissed: Boolean = false) {
-        val notificationIntent =
-            Intent(applicationContext, NotificationActionReceiver::class.java).apply {
-                action = ACTION_SHOW_NOTIFICATION
-                putExtra(EXTRA_INTAKE_ID, intake.id)
+    private fun cancelAllAlarms() {
+        val alarmManager =
+            applicationContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(applicationContext, NotificationActionReceiver::class.java)
+        intent.action = ACTION_SHOW_NOTIFICATION
+
+        // Cancel all potential pending intents (up to a reasonable maximum, e.g., 1000)
+        for (i in 0 until 1000) {
+            val pendingIntent = PendingIntent.getBroadcast(
+                applicationContext,
+                i,
+                intent,
+                PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+            )
+            pendingIntent?.let {
+                alarmManager.cancel(it)
+                it.cancel()
             }
-        val pendingIntent = PendingIntent.getBroadcast(
-            applicationContext,
-            intake.id,
-            notificationIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val triggerTime = if (isMissed) {
-            System.currentTimeMillis() + 1000 // Schedule missed notifications to show immediately
-        } else {
-            intake.intakeDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
         }
+    }
 
+    private fun scheduleNotificationsForIntakes(intakes: List<MedicationIntake>) {
         val alarmManager =
             applicationContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (alarmManager.canScheduleExactAlarms()) {
+        intakes.forEach { intake ->
+            val notificationIntent =
+                Intent(applicationContext, NotificationActionReceiver::class.java).apply {
+                    action = ACTION_SHOW_NOTIFICATION
+                    putExtra(EXTRA_INTAKE_ID, intake.id)
+                }
+            val pendingIntent = PendingIntent.getBroadcast(
+                applicationContext,
+                intake.id,
+                notificationIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val triggerTime =
+                intake.intakeDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (alarmManager.canScheduleExactAlarms()) {
+                    alarmManager.setExactAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        triggerTime,
+                        pendingIntent
+                    )
+                } else {
+                    alarmManager.setAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        triggerTime,
+                        pendingIntent
+                    )
+                }
+            } else {
                 alarmManager.setExactAndAllowWhileIdle(
                     AlarmManager.RTC_WAKEUP,
                     triggerTime,
                     pendingIntent
                 )
-            } else {
-                alarmManager.setAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    triggerTime,
-                    pendingIntent
-                )
             }
-        } else {
-            alarmManager.setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                triggerTime,
-                pendingIntent
-            )
         }
     }
 
     private fun scheduleNextCheck() {
-        val now = LocalDateTime.now()
-        val nextCheckTime = now.plusMinutes(15) // Check every 15 minutes
-
-        val delay = Duration.between(now, nextCheckTime).toMillis()
-
         val workRequest = OneTimeWorkRequestBuilder<MedicationReminderWorker>()
-            .setInitialDelay(delay, TimeUnit.MILLISECONDS)
+            .setInitialDelay(24, TimeUnit.HOURS)
             .build()
 
         WorkManager.getInstance(applicationContext)
@@ -128,6 +133,10 @@ class MedicationReminderWorker(
                     ExistingWorkPolicy.REPLACE,
                     workRequest
                 )
+        }
+
+        fun rescheduleNotifications(context: Context) {
+            schedule(context)
         }
     }
 }

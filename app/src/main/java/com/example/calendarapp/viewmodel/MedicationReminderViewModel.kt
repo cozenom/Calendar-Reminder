@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.calendarapp.data.database.AppDatabase
 import com.example.calendarapp.data.model.MedicationIntake
 import com.example.calendarapp.data.model.MedicationReminder
+import com.example.calendarapp.data.notification.MedicationReminderWorker
 import com.example.calendarapp.data.repository.MedicationIntakeRepository
 import com.example.calendarapp.data.repository.MedicationReminderRepository
 import kotlinx.coroutines.flow.Flow
@@ -30,14 +31,17 @@ class MedicationReminderViewModel(application: Application) : AndroidViewModel(a
 
     fun insert(reminder: MedicationReminder) = viewModelScope.launch {
         repository.insert(reminder)
+        MedicationReminderWorker.rescheduleNotifications(getApplication())
     }
 
     fun update(reminder: MedicationReminder) = viewModelScope.launch {
         repository.update(reminder)
+        MedicationReminderWorker.rescheduleNotifications(getApplication())
     }
 
     fun delete(reminder: MedicationReminder) = viewModelScope.launch {
         repository.delete(reminder)
+        MedicationReminderWorker.rescheduleNotifications(getApplication())
     }
 
     fun getActiveReminders(date: LocalDate): Flow<List<MedicationReminder>> {

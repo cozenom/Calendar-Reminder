@@ -7,8 +7,7 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.media.AudioAttributes
-import android.media.RingtoneManager
+import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.example.calendarapp.MainActivity
 import com.example.calendarapp.R
@@ -32,31 +31,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        val channel = NotificationChannel(
-            CHANNEL_ID,
-            "Medication Reminders",
-            NotificationManager.IMPORTANCE_HIGH
-        ).apply {
-            description = "Notifications for medication reminders"
-            setBypassDnd(false) // Do not bypass DND
-            setShowBadge(true)
-            lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-
-            // Set sound only if not in DND mode
-            if (!notificationManager.currentInterruptionFilter.equals(NotificationManager.INTERRUPTION_FILTER_NONE)) {
-                val audioAttributes = AudioAttributes.Builder()
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
-                    .build()
-                setSound(
-                    RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
-                    audioAttributes
-                )
-            } else {
-                setSound(null, null)
-            }
-        }
-        notificationManager.createNotificationChannel(channel)
+        createNotificationChannel(notificationManager)
 
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -83,23 +58,37 @@ class NotificationActionReceiver : BroadcastReceiver() {
             .setSmallIcon(R.drawable.ic_medication)
             .setContentTitle("Medication Reminder")
             .setContentText("Time to take your medication")
-            .setPriority(NotificationCompat.PRIORITY_MAX)
-            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setContentIntent(pendingIntent)
-            .setAutoCancel(false)
-            .setOngoing(true)
+            .setAutoCancel(true)
             .addAction(R.drawable.ic_check, "Take", takenPendingIntent)
-            .setDefaults(NotificationCompat.DEFAULT_ALL)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
 
-        // Set sound only if not in DND mode
-        if (!notificationManager.currentInterruptionFilter.equals(NotificationManager.INTERRUPTION_FILTER_NONE)) {
-            builder.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
-        } else {
-            builder.setSound(null)
-        }
+        // Explicitly set no sound, vibration, or lights
+        builder.setSound(null)
+        builder.setVibrate(null)
+        builder.setLights(0, 0, 0)
 
         notificationManager.notify(intakeId, builder.build())
+    }
+
+    private fun createNotificationChannel(notificationManager: NotificationManager) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "Medication Reminders",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Notifications for medication reminders"
+                setSound(null, null)
+                enableVibration(false)
+                enableLights(false)
+                setBypassDnd(false)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
     }
 
     private fun markAsTaken(context: Context, intakeId: Int) {

@@ -39,4 +39,10 @@ interface MedicationIntakeDao {
 
     @Query("SELECT * FROM medication_intake WHERE intakeDateTime <= :dateTime AND taken = 0")
     suspend fun getMissedIntakesSync(dateTime: LocalDateTime): List<MedicationIntake>
+
+    @Query("SELECT * FROM medication_intake WHERE intakeDateTime > :now ORDER BY intakeDateTime ASC LIMIT 1")
+    suspend fun getNextIntake(now: LocalDateTime): MedicationIntake?
+
+    @Query("SELECT * FROM medication_intake WHERE intakeDateTime > :now ORDER BY intakeDateTime ASC")
+    suspend fun getFutureIntakes(now: LocalDateTime): List<MedicationIntake>
 }

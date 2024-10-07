@@ -100,7 +100,6 @@ class MainActivity : ComponentActivity() {
             }
 
         requestRequiredPermissions()
-
         MedicationReminderWorker.schedule(this)
         // Schedule the worker
         val workRequest = OneTimeWorkRequestBuilder<MedicationReminderWorker>().build()
