@@ -7,6 +7,8 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
+import android.media.RingtoneManager
 import androidx.core.app.NotificationCompat
 import com.example.calendarapp.MainActivity
 import com.example.calendarapp.R
@@ -27,64 +29,77 @@ class NotificationActionReceiver : BroadcastReceiver() {
     }
 
     private fun showNotification(context: Context, intakeId: Int) {
-        CoroutineScope(Dispatchers.IO).launch {
-            val database = AppDatabase.getDatabase(context)
-            val intakeDao = database.medicationIntakeDao()
-            val intake = intakeDao.getIntakeById(intakeId)
+        val notificationManager =
+            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-            if (intake != null && !intake.taken) {
-                val notificationManager =
-                    context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            "Medication Reminders",
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            description = "Notifications for medication reminders"
+            setBypassDnd(false) // Do not bypass DND
+            setShowBadge(true)
+            lockscreenVisibility = Notification.VISIBILITY_PUBLIC
 
-                val channel = NotificationChannel(
-                    CHANNEL_ID,
-                    "Medication Reminders",
-                    NotificationManager.IMPORTANCE_HIGH
-                ).apply {
-                    setBypassDnd(true)
-                    setShowBadge(true)
-                    lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-                }
-                notificationManager.createNotificationChannel(channel)
-
-                val intent = Intent(context, MainActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                }
-                val pendingIntent = PendingIntent.getActivity(
-                    context,
-                    0,
-                    intent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            // Set sound only if not in DND mode
+            if (!notificationManager.currentInterruptionFilter.equals(NotificationManager.INTERRUPTION_FILTER_NONE)) {
+                val audioAttributes = AudioAttributes.Builder()
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                    .build()
+                setSound(
+                    RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
+                    audioAttributes
                 )
-
-                val takenIntent = Intent(context, NotificationActionReceiver::class.java).apply {
-                    action = MedicationReminderWorker.ACTION_TAKEN
-                    putExtra(MedicationReminderWorker.EXTRA_INTAKE_ID, intakeId)
-                }
-                val takenPendingIntent = PendingIntent.getBroadcast(
-                    context,
-                    intakeId,
-                    takenIntent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                )
-
-                val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-                    .setSmallIcon(R.drawable.ic_medication)
-                    .setContentTitle("Medication Reminder")
-                    .setContentText("Time to take ${intake.medicationName}")
-                    .setPriority(NotificationCompat.PRIORITY_MAX)
-                    .setCategory(NotificationCompat.CATEGORY_ALARM)
-                    .setContentIntent(pendingIntent)
-                    .setAutoCancel(false)
-                    .setOngoing(true)
-                    .addAction(R.drawable.ic_check, "Take", takenPendingIntent)
-                    .setDefaults(NotificationCompat.DEFAULT_ALL)
-                    .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                    .setTimeoutAfter(Long.MAX_VALUE) // Prevents auto-cancellation
-
-                notificationManager.notify(intakeId, builder.build())
+            } else {
+                setSound(null, null)
             }
         }
+        notificationManager.createNotificationChannel(channel)
+
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val takenIntent = Intent(context, NotificationActionReceiver::class.java).apply {
+            action = MedicationReminderWorker.ACTION_TAKEN
+            putExtra(MedicationReminderWorker.EXTRA_INTAKE_ID, intakeId)
+        }
+        val takenPendingIntent = PendingIntent.getBroadcast(
+            context,
+            intakeId,
+            takenIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_medication)
+            .setContentTitle("Medication Reminder")
+            .setContentText("Time to take your medication")
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(false)
+            .setOngoing(true)
+            .addAction(R.drawable.ic_check, "Take", takenPendingIntent)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+
+        // Set sound only if not in DND mode
+        if (!notificationManager.currentInterruptionFilter.equals(NotificationManager.INTERRUPTION_FILTER_NONE)) {
+            builder.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
+        } else {
+            builder.setSound(null)
+        }
+
+        notificationManager.notify(intakeId, builder.build())
     }
 
     private fun markAsTaken(context: Context, intakeId: Int) {
@@ -93,7 +108,6 @@ class NotificationActionReceiver : BroadcastReceiver() {
             val intakeDao = database.medicationIntakeDao()
             intakeDao.updateTakenStatus(intakeId, true)
 
-            // Dismiss the notification
             val notificationManager =
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.cancel(intakeId)

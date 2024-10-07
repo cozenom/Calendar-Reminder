@@ -1,9 +1,19 @@
 package com.example.calendarapp
 
+import android.Manifest
+import android.app.AlarmManager
 import android.app.TimePickerDialog
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -55,7 +65,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import com.example.calendarapp.data.model.MedicationIntake
 import com.example.calendarapp.data.model.MedicationReminder
 import com.example.calendarapp.data.notification.MedicationReminderWorker
@@ -68,10 +82,34 @@ import java.time.format.DateTimeFormatter
 
 class MainActivity : ComponentActivity() {
     private lateinit var viewModel: MedicationReminderViewModel
+    private lateinit var alarmManager: AlarmManager
+    private lateinit var requestPermissionLauncher: ActivityResultLauncher<String>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+
+        requestPermissionLauncher =
+            registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
+                if (isGranted) {
+                    // Permission is granted. Continue the action or workflow in your app.
+                } else {
+                    // Explain to the user that the feature is unavailable because the
+                    // feature requires a permission that the user has denied.
+                }
+            }
+
+        requestRequiredPermissions()
+
         MedicationReminderWorker.schedule(this)
+        // Schedule the worker
+        val workRequest = OneTimeWorkRequestBuilder<MedicationReminderWorker>().build()
+        WorkManager.getInstance(this).enqueueUniqueWork(
+            "MedicationReminderWork",
+            ExistingWorkPolicy.REPLACE,
+            workRequest
+        )
+
         viewModel = ViewModelProvider(
             this, MedicationReminderViewModelFactory(application)
         )[MedicationReminderViewModel::class.java]
@@ -81,6 +119,40 @@ class MainActivity : ComponentActivity() {
                 MedicationReminderApp(viewModel)
             }
         }
+    }
+
+    private fun requestRequiredPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            when {
+                ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED -> {
+                    // You can use the API that requires the permission.
+                }
+
+                shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) -> {
+                    // Show an explanation to the user *asynchronously*
+                }
+
+                else -> {
+                    requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (!alarmManager.canScheduleExactAlarms()) {
+                val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                    data = Uri.parse("package:$packageName")
+                }
+                startActivity(intent)
+            }
+        }
+    }
+
+    companion object {
+        private const val PERMISSION_REQUEST_CODE = 123
     }
 }
 
@@ -124,6 +196,7 @@ fun MedicationReminderApp(viewModel: MedicationReminderViewModel) {
         )
     }
 }
+
 
 @Composable
 fun MedicationsTab(viewModel: MedicationReminderViewModel) {
