@@ -61,7 +61,8 @@ class NotificationActionReceiver : BroadcastReceiver() {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
+            .setOngoing(true) // Make the notification persistent
+            .setAutoCancel(false) // Prevent auto-cancellation
             .addAction(R.drawable.ic_check, "Take", takenPendingIntent)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
 
