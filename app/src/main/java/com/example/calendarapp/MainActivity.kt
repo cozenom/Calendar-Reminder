@@ -79,6 +79,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import android.text.format.DateFormat
 
 class MainActivity : ComponentActivity() {
     private lateinit var viewModel: MedicationReminderViewModel
@@ -613,20 +614,28 @@ fun WeekdayButton(day: String, isSelected: Boolean, onClick: () -> Unit) {
 
 @Composable
 fun AndroidTimePicker(
-    initialTime: LocalTime, onTimeSelected: (LocalTime) -> Unit
+    initialTime: LocalTime,
+    onTimeSelected: (LocalTime) -> Unit
 ) {
     val context = LocalContext.current
     var selectedTime by remember { mutableStateOf(initialTime) }
+    val is24HourFormat = remember { DateFormat.is24HourFormat(context) }
+
+    val timeFormat = if (is24HourFormat) "HH:mm" else "hh:mm a"
 
     Button(onClick = {
         TimePickerDialog(
-            context, { _, hour, minute ->
+            context,
+            { _, hour, minute ->
                 selectedTime = LocalTime.of(hour, minute)
                 onTimeSelected(selectedTime)
-            }, selectedTime.hour, selectedTime.minute, false // Set to true if you want 24-hour view
+            },
+            selectedTime.hour,
+            selectedTime.minute,
+            is24HourFormat // Use the system setting for 24-hour format
         ).show()
     }) {
-        Text("Select Time: ${selectedTime.format(DateTimeFormatter.ofPattern("HH:mm"))}")
+        Text("Select Time: ${selectedTime.format(DateTimeFormatter.ofPattern(timeFormat))}")
     }
 }
 
