@@ -11,6 +11,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.calendarapp.data.database.AppDatabase
 import com.example.calendarapp.data.model.MedicationIntake
 import com.example.calendarapp.data.model.MedicationReminder
+import com.example.calendarapp.data.model.RefillInfo
 import com.example.calendarapp.data.notification.MedicationReminderWorker
 import com.example.calendarapp.data.notification.NotificationActionReceiver
 import com.example.calendarapp.data.repository.MedicationIntakeRepository
@@ -22,6 +23,8 @@ import java.time.YearMonth
 import java.time.ZoneId
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
+import androidx.work.*
+import java.util.concurrent.TimeUnit
 
 class MedicationReminderViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: MedicationReminderRepository
@@ -132,7 +135,7 @@ class MedicationReminderViewModel(application: Application) : AndroidViewModel(a
             )
         }
     }
-    
+
     fun getRefillReminders(date: LocalDate): Flow<List<MedicationReminder>> {
         return repository.getRefillReminders(date)
     }
@@ -157,5 +160,54 @@ class MedicationReminderViewModel(application: Application) : AndroidViewModel(a
                 it.cancel()
             }
         }
+    }
+
+    private fun scheduleRefillNotifications(reminderId: Int, refillInfo: RefillInfo) {
+        val workManager = WorkManager.getInstance(getApplication())
+
+        refillInfo.notificationDays.forEach { daysBeforeRefill ->
+            val notificationDate = refillInfo.refillDate.minusDays(daysBeforeRefill.toLong())
+            val now = LocalDate.now()
+
+            if (notificationDate >= now) {
+                val initialDelay =
+                    notificationDate.atStartOfDay().atZone(ZoneId.systemDefault()).toInstant()
+                        .toEpochMilli() - System.currentTimeMillis()
+
+                val workRequest = OneTimeWorkRequestBuilder<RefillNotificationWorker>()
+                    .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
+                    .setInputData(
+                        workDataOf(
+                            "reminderId" to reminderId,
+                            "medicationName" to refillInfo.medicationName,
+                            "daysUntilRefill" to daysBeforeRefill
+                        )
+                    )
+                    .build()
+
+                workManager.enqueueUniqueWork(
+                    "refill_notification_${reminderId}_${daysBeforeRefill}",
+                    ExistingWorkPolicy.REPLACE,
+                    workRequest
+                )
+            }
+        }
+    }
+}
+
+class RefillNotificationWorker(
+    context: Context,
+    params: WorkerParameters
+) : CoroutineWorker(context, params) {
+
+    override suspend fun doWork(): Result {
+        val reminderId = inputData.getInt("reminderId", -1)
+        val medicationName = inputData.getString("medicationName") ?: return Result.failure()
+        val daysUntilRefill = inputData.getInt("daysUntilRefill", 0)
+
+        // TODO: Show notification logic here
+        // You can use the NotificationCompat.Builder to create and show the notification
+
+        return Result.success()
     }
 }
