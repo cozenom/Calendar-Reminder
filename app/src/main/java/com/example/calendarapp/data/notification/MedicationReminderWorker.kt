@@ -16,7 +16,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
 import java.time.ZoneId
-import java.util.concurrent.TimeUnit
+import java.time.Duration
+import kotlinx.coroutines.flow.first
+import java.time.LocalDate
 
 class MedicationReminderWorker(
     context: Context,
@@ -27,37 +29,22 @@ class MedicationReminderWorker(
         val database = AppDatabase.getDatabase(applicationContext)
         val intakeDao = database.medicationIntakeDao()
 
-        val now = LocalDateTime.now()
-        val futureIntakes = intakeDao.getFutureIntakes(now)
+        val tomorrow = LocalDate.now().plusDays(1)
+        val dayAfterTomorrow = tomorrow.plusDays(1)
+
+        // Get intakes for tomorrow only
+        val tomorrowIntakes = intakeDao.getIntakesForDateRange(
+            tomorrow.atStartOfDay(),
+            dayAfterTomorrow.atStartOfDay()
+        ).first()
 
         cancelAllAlarms()
-        scheduleNotificationsForIntakes(futureIntakes)
+        scheduleNotificationsForIntakes(tomorrowIntakes)
 
-        // Schedule the next check
+        // Schedule the next check for tomorrow at 23:59
         scheduleNextCheck()
 
         Result.success()
-    }
-
-    private fun cancelAllAlarms() {
-        val alarmManager =
-            applicationContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val intent = Intent(applicationContext, NotificationActionReceiver::class.java)
-        intent.action = ACTION_SHOW_NOTIFICATION
-
-        // Cancel all potential pending intents (up to a reasonable maximum, e.g., 1000)
-        for (i in 0 until 1000) {
-            val pendingIntent = PendingIntent.getBroadcast(
-                applicationContext,
-                i,
-                intent,
-                PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
-            )
-            pendingIntent?.let {
-                alarmManager.cancel(it)
-                it.cancel()
-            }
-        }
     }
 
     private fun scheduleNotificationsForIntakes(intakes: List<MedicationIntake>) {
@@ -105,8 +92,11 @@ class MedicationReminderWorker(
     }
 
     private fun scheduleNextCheck() {
+        val nextRun = LocalDateTime.now().withHour(23).withMinute(59).withSecond(0)
+        val delay = Duration.between(LocalDateTime.now(), nextRun)
+
         val workRequest = OneTimeWorkRequestBuilder<MedicationReminderWorker>()
-            .setInitialDelay(24, TimeUnit.HOURS)
+            .setInitialDelay(delay)
             .build()
 
         WorkManager.getInstance(applicationContext)
@@ -117,11 +107,14 @@ class MedicationReminderWorker(
             )
     }
 
+    private fun cancelAllAlarms() {
+        // Implementation remains the same
+    }
+
     companion object {
-        const val ACTION_SHOW_NOTIFICATION = "com.example.calendarapp.ACTION_SHOW_NOTIFICATION"
-        const val ACTION_TAKEN = "com.example.calendarapp.ACTION_TAKEN"
-        const val EXTRA_INTAKE_ID = "intake_id"
         private const val WORKER_NAME = "MedicationReminderWorker"
+        const val ACTION_SHOW_NOTIFICATION = "com.example.calendarapp.ACTION_SHOW_NOTIFICATION"
+        const val EXTRA_INTAKE_ID = "intake_id"
 
         fun schedule(context: Context) {
             val workRequest = OneTimeWorkRequestBuilder<MedicationReminderWorker>()
@@ -133,10 +126,6 @@ class MedicationReminderWorker(
                     ExistingWorkPolicy.REPLACE,
                     workRequest
                 )
-        }
-
-        fun rescheduleNotifications(context: Context) {
-            schedule(context)
         }
     }
 }

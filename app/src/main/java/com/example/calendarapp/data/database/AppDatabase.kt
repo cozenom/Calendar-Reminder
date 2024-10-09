@@ -10,11 +10,11 @@ import com.example.calendarapp.data.dao.MedicationReminderDao
 import com.example.calendarapp.data.model.MedicationIntake
 import com.example.calendarapp.data.model.MedicationReminder
 
-// TODO : Database migrations
+// TODO: Migrations
 
 @Database(
     entities = [MedicationReminder::class, MedicationIntake::class],
-    version = 5,
+    version = 8, // Increment the version number
     exportSchema = false
 )
 @TypeConverters(Converters::class)

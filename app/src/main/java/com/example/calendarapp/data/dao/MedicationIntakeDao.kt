@@ -19,12 +19,6 @@ interface MedicationIntakeDao {
     @Update
     suspend fun update(intake: MedicationIntake)
 
-    @Query("SELECT * FROM medication_intake WHERE intakeDateTime BETWEEN :start AND :end")
-    fun getIntakesForDateRange(
-        start: LocalDateTime,
-        end: LocalDateTime
-    ): Flow<List<MedicationIntake>>
-
     @Query("UPDATE medication_intake SET taken = :taken WHERE id = :intakeId")
     suspend fun updateTakenStatus(intakeId: Int, taken: Boolean)
 
@@ -45,4 +39,14 @@ interface MedicationIntakeDao {
 
     @Query("SELECT * FROM medication_intake WHERE intakeDateTime > :now ORDER BY intakeDateTime ASC")
     suspend fun getFutureIntakes(now: LocalDateTime): List<MedicationIntake>
+
+    @Query("SELECT * FROM medication_intake WHERE intakeDateTime BETWEEN :start AND :end")
+    fun getIntakesForDateRange(
+        start: LocalDateTime,
+        end: LocalDateTime
+    ): Flow<List<MedicationIntake>>
+
+
+    @Query("SELECT * FROM medication_intake WHERE intakeDateTime > :dateTime")
+    fun getIntakesCreatedAfter(dateTime: LocalDateTime): Flow<List<MedicationIntake>>
 }
