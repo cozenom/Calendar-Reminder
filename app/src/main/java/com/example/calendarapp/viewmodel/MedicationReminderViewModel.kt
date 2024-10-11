@@ -11,26 +11,22 @@ import androidx.lifecycle.viewModelScope
 import com.example.calendarapp.data.database.AppDatabase
 import com.example.calendarapp.data.model.MedicationIntake
 import com.example.calendarapp.data.model.MedicationReminder
-import com.example.calendarapp.data.model.RefillInfo
 import com.example.calendarapp.data.notification.MedicationReminderWorker
 import com.example.calendarapp.data.notification.NotificationActionReceiver
 import com.example.calendarapp.data.repository.MedicationIntakeRepository
 import com.example.calendarapp.data.repository.MedicationReminderRepository
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.YearMonth
 import java.time.ZoneId
-import kotlinx.coroutines.flow.Flow
-import java.time.LocalDate
-import androidx.work.*
-import java.util.concurrent.TimeUnit
 
 class MedicationReminderViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: MedicationReminderRepository
     private val intakeRepository: MedicationIntakeRepository
     private val alarmManager: AlarmManager
-
     val allReminders: Flow<List<MedicationReminder>>
 
     init {
@@ -38,14 +34,14 @@ class MedicationReminderViewModel(application: Application) : AndroidViewModel(a
         val reminderDao = database.medicationReminderDao()
         val intakeDao = database.medicationIntakeDao()
         repository = MedicationReminderRepository(reminderDao, intakeDao)
-        intakeRepository = MedicationIntakeRepository(intakeDao)
         allReminders = repository.allReminders
+        intakeRepository = MedicationIntakeRepository(intakeDao)
         alarmManager = application.getSystemService(Context.ALARM_SERVICE) as AlarmManager
     }
 
     fun insert(reminder: MedicationReminder) = viewModelScope.launch {
-        val newId = repository.insert(reminder)
-        scheduleNotificationsForReminder(reminder.copy(id = newId.toInt()))
+        repository.insert(reminder)
+        MedicationReminderWorker.rescheduleNotifications(getApplication())
     }
 
     fun update(reminder: MedicationReminder) = viewModelScope.launch {
@@ -59,24 +55,32 @@ class MedicationReminderViewModel(application: Application) : AndroidViewModel(a
 
     fun delete(reminder: MedicationReminder) = viewModelScope.launch {
         repository.delete(reminder)
-        cancelNotificationsForReminder(reminder)
+        MedicationReminderWorker.rescheduleNotifications(getApplication())
     }
 
     fun getActiveReminders(date: LocalDate): Flow<List<MedicationReminder>> {
         return repository.getActiveReminders(date)
     }
 
-    fun getIntakesForDate(date: LocalDate): Flow<List<MedicationIntake>> {
-        return intakeRepository.getIntakesForDateRange(
-            date.atStartOfDay(),
-            date.plusDays(1).atStartOfDay().minusNanos(1)
-        )
+    fun updateIntakeTakenStatus(intakeId: Int, taken: Boolean) = viewModelScope.launch {
+        intakeRepository.updateTakenStatus(intakeId, taken)
+    }
+
+    fun getMissedIntakes(dateTime: LocalDateTime): Flow<List<MedicationIntake>> {
+        return intakeRepository.getMissedIntakes(dateTime)
     }
 
     fun getIntakesForMonth(yearMonth: YearMonth): Flow<List<MedicationIntake>> {
         return intakeRepository.getIntakesForDateRange(
             yearMonth.atDay(1).atStartOfDay(),
             yearMonth.atEndOfMonth().plusDays(1).atStartOfDay().minusNanos(1)
+        )
+    }
+
+    fun getIntakesForDate(date: LocalDate): Flow<List<MedicationIntake>> {
+        return intakeRepository.getIntakesForDateRange(
+            date.atStartOfDay(),
+            date.plusDays(1).atStartOfDay().minusNanos(1)
         )
     }
 
@@ -136,14 +140,6 @@ class MedicationReminderViewModel(application: Application) : AndroidViewModel(a
         }
     }
 
-    fun getRefillReminders(date: LocalDate): Flow<List<MedicationReminder>> {
-        return repository.getRefillReminders(date)
-    }
-
-    fun updateIntakeTakenStatus(intakeId: Int, taken: Boolean) = viewModelScope.launch {
-        intakeRepository.updateTakenStatus(intakeId, taken)
-    }
-
     private fun cancelNotificationsForReminder(reminder: MedicationReminder) {
         val intent = Intent(getApplication(), NotificationActionReceiver::class.java)
         intent.action = MedicationReminderWorker.ACTION_SHOW_NOTIFICATION
@@ -160,54 +156,5 @@ class MedicationReminderViewModel(application: Application) : AndroidViewModel(a
                 it.cancel()
             }
         }
-    }
-
-    private fun scheduleRefillNotifications(reminderId: Int, refillInfo: RefillInfo) {
-        val workManager = WorkManager.getInstance(getApplication())
-
-        refillInfo.notificationDays.forEach { daysBeforeRefill ->
-            val notificationDate = refillInfo.refillDate.minusDays(daysBeforeRefill.toLong())
-            val now = LocalDate.now()
-
-            if (notificationDate >= now) {
-                val initialDelay =
-                    notificationDate.atStartOfDay().atZone(ZoneId.systemDefault()).toInstant()
-                        .toEpochMilli() - System.currentTimeMillis()
-
-                val workRequest = OneTimeWorkRequestBuilder<RefillNotificationWorker>()
-                    .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
-                    .setInputData(
-                        workDataOf(
-                            "reminderId" to reminderId,
-                            "medicationName" to refillInfo.medicationName,
-                            "daysUntilRefill" to daysBeforeRefill
-                        )
-                    )
-                    .build()
-
-                workManager.enqueueUniqueWork(
-                    "refill_notification_${reminderId}_${daysBeforeRefill}",
-                    ExistingWorkPolicy.REPLACE,
-                    workRequest
-                )
-            }
-        }
-    }
-}
-
-class RefillNotificationWorker(
-    context: Context,
-    params: WorkerParameters
-) : CoroutineWorker(context, params) {
-
-    override suspend fun doWork(): Result {
-        val reminderId = inputData.getInt("reminderId", -1)
-        val medicationName = inputData.getString("medicationName") ?: return Result.failure()
-        val daysUntilRefill = inputData.getInt("daysUntilRefill", 0)
-
-        // TODO: Show notification logic here
-        // You can use the NotificationCompat.Builder to create and show the notification
-
-        return Result.success()
     }
 }

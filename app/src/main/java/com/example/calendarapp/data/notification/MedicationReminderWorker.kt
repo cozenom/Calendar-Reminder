@@ -24,7 +24,6 @@ class MedicationReminderWorker(
     context: Context,
     params: WorkerParameters
 ) : CoroutineWorker(context, params) {
-
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val database = AppDatabase.getDatabase(applicationContext)
         val intakeDao = database.medicationIntakeDao()
