@@ -14,8 +14,9 @@ class MedicationReminderRepository(
 ) {
     val allReminders: Flow<List<MedicationReminder>> = medicationReminderDao.getAllReminders()
 
-    suspend fun insert(reminder: MedicationReminder): Long {
-        return medicationReminderDao.insertReminder(reminder)
+    suspend fun insert(reminder: MedicationReminder) {
+        val id = medicationReminderDao.insertReminder(reminder)
+        generateIntakesForReminder(reminder.copy(id = id.toInt()))
     }
 
     suspend fun update(reminder: MedicationReminder) {
@@ -34,10 +35,6 @@ class MedicationReminderRepository(
         return medicationReminderDao.getReminderById(id)
     }
 
-    fun getRefillReminders(date: LocalDate): Flow<List<MedicationReminder>> {
-        return medicationReminderDao.getRefillReminders(date)
-    }
-
     private suspend fun generateIntakesForReminder(reminder: MedicationReminder) {
         val currentDate = LocalDate.now()
         val endDate = reminder.endDate ?: currentDate.plusYears(1)
@@ -51,8 +48,7 @@ class MedicationReminderRepository(
                         reminderId = reminder.id,
                         medicationName = reminder.medicationName,
                         intakeDateTime = intakeDateTime,
-                        status = "Scheduled",
-                        dosage = reminder.dosage
+                        status = "Scheduled"
                     )
                     medicationIntakeDao.insert(intake)
                 }
@@ -73,10 +69,6 @@ class MedicationReminderRepository(
     }
 
     suspend fun updateIntakeTakenStatus(intakeId: Int, taken: Boolean) {
-        medicationIntakeDao.updateTakenStatus(intakeId, taken)
-    }
-
-    suspend fun updateTakenStatus(intakeId: Int, taken: Boolean) {
         medicationIntakeDao.updateTakenStatus(intakeId, taken)
     }
 

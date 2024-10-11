@@ -80,7 +80,6 @@ import java.time.LocalTime
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import android.text.format.DateFormat
-import androidx.compose.material3.Checkbox
 
 class MainActivity : ComponentActivity() {
     private lateinit var viewModel: MedicationReminderViewModel
@@ -204,53 +203,14 @@ fun MedicationsTab(viewModel: MedicationReminderViewModel) {
     val reminders by viewModel.allReminders.collectAsState(initial = emptyList())
     val currentDate = remember { LocalDate.now() }
     val intakes by viewModel.getIntakesForDate(currentDate).collectAsState(initial = emptyList())
-    val refillReminders by viewModel.getRefillReminders(currentDate)
-        .collectAsState(initial = emptyList())
 
     Column(modifier = Modifier.padding(16.dp)) {
         Text("Your Medications", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(16.dp))
-        ReminderList(
-            reminders = reminders,
+        ReminderList(reminders = reminders,
             intakes = intakes,
             onDeleteReminder = { viewModel.delete(it) },
-            onEditReminder = { viewModel.update(it) }
-        )
-
-        if (refillReminders.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("Medications Needing Refill", style = MaterialTheme.typography.headlineSmall)
-            Spacer(modifier = Modifier.height(8.dp))
-            RefillReminderList(refillReminders = refillReminders)
-        }
-    }
-}
-
-@Composable
-fun RefillReminderList(refillReminders: List<MedicationReminder>) {
-    LazyColumn {
-        items(refillReminders) { reminder ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(reminder.medicationName, style = MaterialTheme.typography.titleMedium)
-                        Text("Refill needed by: ${reminder.refillDate?.format(DateTimeFormatter.ISO_LOCAL_DATE) ?: "Not set"}")
-                    }
-                    Button(onClick = { /* Handle refill action */ }) {
-                        Text("Refill")
-                    }
-                }
-            }
-        }
+            onEditReminder = { viewModel.update(it) })
     }
 }
 
@@ -260,32 +220,15 @@ fun AddMedicationDialog(
     onAddReminder: (MedicationReminder) -> Unit,
     reminders: List<MedicationReminder>
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Add New Medication") },
-        text = {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(400.dp) // Set a fixed height for the scrollable area
-            ) {
-                LazyColumn {
-                    item {
-                        AddReminderForm(
-                            onAddReminder = onAddReminder,
-                            reminders = reminders
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("Add New Medication") }, text = {
+        AddReminderForm(
+            onAddReminder = onAddReminder, reminders = reminders
+        )
+    }, confirmButton = {}, dismissButton = {
+        TextButton(onClick = onDismiss) {
+            Text("Cancel")
         }
-    )
+    })
 }
 
 @Composable
@@ -321,11 +264,6 @@ fun ReminderItem(
     var showStartDatePicker by remember { mutableStateOf(false) }
     var showEndDatePicker by remember { mutableStateOf(false) }
     var editedReminderDays by remember { mutableStateOf(reminder.reminderDays) }
-    var editedDosage by remember { mutableStateOf(reminder.dosage ?: "") } // Provide default value
-    var editedNotes by remember { mutableStateOf(reminder.notes ?: "") } // Provide default value
-    var editedRefillDate by remember { mutableStateOf(reminder.refillDate) }
-    var editedRefillReminder by remember { mutableStateOf(reminder.refillReminder) }
-    var showRefillDatePicker by remember { mutableStateOf(false) }
 
     val currentDate = LocalDate.now()
     val currentDayIntakes = intakes.filter { it.intakeDateTime.toLocalDate() == currentDate }
@@ -337,115 +275,67 @@ fun ReminderItem(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             if (isEditing) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(400.dp) // Set a fixed height for the scrollable area
-                ) {
-                    // Editing mode UI
-                    LazyColumn {
-                        item {
-                            OutlinedTextField(
-                                value = editedName,
-                                onValueChange = { editedName = it },
-                                label = { Text("Medication Name") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            OutlinedTextField(
-                                value = editedDosage,
-                                onValueChange = { editedDosage = it },
-                                label = { Text("Dosage") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            FrequencySelector(frequency = editedFrequency, onFrequencyChange = {
-                                editedFrequency = it
-                                editedTimes = List(it) { index ->
-                                    if (index < editedTimes.size) editedTimes[index] else LocalTime.now()
-                                }
-                            })
-                            Spacer(modifier = Modifier.height(8.dp))
-                            editedTimes.forEachIndexed { index, time ->
-                                AndroidTimePicker(initialTime = time, onTimeSelected = { newTime ->
-                                    editedTimes =
-                                        editedTimes.toMutableList().also { it[index] = newTime }
-                                })
-                                Spacer(modifier = Modifier.height(8.dp))
-                            }
-                            Button(onClick = { showStartDatePicker = true }) {
-                                Text("Select Start Date: ${editedStartDate.format(DateTimeFormatter.ISO_LOCAL_DATE)}")
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Row {
-                                Button(onClick = { showEndDatePicker = true }) {
-                                    Text("Select End Date: ${editedEndDate?.format(DateTimeFormatter.ISO_LOCAL_DATE) ?: "Not set"}")
-                                }
-                                if (editedEndDate != null) {
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Button(onClick = { editedEndDate = null }) {
-                                        Text("Clear End Date")
-                                    }
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            OutlinedTextField(
-                                value = editedNotes,
-                                onValueChange = { editedNotes = it },
-                                label = { Text("Notes") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Checkbox(
-                                    checked = editedRefillReminder,
-                                    onCheckedChange = { editedRefillReminder = it }
-                                )
-                                Text("Set Refill Reminder")
-                            }
-                            if (editedRefillReminder) {
-                                Button(onClick = { showRefillDatePicker = true }) {
-                                    Text(
-                                        "Select Refill Date: ${
-                                            editedRefillDate?.format(
-                                                DateTimeFormatter.ISO_LOCAL_DATE
-                                            ) ?: "Not set"
-                                        }"
-                                    )
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            WeekdaySelector(
-                                selectedDays = editedReminderDays,
-                                onDaysChanged = { editedReminderDays = it }
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Row {
-                                Button(onClick = {
-                                    onEdit(
-                                        reminder.copy(
-                                            medicationName = editedName,
-                                            reminderTimes = editedTimes,
-                                            frequency = editedFrequency,
-                                            startDate = editedStartDate,
-                                            endDate = editedEndDate,
-                                            reminderDays = editedReminderDays,
-                                            dosage = editedDosage,
-                                            notes = editedNotes,
-                                            refillDate = editedRefillDate,
-                                            refillReminder = editedRefillReminder
-                                        )
-                                    )
-                                    isEditing = false
-                                }) {
-                                    Text("Save")
-                                }
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Button(onClick = { isEditing = false }) {
-                                    Text("Cancel")
-                                }
-                            }
+                // Editing mode UI
+                OutlinedTextField(
+                    value = editedName,
+                    onValueChange = { editedName = it },
+                    label = { Text("Medication Name") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                FrequencySelector(frequency = editedFrequency, onFrequencyChange = {
+                    editedFrequency = it
+                    editedTimes = List(it) { index ->
+                        if (index < editedTimes.size) editedTimes[index] else LocalTime.now()
+                    }
+                })
+                Spacer(modifier = Modifier.height(8.dp))
+                editedTimes.forEachIndexed { index, time ->
+                    AndroidTimePicker(initialTime = time, onTimeSelected = { newTime ->
+                        editedTimes = editedTimes.toMutableList().also { it[index] = newTime }
+                    })
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+                Button(onClick = { showStartDatePicker = true }) {
+                    Text("Select Start Date: ${editedStartDate.format(DateTimeFormatter.ISO_LOCAL_DATE)}")
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Row {
+                    Button(onClick = { showEndDatePicker = true }) {
+                        Text("Select End Date: ${editedEndDate?.format(DateTimeFormatter.ISO_LOCAL_DATE) ?: "Not set"}")
+                    }
+                    if (editedEndDate != null) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(onClick = { editedEndDate = null }) {
+                            Text("Clear End Date")
                         }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                WeekdaySelector(
+
+                    // ... (keep the existing editing mode UI)
+                    selectedDays = editedReminderDays, onDaysChanged = { editedReminderDays = it })
+                Spacer(modifier = Modifier.height(16.dp))
+                Row {
+                    Button(onClick = {
+                        onEdit(
+                            reminder.copy(
+                                medicationName = editedName,
+                                reminderTimes = editedTimes,
+                                frequency = editedFrequency,
+                                startDate = editedStartDate,
+                                endDate = editedEndDate,
+                                reminderDays = editedReminderDays
+                            )
+                        )
+                        isEditing = false
+                    }) {
+                        Text("Save")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(onClick = { isEditing = false }) {
+                        Text("Cancel")
                     }
                 }
             } else {
@@ -460,7 +350,6 @@ fun ReminderItem(
                         modifier = Modifier.weight(1f)
                     )
                 }
-                Text("Dosage: ${reminder.dosage ?: "Not specified"}")
                 reminder.reminderTimes.forEachIndexed { index, time ->
                     Text("Time ${index + 1}: ${time.format(DateTimeFormatter.ofPattern("HH:mm"))}")
                 }
@@ -470,12 +359,6 @@ fun ReminderItem(
                 Text("Days: ${
                     reminder.reminderDays.sorted().joinToString(", ") { getDayName(it) }
                 }")
-                if (!reminder.notes.isNullOrEmpty()) {
-                    Text("Notes: ${reminder.notes}")
-                }
-                if (reminder.refillReminder) {
-                    Text("Refill Date: ${reminder.refillDate?.format(DateTimeFormatter.ISO_LOCAL_DATE) ?: "Not set"}")
-                }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -497,8 +380,7 @@ fun ReminderItem(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .background(backgroundColor)
-                                .padding(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                                .padding(8.dp), verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 text = "Intake at ${
@@ -507,13 +389,10 @@ fun ReminderItem(
                                             "HH:mm"
                                         )
                                     )
-                                }",
-                                modifier = Modifier.weight(1f),
-                                color = textColor
+                                }", modifier = Modifier.weight(1f), color = textColor
                             )
                             Text(
-                                text = if (intake.taken) "Taken" else "Not Taken",
-                                color = textColor
+                                text = if (intake.taken) "Taken" else "Not Taken", color = textColor
                             )
                         }
                     }
@@ -558,51 +437,26 @@ fun ReminderItem(
             reminders = emptyList() // You may want to pass actual reminders here
         )
     }
-    if (showRefillDatePicker) {
-        CalendarDialog(
-            onDismissRequest = { showRefillDatePicker = false },
-            onDateSelected = {
-                editedRefillDate = it
-                showRefillDatePicker = false
-            },
-            initialDate = editedRefillDate ?: LocalDate.now(),
-            reminders = emptyList() // You may want to pass actual reminders here
-        )
-    }
 }
 
 @Composable
 fun AddReminderForm(
-    onAddReminder: (MedicationReminder) -> Unit,
-    reminders: List<MedicationReminder>
+    onAddReminder: (MedicationReminder) -> Unit, reminders: List<MedicationReminder>
 ) {
     var medicationName by remember { mutableStateOf("") }
-    var frequency by remember { mutableIntStateOf(1) }
+    var frequency by remember { mutableStateOf(1) }
     var reminderTimes by remember { mutableStateOf(listOf(LocalTime.now())) }
     var startDate by remember { mutableStateOf(LocalDate.now()) }
     var endDate by remember { mutableStateOf<LocalDate?>(null) }
     var showStartDatePicker by remember { mutableStateOf(false) }
     var showEndDatePicker by remember { mutableStateOf(false) }
     var reminderDays by remember { mutableStateOf(setOf(1, 2, 3, 4, 5, 6, 7)) }
-    var dosage by remember { mutableStateOf("") }
-    var notes by remember { mutableStateOf("") }
-    var refillDate by remember { mutableStateOf<LocalDate?>(null) }
-    var refillReminder by remember { mutableStateOf(false) }
-    var showRefillDatePicker by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.padding(16.dp)) {
         OutlinedTextField(
             value = medicationName,
             onValueChange = { medicationName = it },
             label = { Text("Medication Name") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-
-        OutlinedTextField(
-            value = dosage,
-            onValueChange = { dosage = it },
-            label = { Text("Dosage") },
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -640,27 +494,21 @@ fun AddReminderForm(
         }
         Spacer(modifier = Modifier.height(8.dp))
 
-        OutlinedTextField(
-            value = notes,
-            onValueChange = { notes = it },
-            label = { Text("Notes") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(
-                checked = refillReminder,
-                onCheckedChange = { refillReminder = it }
+        if (showStartDatePicker) {
+            CalendarDialog(onDismissRequest = { showStartDatePicker = false }, onDateSelected = {
+                startDate = it
+                showStartDatePicker = false
+            }, initialDate = startDate, reminders = reminders
             )
-            Text("Set Refill Reminder")
         }
-        if (refillReminder) {
-            Button(onClick = { showRefillDatePicker = true }) {
-                Text("Select Refill Date: ${refillDate?.format(DateTimeFormatter.ISO_LOCAL_DATE) ?: "Not set"}")
-            }
+
+        if (showEndDatePicker) {
+            CalendarDialog(onDismissRequest = { showEndDatePicker = false }, onDateSelected = {
+                endDate = it
+                showEndDatePicker = false
+            }, initialDate = endDate ?: LocalDate.now(), reminders = reminders
+            )
         }
-        Spacer(modifier = Modifier.height(8.dp))
 
         WeekdaySelector(selectedDays = reminderDays, onDaysChanged = { reminderDays = it })
         Spacer(modifier = Modifier.height(16.dp))
@@ -674,11 +522,7 @@ fun AddReminderForm(
                         frequency = frequency,
                         startDate = startDate,
                         endDate = endDate,
-                        reminderDays = reminderDays,
-                        dosage = dosage,
-                        notes = notes,
-                        refillDate = refillDate,
-                        refillReminder = refillReminder
+                        reminderDays = reminderDays
                     )
                     onAddReminder(reminder)
                     // Reset form fields
@@ -688,52 +532,11 @@ fun AddReminderForm(
                     startDate = LocalDate.now()
                     endDate = null
                     reminderDays = setOf(1, 2, 3, 4, 5, 6, 7)
-                    dosage = ""
-                    notes = ""
-                    refillDate = null
-                    refillReminder = false
                 }
-            },
-            modifier = Modifier.fillMaxWidth()
+            }, modifier = Modifier.fillMaxWidth()
         ) {
             Text("Add Reminder")
         }
-    }
-
-    if (showStartDatePicker) {
-        CalendarDialog(
-            onDismissRequest = { showStartDatePicker = false },
-            onDateSelected = {
-                startDate = it
-                showStartDatePicker = false
-            },
-            initialDate = startDate,
-            reminders = reminders
-        )
-    }
-
-    if (showEndDatePicker) {
-        CalendarDialog(
-            onDismissRequest = { showEndDatePicker = false },
-            onDateSelected = {
-                endDate = it
-                showEndDatePicker = false
-            },
-            initialDate = endDate ?: LocalDate.now(),
-            reminders = reminders
-        )
-    }
-
-    if (showRefillDatePicker) {
-        CalendarDialog(
-            onDismissRequest = { showRefillDatePicker = false },
-            onDateSelected = {
-                refillDate = it
-                showRefillDatePicker = false
-            },
-            initialDate = refillDate ?: LocalDate.now(),
-            reminders = reminders
-        )
     }
 }
 
@@ -1099,8 +902,7 @@ fun DayView(
 
 @Composable
 fun MedicationEventItem(
-    intake: MedicationIntake,
-    onClick: () -> Unit
+    intake: MedicationIntake, onClick: () -> Unit
 ) {
     val backgroundColor = if (intake.taken) {
         Color(200, 255, 200) // Light green background for taken
@@ -1118,8 +920,7 @@ fun MedicationEventItem(
             .fillMaxWidth()
             .background(backgroundColor)
             .clickable(onClick = onClick)
-            .padding(8.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(8.dp), verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = intake.intakeDateTime.format(DateTimeFormatter.ofPattern("HH:mm")),
@@ -1128,61 +929,43 @@ fun MedicationEventItem(
             color = textColor
         )
         Spacer(modifier = Modifier.width(8.dp))
-        Column {
-            Text(
-                text = intake.medicationName,
-                style = MaterialTheme.typography.bodyLarge,
-                color = textColor
-            )
-            Text(
-                text = "Dosage: ${intake.dosage}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = textColor
-            )
-        }
+        Text(
+            text = intake.medicationName,
+            style = MaterialTheme.typography.bodyLarge,
+            color = textColor
+        )
     }
 }
 
 @Composable
 fun EventDetailsDialog(
-    intake: MedicationIntake,
-    onDismiss: () -> Unit,
-    onStatusChange: (Boolean) -> Unit
+    intake: MedicationIntake, onDismiss: () -> Unit, onStatusChange: (Boolean) -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(intake.medicationName) },
-        text = {
-            Column {
-                Text("Time: ${intake.intakeDateTime.format(DateTimeFormatter.ofPattern("HH:mm"))}")
-                Text("Status: ${if (intake.taken) "Taken" else "Not Taken"}")
-                Text("Dosage: ${intake.dosage}")
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+    AlertDialog(onDismissRequest = onDismiss, title = { Text(intake.medicationName) }, text = {
+        Column {
+            Text("Time: ${intake.intakeDateTime.format(DateTimeFormatter.ofPattern("HH:mm"))}")
+            Text("Status: ${if (intake.taken) "Taken" else "Not Taken"}")
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Button(
+                    onClick = { onStatusChange(true) }, enabled = !intake.taken
                 ) {
-                    Button(
-                        onClick = { onStatusChange(true) },
-                        enabled = !intake.taken
-                    ) {
-                        Text("Mark as Taken")
-                    }
-                    Button(
-                        onClick = { onStatusChange(false) },
-                        enabled = intake.taken
-                    ) {
-                        Text("Mark as Not Taken")
-                    }
+                    Text("Mark as Taken")
+                }
+                Button(
+                    onClick = { onStatusChange(false) }, enabled = intake.taken
+                ) {
+                    Text("Mark as Not Taken")
                 }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Close")
-            }
         }
-    )
+    }, confirmButton = {
+        TextButton(onClick = onDismiss) {
+            Text("Close")
+        }
+    })
 }
 
 fun getDayName(day: Int): String {

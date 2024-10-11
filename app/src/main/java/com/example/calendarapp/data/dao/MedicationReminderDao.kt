@@ -24,7 +24,4 @@ interface MedicationReminderDao {
 
     @Query("SELECT * FROM medication_reminders WHERE id = :id")
     fun getReminderById(id: Int): Flow<MedicationReminder>
-
-    @Query("SELECT * FROM medication_reminders WHERE refillReminder = 1 AND refillDate <= :date")
-    fun getRefillReminders(date: LocalDate): Flow<List<MedicationReminder>>
 }
