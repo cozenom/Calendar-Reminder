@@ -6,6 +6,10 @@ import kotlinx.coroutines.flow.Flow
 import java.time.LocalDateTime
 
 class MedicationIntakeRepository(private val medicationIntakeDao: MedicationIntakeDao) {
+    fun getIntakesForReminder(reminderId: Int): Flow<List<MedicationIntake>> {
+        return medicationIntakeDao.getIntakesForReminder(reminderId)
+    }
+
     suspend fun insert(intake: MedicationIntake) {
         medicationIntakeDao.insert(intake)
     }
@@ -14,14 +18,6 @@ class MedicationIntakeRepository(private val medicationIntakeDao: MedicationInta
         medicationIntakeDao.update(intake)
     }
 
-    suspend fun delete(intake: MedicationIntake) {
-        medicationIntakeDao.delete(intake)
-    }
-
-    fun getIntakesForReminder(reminderId: Int): Flow<List<MedicationIntake>> {
-        return medicationIntakeDao.getIntakesForReminder(reminderId)
-    }
-    
     fun getIntakesForDateRange(
         start: LocalDateTime,
         end: LocalDateTime

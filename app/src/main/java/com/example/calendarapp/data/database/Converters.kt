@@ -18,6 +18,16 @@ class Converters {
     private val gson = Gson()
 
     @TypeConverter
+    fun fromTimestamp(value: String?): LocalTime? {
+        return value?.let { LocalTime.parse(it, timeFormatter) }
+    }
+
+    @TypeConverter
+    fun dateToTimestamp(date: LocalTime?): String? {
+        return date?.format(timeFormatter)
+    }
+
+    @TypeConverter
     fun fromLocalDateTime(value: String?): LocalDateTime? {
         return value?.let { LocalDateTime.parse(it, dateTimeFormatter) }
     }
