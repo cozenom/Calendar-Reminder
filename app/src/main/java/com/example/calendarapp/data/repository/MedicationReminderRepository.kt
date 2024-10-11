@@ -4,7 +4,6 @@ import com.example.calendarapp.data.dao.MedicationIntakeDao
 import com.example.calendarapp.data.dao.MedicationReminderDao
 import com.example.calendarapp.data.model.MedicationIntake
 import com.example.calendarapp.data.model.MedicationReminder
-import com.example.calendarapp.data.model.RefillInfo
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -27,6 +26,17 @@ class MedicationReminderRepository(
         medicationReminderDao.deleteReminder(reminder)
     }
 
+    fun getActiveReminders(date: LocalDate): Flow<List<MedicationReminder>> {
+        return medicationReminderDao.getActiveReminders(date)
+    }
+
+    fun getReminderById(id: Int): Flow<MedicationReminder> {
+        return medicationReminderDao.getReminderById(id)
+    }
+
+    fun getRefillReminders(date: LocalDate): Flow<List<MedicationReminder>> {
+        return medicationReminderDao.getRefillReminders(date)
+    }
 
     private suspend fun generateIntakesForReminder(reminder: MedicationReminder) {
         val currentDate = LocalDate.now()
@@ -77,17 +87,4 @@ class MedicationReminderRepository(
     fun getUpcomingIntakes(start: LocalDateTime, end: LocalDateTime): List<MedicationIntake> {
         return medicationIntakeDao.getUpcomingIntakes(start, end)
     }
-
-    fun getActiveReminders(date: LocalDate): Flow<List<MedicationReminder>> {
-        return medicationReminderDao.getActiveReminders(date)
-    }
-
-    fun getReminderById(id: Int): Flow<MedicationReminder> {
-        return medicationReminderDao.getReminderById(id)
-    }
-
-    fun getRefillReminders(date: LocalDate): Flow<List<MedicationReminder>> {
-        return medicationReminderDao.getRefillReminders(date)
-    }
-
 }

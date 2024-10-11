@@ -2,7 +2,6 @@ package com.example.calendarapp.data.dao
 
 import androidx.room.*
 import com.example.calendarapp.data.model.MedicationReminder
-import com.example.calendarapp.data.model.RefillInfo
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 
@@ -25,7 +24,6 @@ interface MedicationReminderDao {
 
     @Query("SELECT * FROM medication_reminders WHERE id = :id")
     fun getReminderById(id: Int): Flow<MedicationReminder>
-
 
     @Query("SELECT * FROM medication_reminders WHERE refillReminder = 1 AND refillDate <= :date")
     fun getRefillReminders(date: LocalDate): Flow<List<MedicationReminder>>

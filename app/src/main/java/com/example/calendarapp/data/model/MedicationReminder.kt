@@ -1,7 +1,5 @@
-// MedicationReminder.kt
 package com.example.calendarapp.data.model
 
-import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import java.time.LocalDate
@@ -19,23 +17,5 @@ data class MedicationReminder(
     val dosage: String = "",
     val notes: String = "",
     val refillDate: LocalDate? = null,
-    val refillReminder: Boolean = false,
-    val refillQuantity: Int? = null,
-    val refillsRemaining: Int? = null,
-    @ColumnInfo(name = "refill_notification_days")
-    val refillNotificationDays: List<Int> = emptyList()
-)
-
-data class RefillInfo(
-    val medicationName: String,
-    val quantity: Int,
-    val refillsRemaining: Int,
-    val refillDate: LocalDate,
-    val notificationDays: List<Int>,
-    val refillHistory: List<RefillEvent> = emptyList()
-)
-
-data class RefillEvent(
-    val date: LocalDate,
-    val quantity: Int
+    val refillReminder: Boolean = false
 )
