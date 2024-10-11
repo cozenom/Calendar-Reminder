@@ -12,16 +12,6 @@ class Converters {
     private val dateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME
 
     @TypeConverter
-    fun fromTimestamp(value: String?): LocalTime? {
-        return value?.let { LocalTime.parse(it, timeFormatter) }
-    }
-
-    @TypeConverter
-    fun dateToTimestamp(date: LocalTime?): String? {
-        return date?.format(timeFormatter)
-    }
-
-    @TypeConverter
     fun fromLocalDateTime(value: String?): LocalDateTime? {
         return value?.let { LocalDateTime.parse(it, dateTimeFormatter) }
     }

@@ -150,15 +150,11 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-
-    companion object {
-        private const val PERMISSION_REQUEST_CODE = 123
-    }
 }
 
 @Composable
 fun MedicationReminderApp(viewModel: MedicationReminderViewModel) {
-    var selectedTab by remember { mutableStateOf(0) }
+    var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Medications", "Calendar")
     var showAddMedicationDialog by remember { mutableStateOf(false) }
 
@@ -444,7 +440,7 @@ fun AddReminderForm(
     onAddReminder: (MedicationReminder) -> Unit, reminders: List<MedicationReminder>
 ) {
     var medicationName by remember { mutableStateOf("") }
-    var frequency by remember { mutableStateOf(1) }
+    var frequency by remember { mutableIntStateOf(1) }
     var reminderTimes by remember { mutableStateOf(listOf(LocalTime.now())) }
     var startDate by remember { mutableStateOf(LocalDate.now()) }
     var endDate by remember { mutableStateOf<LocalDate?>(null) }
@@ -546,12 +542,12 @@ fun FrequencySelector(frequency: Int, onFrequencyChange: (Int) -> Unit) {
         verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()
     ) {
         Text("Daily Frequency:")
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(4.dp))
         Button(onClick = { if (frequency > 1) onFrequencyChange(frequency - 1) }) {
             Text("-")
         }
         Text(
-            text = frequency.toString(), modifier = Modifier.padding(horizontal = 8.dp)
+            text = frequency.toString(), modifier = Modifier.padding(horizontal = 4.dp)
         )
         Button(onClick = { onFrequencyChange(frequency + 1) }) {
             Text("+")
@@ -645,13 +641,9 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
     var currentMonth by remember { mutableStateOf(YearMonth.from(selectedDate)) }
     var selectedIntake by remember { mutableStateOf<MedicationIntake?>(null) }
 
-    val activeReminders by viewModel.getActiveReminders(selectedDate)
-        .collectAsState(initial = emptyList())
     val intakes by viewModel.getIntakesForMonth(currentMonth).collectAsState(initial = emptyList())
     val selectedDateIntakes by viewModel.getIntakesForDate(selectedDate)
         .collectAsState(initial = emptyList())
-
-    val indicatorColor = MaterialTheme.colorScheme.secondary
 
     Column(modifier = Modifier.padding(16.dp)) {
         Text("Medication Calendar", style = MaterialTheme.typography.headlineMedium)
@@ -681,9 +673,7 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
             currentMonth = currentMonth,
             onDateSelected = { selectedDate = it },
             selectedDate = selectedDate,
-            reminders = activeReminders,
             intakes = intakes,
-            indicatorColor = indicatorColor
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -723,9 +713,7 @@ fun CalendarView(
     currentMonth: YearMonth,
     onDateSelected: (LocalDate) -> Unit,
     selectedDate: LocalDate?,
-    reminders: List<MedicationReminder>,
-    intakes: List<MedicationIntake>,
-    indicatorColor: Color
+    intakes: List<MedicationIntake>
 ) {
     val daysInMonth = currentMonth.lengthOfMonth()
     val firstDayOfMonth = currentMonth.atDay(1).dayOfWeek.value
@@ -870,9 +858,7 @@ fun CalendarDialog(
                         onDateSelected(it)
                     },
                     selectedDate = selectedDate,
-                    reminders = reminders,
-                    intakes = emptyList(), // You may want to pass actual intakes here
-                    indicatorColor = indicatorColor
+                    intakes = emptyList() // You may want to pass actual intakes here
                 )
             }
         },
