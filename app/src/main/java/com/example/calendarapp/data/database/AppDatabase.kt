@@ -14,7 +14,7 @@ import com.example.calendarapp.data.model.MedicationReminder
 
 @Database(
     entities = [MedicationReminder::class, MedicationIntake::class],
-    version = 5,
+    version = 1,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

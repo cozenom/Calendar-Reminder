@@ -14,9 +14,12 @@ import com.example.calendarapp.data.database.AppDatabase
 import com.example.calendarapp.data.model.MedicationIntake
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.concurrent.TimeUnit
+import java.time.Duration
+import kotlinx.coroutines.flow.first
 
 class MedicationReminderWorker(
     context: Context,
@@ -26,37 +29,21 @@ class MedicationReminderWorker(
         val database = AppDatabase.getDatabase(applicationContext)
         val intakeDao = database.medicationIntakeDao()
 
-        val now = LocalDateTime.now()
-        val futureIntakes = intakeDao.getFutureIntakes(now)
+        val tomorrow = LocalDate.now().plusDays(1)
+        val dayAfterTomorrow = tomorrow.plusDays(1)
+
+        val tomorrowIntakes = intakeDao.getIntakesForDateRange(
+            tomorrow.atStartOfDay(),
+            dayAfterTomorrow.atStartOfDay().minusNanos(1)
+        ).first()
 
         cancelAllAlarms()
-        scheduleNotificationsForIntakes(futureIntakes)
+        scheduleNotificationsForIntakes(tomorrowIntakes)
 
-        // Schedule the next check
+        // Schedule the next check for 23:59:59 today
         scheduleNextCheck()
 
         Result.success()
-    }
-
-    private fun cancelAllAlarms() {
-        val alarmManager =
-            applicationContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val intent = Intent(applicationContext, NotificationActionReceiver::class.java)
-        intent.action = ACTION_SHOW_NOTIFICATION
-
-        // Cancel all potential pending intents (up to a reasonable maximum, e.g., 1000)
-        for (i in 0 until 1000) {
-            val pendingIntent = PendingIntent.getBroadcast(
-                applicationContext,
-                i,
-                intent,
-                PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
-            )
-            pendingIntent?.let {
-                alarmManager.cancel(it)
-                it.cancel()
-            }
-        }
     }
 
     private fun scheduleNotificationsForIntakes(intakes: List<MedicationIntake>) {
@@ -104,8 +91,12 @@ class MedicationReminderWorker(
     }
 
     private fun scheduleNextCheck() {
+        val now = LocalDateTime.now()
+        val nextRun = now.withHour(23).withMinute(59).withSecond(59)
+        val delay = Duration.between(now, nextRun)
+
         val workRequest = OneTimeWorkRequestBuilder<MedicationReminderWorker>()
-            .setInitialDelay(24, TimeUnit.HOURS)
+            .setInitialDelay(delay.toMillis(), TimeUnit.MILLISECONDS)
             .build()
 
         WorkManager.getInstance(applicationContext)
@@ -114,6 +105,27 @@ class MedicationReminderWorker(
                 ExistingWorkPolicy.REPLACE,
                 workRequest
             )
+    }
+
+    private fun cancelAllAlarms() {
+        val alarmManager =
+            applicationContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(applicationContext, NotificationActionReceiver::class.java)
+        intent.action = ACTION_SHOW_NOTIFICATION
+
+        // Cancel all potential pending intents (up to a reasonable maximum, e.g., 1000)
+        for (i in 0 until 1000) {
+            val pendingIntent = PendingIntent.getBroadcast(
+                applicationContext,
+                i,
+                intent,
+                PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+            )
+            pendingIntent?.let {
+                alarmManager.cancel(it)
+                it.cancel()
+            }
+        }
     }
 
     companion object {
