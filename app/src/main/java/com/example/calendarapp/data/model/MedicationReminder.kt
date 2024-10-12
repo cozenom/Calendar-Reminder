@@ -8,7 +8,7 @@ import java.time.LocalTime
 @Entity(tableName = "medication_reminders")
 data class MedicationReminder(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val medicationName: String,
+    val medicationName: String = "Medication",
     val reminderTimes: List<LocalTime>,
     val frequency: Int,
     val startDate: LocalDate = LocalDate.now(),

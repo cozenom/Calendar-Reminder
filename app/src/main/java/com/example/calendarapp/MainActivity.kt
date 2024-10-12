@@ -80,6 +80,7 @@ import java.time.LocalTime
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import android.text.format.DateFormat
+import android.util.Log
 
 class MainActivity : ComponentActivity() {
     private lateinit var viewModel: MedicationReminderViewModel
@@ -100,8 +101,10 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+
         requestRequiredPermissions()
         MedicationReminderWorker.schedule(this)
+        Log.d("MainActivity", "Scheduled MedicationReminderWorker")
         // Schedule the worker
         val workRequest = OneTimeWorkRequestBuilder<MedicationReminderWorker>().build()
         WorkManager.getInstance(this).enqueueUniqueWork(
@@ -119,6 +122,18 @@ class MainActivity : ComponentActivity() {
                 MedicationReminderApp(viewModel)
             }
         }
+
+
+        viewModel.insert(
+            MedicationReminder(
+                medicationName = "Test Medication",
+                reminderTimes = listOf(LocalTime.now().plusMinutes(1)),
+                frequency = 1,
+                startDate = LocalDate.now(),
+                endDate = null,
+                reminderDays = setOf(1, 2, 3, 4, 5, 6, 7)
+            )
+        )
     }
 
     private fun requestRequiredPermissions() {
@@ -942,12 +957,12 @@ fun EventDetailsDialog(
                 Button(
                     onClick = { onStatusChange(true) }, enabled = !intake.taken
                 ) {
-                    Text("Mark as Taken")
+                    Text("Taken")
                 }
                 Button(
                     onClick = { onStatusChange(false) }, enabled = intake.taken
                 ) {
-                    Text("Mark as Not Taken")
+                    Text("Not Taken")
                 }
             }
         }
