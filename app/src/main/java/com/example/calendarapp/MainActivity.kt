@@ -123,7 +123,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-
+        //  Testing purposes TODO: Remove
         viewModel.insert(
             MedicationReminder(
                 medicationName = "Test Medication",
@@ -218,10 +218,12 @@ fun MedicationsTab(viewModel: MedicationReminderViewModel) {
     Column(modifier = Modifier.padding(16.dp)) {
         Text("Your Medications", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(16.dp))
-        ReminderList(reminders = reminders,
+        ReminderList(
+            reminders = reminders,
             intakes = intakes,
             onDeleteReminder = { viewModel.delete(it) },
-            onEditReminder = { viewModel.update(it) })
+            onEditReminder = { viewModel.createOrUpdateReminder(it) }
+        )
     }
 }
 
@@ -251,10 +253,12 @@ fun ReminderList(
 ) {
     LazyColumn {
         items(reminders) { reminder ->
-            ReminderItem(reminder = reminder,
+            ReminderItem(
+                reminder = reminder,
                 intakes = intakes.filter { it.reminderId == reminder.id },
                 onDelete = { onDeleteReminder(reminder) },
-                onEdit = { onEditReminder(it) })
+                onEdit = onEditReminder
+            )
         }
     }
 }
@@ -324,22 +328,21 @@ fun ReminderItem(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 WeekdaySelector(
-
-                    // ... (keep the existing editing mode UI)
-                    selectedDays = editedReminderDays, onDaysChanged = { editedReminderDays = it })
+                    selectedDays = editedReminderDays,
+                    onDaysChanged = { editedReminderDays = it }
+                )
                 Spacer(modifier = Modifier.height(16.dp))
                 Row {
                     Button(onClick = {
-                        onEdit(
-                            reminder.copy(
-                                medicationName = editedName,
-                                reminderTimes = editedTimes,
-                                frequency = editedFrequency,
-                                startDate = editedStartDate,
-                                endDate = editedEndDate,
-                                reminderDays = editedReminderDays
-                            )
+                        val updatedReminder = reminder.copy(
+                            medicationName = editedName.ifBlank { "Medication" },
+                            reminderTimes = editedTimes,
+                            frequency = editedFrequency,
+                            startDate = editedStartDate,
+                            endDate = editedEndDate,
+                            reminderDays = editedReminderDays
                         )
+                        onEdit(updatedReminder)
                         isEditing = false
                     }) {
                         Text("Save")
@@ -391,7 +394,8 @@ fun ReminderItem(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .background(backgroundColor)
-                                .padding(8.dp), verticalAlignment = Alignment.CenterVertically
+                                .padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 text = "Intake at ${
@@ -400,10 +404,13 @@ fun ReminderItem(
                                             "HH:mm"
                                         )
                                     )
-                                }", modifier = Modifier.weight(1f), color = textColor
+                                }",
+                                modifier = Modifier.weight(1f),
+                                color = textColor
                             )
                             Text(
-                                text = if (intake.taken) "Taken" else "Not Taken", color = textColor
+                                text = if (intake.taken) "Taken" else "Not Taken",
+                                color = textColor
                             )
                         }
                     }
@@ -454,7 +461,7 @@ fun ReminderItem(
 fun AddReminderForm(
     onAddReminder: (MedicationReminder) -> Unit, reminders: List<MedicationReminder>
 ) {
-    var medicationName by remember { mutableStateOf("") }
+    var medicationName by remember { mutableStateOf("Medication") }
     var frequency by remember { mutableIntStateOf(1) }
     var reminderTimes by remember { mutableStateOf(listOf(LocalTime.now())) }
     var startDate by remember { mutableStateOf(LocalDate.now()) }
