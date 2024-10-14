@@ -123,17 +123,6 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        //  Testing purposes TODO: Remove
-        viewModel.insert(
-            MedicationReminder(
-                medicationName = "Test Medication",
-                reminderTimes = listOf(LocalTime.now().plusMinutes(1)),
-                frequency = 1,
-                startDate = LocalDate.now(),
-                endDate = null,
-                reminderDays = setOf(1, 2, 3, 4, 5, 6, 7)
-            )
-        )
     }
 
     private fun requestRequiredPermissions() {
