@@ -716,7 +716,7 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
             Text("No medications scheduled for this day")
         } else {
             LazyColumn {
-                items(selectedDateIntakesWithReminders) { (intake, reminder) ->
+                items(selectedDateIntakesWithReminders.sortedBy { it.first.intakeDateTime }) { (intake, reminder) ->
                     MedicationEventItem(
                         intake = intake,
                         reminder = reminder,
@@ -771,6 +771,7 @@ fun CalendarView(
                     modifier = Modifier.padding(4.dp)
                 )
             }
+
             items(totalDays) { index ->
                 if (index >= firstDayOfMonth - 1) {
                     val day = index - firstDayOfMonth + 2
