@@ -14,3 +14,13 @@
 .cxx
 local.properties
 /.idea/androidTestResultsUserPreferences.xml
+
+# Ignore all text files
+*.txt
+
+# Ignore all markdown files except README.md
+*.md
+!README.md
+
+# Room schema exports - commit these to track database schema changes
+# app/schemas/
