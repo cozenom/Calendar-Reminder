@@ -9,7 +9,8 @@ import android.content.Context
 import android.content.Intent
 import android.media.AudioAttributes
 import android.media.RingtoneManager
-import android.os.Build
+import android.os.PowerManager
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.calendarapp.MainActivity
 import com.example.calendarapp.R
@@ -30,6 +31,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
     }
 
     private fun showNotification(context: Context, intakeId: Int) {
+        Log.d("NotificationActionReceiver", "Showing notification for intake $intakeId")
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -39,10 +41,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
         val pendingIntent = PendingIntent.getActivity(
-            context,
-            0,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         val takenIntent = Intent(context, NotificationActionReceiver::class.java).apply {
@@ -71,10 +70,24 @@ class NotificationActionReceiver : BroadcastReceiver() {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setFullScreenIntent(pendingIntent, true)
             .setSound(soundUri)
-            .setVibrate(longArrayOf(0, 250)) // Single short vibration
-            .setOnlyAlertOnce(true) // This ensures the sound and vibration only occur once
+            .setVibrate(longArrayOf(0, 250))
+            .setOnlyAlertOnce(true)
+
+        val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+        val wakeLock = powerManager.newWakeLock(
+            PowerManager.FULL_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
+            "CalendarApp:MedicationReminder"
+        )
+        wakeLock.acquire(10000) // Release after 10 seconds
 
         notificationManager.notify(intakeId, builder.build())
+        Log.d("NotificationActionReceiver", "Notification shown for intake $intakeId")
+        try {
+            notificationManager.notify(intakeId, builder.build())
+            Log.d("NotificationActionReceiver", "Notification shown for intake $intakeId")
+        } catch (e: Exception) {
+            Log.e("NotificationActionReceiver", "Error showing notification: ${e.message}", e)
+        }
     }
 
     private fun createNotificationChannel(
@@ -86,19 +99,20 @@ class NotificationActionReceiver : BroadcastReceiver() {
             "Medication Reminders",
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
-            description = "Notifications for medication reminders"
-            enableVibration(true)
-            vibrationPattern = longArrayOf(0, 250) // Single short vibration
-            setBypassDnd(false)
+            description = "Reminders for taking medications"
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-
-            // Set sound
-            val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-            val audioAttributes = AudioAttributes.Builder()
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
-                .build()
-            setSound(soundUri, audioAttributes)
+            setShowBadge(true)
+            setBypassDnd(true)
+            enableLights(true)
+            enableVibration(true)
+            vibrationPattern = longArrayOf(0, 250)
+            setSound(
+                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+            )
         }
         notificationManager.createNotificationChannel(channel)
     }

@@ -1,23 +1,23 @@
 package com.example.calendarapp.data.dao
 
-import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.Query
-import androidx.room.Update
+import androidx.room.*
 import com.example.calendarapp.data.model.MedicationIntake
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDateTime
 
 @Dao
 interface MedicationIntakeDao {
-    @Query("SELECT * FROM medication_intake WHERE reminderId = :reminderId")
-    fun getIntakesForReminder(reminderId: Int): Flow<List<MedicationIntake>>
-
     @Insert
     suspend fun insert(intake: MedicationIntake)
 
     @Update
     suspend fun update(intake: MedicationIntake)
+
+    @Delete
+    suspend fun delete(intake: MedicationIntake)
+
+    @Query("SELECT * FROM medication_intake WHERE reminderId = :reminderId")
+    fun getIntakesForReminder(reminderId: Int): Flow<List<MedicationIntake>>
 
     @Query("SELECT * FROM medication_intake WHERE intakeDateTime BETWEEN :start AND :end")
     fun getIntakesForDateRange(
@@ -25,20 +25,18 @@ interface MedicationIntakeDao {
         end: LocalDateTime
     ): Flow<List<MedicationIntake>>
 
-    @Query("UPDATE medication_intake SET taken = :taken WHERE id = :intakeId")
-    suspend fun updateTakenStatus(intakeId: Int, taken: Boolean)
-
     @Query("SELECT * FROM medication_intake WHERE intakeDateTime <= :dateTime AND taken = 0")
     fun getMissedIntakes(dateTime: LocalDateTime): Flow<List<MedicationIntake>>
 
     @Query("SELECT * FROM medication_intake WHERE intakeDateTime BETWEEN :start AND :end")
     fun getUpcomingIntakes(start: LocalDateTime, end: LocalDateTime): List<MedicationIntake>
 
-    @Query("SELECT * FROM medication_intake WHERE id = :intakeId")
-    suspend fun getIntakeById(intakeId: Int): MedicationIntake?
 
-    @Query("SELECT * FROM medication_intake WHERE intakeDateTime <= :dateTime AND taken = 0")
-    suspend fun getMissedIntakesSync(dateTime: LocalDateTime): List<MedicationIntake>
+    @Query("UPDATE medication_intake SET taken = :taken WHERE id = :intakeId")
+    suspend fun updateTakenStatus(intakeId: Int, taken: Boolean)
+
+    @Query("SELECT * FROM medication_intake WHERE id = :intakeId")
+    suspend fun getIntakeById(intakeId: Int): MedicationIntake
 
     @Query("SELECT * FROM medication_intake WHERE intakeDateTime > :now ORDER BY intakeDateTime ASC LIMIT 1")
     suspend fun getNextIntake(now: LocalDateTime): MedicationIntake?
