@@ -38,6 +38,11 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+
+    // Enable Room schema export for migrations
+    ksp {
+        arg("room.schemaLocation", "$projectDir/schemas")
+    }
     buildFeatures {
         compose = true
     }

@@ -1,6 +1,9 @@
 package com.example.calendarapp.data.model
 
-import androidx.room.*
+import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.Index
+import androidx.room.PrimaryKey
 import java.time.LocalDateTime
 
 @Entity(
@@ -16,6 +19,7 @@ import java.time.LocalDateTime
 data class MedicationIntake(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val reminderId: Int,
+    val medicationName: String,
     val intakeDateTime: LocalDateTime,
     val taken: Boolean = false
 )

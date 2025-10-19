@@ -37,10 +37,6 @@ class MedicationIntakeRepository(private val medicationIntakeDao: MedicationInta
         return medicationIntakeDao.getMissedIntakes(dateTime)
     }
 
-    suspend fun getNextIntake(now: LocalDateTime): MedicationIntake? {
-        return medicationIntakeDao.getNextIntake(now)
-    }
-
     suspend fun getFutureIntakes(now: LocalDateTime): List<MedicationIntake> {
         return medicationIntakeDao.getFutureIntakes(now)
     }

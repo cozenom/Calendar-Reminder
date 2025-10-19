@@ -1,16 +1,31 @@
 *.iml
 .gradle
 /local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
 .DS_Store
 /build
 /captures
 .externalNativeBuild
 .cxx
 local.properties
-/.idea/androidTestResultsUserPreferences.xml
+
+# IDE (Android Studio / IntelliJ IDEA)
+.idea/*
+!.idea/vcs.xml
+
+# Build outputs
+*.apk
+*.ap_
+*.dex
+output.json
+
+# Ignore all text files except changes.txt
+*.txt
+!changes.txt
+
+# Ignore all markdown files except README.md and schemas/README.md
+*.md
+!README.md
+!app/schemas/README.md
+
+# Room schema exports - commit these to track database schema changes
+# app/schemas/ JSON files should be committed

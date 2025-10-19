@@ -80,8 +80,6 @@ class NotificationActionReceiver : BroadcastReceiver() {
         )
         wakeLock.acquire(10000) // Release after 10 seconds
 
-        notificationManager.notify(intakeId, builder.build())
-        Log.d("NotificationActionReceiver", "Notification shown for intake $intakeId")
         try {
             notificationManager.notify(intakeId, builder.build())
             Log.d("NotificationActionReceiver", "Notification shown for intake $intakeId")

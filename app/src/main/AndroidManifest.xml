@@ -40,7 +40,17 @@
         </receiver>
 
         <receiver
-            android:name=".notification.BootReceiver"
+            android:name=".data.notification.InventoryNotificationReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.example.calendarapp.ACTION_REFILLED" />
+                <action android:name="com.example.calendarapp.ACTION_DISMISS_INVENTORY" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".data.notification.BootReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

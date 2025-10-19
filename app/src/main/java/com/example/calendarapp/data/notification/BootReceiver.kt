@@ -1,9 +1,8 @@
-package com.example.calendarapp.notification
+package com.example.calendarapp.data.notification
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import com.example.calendarapp.data.notification.MedicationReminderWorker
 
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {

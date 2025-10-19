@@ -1,0 +1,69 @@
+MEDICATION REMINDER APP - CHANGE LOG
+=====================================
+
+Version 1.2 - Customizable Refill Period & Enhanced Calendar
+------------------------------------------------------------
+
+NEW FEATURES:
+
+* Customizable Refill Period
+  - Added ability to set custom refill period per medication (default: 30 days)
+  - Users can now specify 30, 60, 90 day refill cycles or any custom period
+  - New "Refill period (days)" input field in medication setup form
+  - Refill period is configurable only when inventory tracking is enabled
+
+* Multiple Future Refill Date Indicators
+  - Calendar now displays up to 12 future estimated refill dates (orange dots)
+  - Orange dots show estimated pharmacy pickup dates for the next ~1 year
+  - Dots automatically shift when actual pickup occurs early or late
+  - Period between dots remains constant based on your refill period setting
+
+IMPROVEMENTS:
+
+* Smart Refill Date Calculation
+  - Orange dots now calculate from: lastActualPickupDate + (refillPeriodDays × N)
+  - If you pick up 2 days early, all future dots shift 2 days earlier automatically
+  - Refill estimates are no longer affected by taking/not taking medication
+  - Provides accurate long-term planning for pharmacy visits
+
+DATABASE CHANGES:
+
+* Schema Version: 8 → 9
+  - Added `refillPeriodDays` column to medication_reminders table
+  - Migration MIGRATION_8_9 handles automatic upgrade
+  - Default value: 30 days for all existing medications
+
+TECHNICAL DETAILS:
+
+* Modified Files:
+  - MedicationReminder.kt: Added refillPeriodDays field
+  - DatabaseMigrations.kt: Created MIGRATION_8_9
+  - AppDatabase.kt: Updated version to 9, registered migration
+  - MainActivity.kt: Added UI input field, updated orange dot calculation logic
+
+* Breaking Changes: None
+  - Existing data migrates automatically with default 30-day refill period
+  - Calendar behavior improved with no impact on existing functionality
+
+BUG FIXES:
+
+* Fixed orange dot calculation to be independent of medication intake status
+* Orange dots now properly represent estimated refill dates, not inventory depletion
+
+PROJECT MAINTENANCE:
+
+* Code Cleanup and Optimization
+  - Fixed duplicate notification calls in NotificationActionReceiver.kt
+  - Removed duplicate work scheduling in MainActivity.kt
+  - Fixed incorrect package name in BootReceiver.kt (now matches directory structure)
+  - Removed unused PERMISSION_REQUEST_CODE constant
+
+* Updated .gitignore for better version control hygiene
+  - Simplified .idea/* ignore pattern (except vcs.xml)
+  - Added exceptions for changes.txt and app/schemas/README.md
+  - Added common Android build output ignores (.apk, .dex, etc.)
+  - Cleaned up redundant entries
+
+---
+
+For questions or issues, please refer to CLAUDE.md for development guidelines.
