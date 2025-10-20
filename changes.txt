@@ -1,6 +1,321 @@
 MEDICATION REMINDER APP - CHANGE LOG
 =====================================
 
+Session: 2025-10-19 (Part 6) - Inventory Editing & Orange Dots Fix
+-------------------------------------------------------------------
+
+BUG FIXES:
+
+* Fixed Orange Dots Only Showing in Current Month (MAJOR BUG)
+  - Previously: Hardcoded to show only 12 future refill dates (~1 year)
+  - Issue: If you had 55 refills authorized, only first 12 showed as orange dots
+  - Orange dots disappeared when navigating to future months beyond ~1 year
+  - Fix: Now shows orange dots for ALL remaining refills (lines 1036-1041)
+  - Changed: `(1..12).map` → `(1..latestRefillForReminder.refillsRemaining).map`
+  - Result: All 55 refills (or however many remain) now show orange dots across all future months
+
+NEW FEATURES:
+
+* Current Inventory Now Editable in Edit Mode
+  - Previously: Edit mode only showed read-only text "Current inventory: X"
+  - Now: Editable OutlinedTextField, same as in Create mode
+  - Can modify inventory directly when editing medication
+  - Includes validation and numeric keyboard
+  - Saves with other medication edits
+  - Locations: MainActivity.kt:271,367-373,434,452
+
+IMPROVEMENTS:
+
+* Changed Default Current Inventory from 60 to Empty
+  - Default was 60, now starts empty for cleaner UX
+  - Users must explicitly enter their starting inventory
+  - Fallback value changed from 60 to 0 if user submits empty
+  - Applies to: Add form and reset after submission
+  - Locations: MainActivity.kt:709,867,883
+
+TECHNICAL CHANGES:
+
+* Modified Files:
+  - MainActivity.kt: Added editedCurrentInventory field, validation, orange dots calculation
+
+* Orange Dots Logic:
+  - Now calculates from actual refillsRemaining instead of hardcoded 12
+  - Generates dots for each remaining refill: `(1..refillsRemaining).map`
+  - Works across all calendar months, not just current year
+
+USER EXPERIENCE:
+
+* Before:
+  - Edit mode: Can't change inventory, must delete and recreate
+  - Orange dots: Only show ~1 year ahead, disappear in future months
+  - Default inventory: Always starts at 60
+
+* After:
+  - Edit mode: Full inventory editing capability ✓
+  - Orange dots: Show for ALL remaining refills across all future months ✓
+  - Default inventory: Starts empty, user enters their actual amount ✓
+
+---
+
+Session: 2025-10-19 (Part 5) - Prescription Tracking Without Auto-Add
+----------------------------------------------------------------------
+
+MAJOR CHANGE:
+
+* Prescription Tracking No Longer Auto-Adds Inventory
+  - Problem: Enabling prescription tracking was doubling inventory
+    • Set "Current medication count" to 60
+    • System added 60 more pills automatically
+    • Ended up with 120 instead of 60
+  - Solution: Prescription details now stored in MedicationReminder model
+    • "Current medication count" field = exact starting inventory
+    • Prescription metadata (pills per refill, total refills) stored but don't affect inventory
+    • Only "Record Refill Pickup" button adds pills to inventory
+    • No automatic prescription record creation
+
+DATABASE CHANGES:
+
+* Schema Version: 9 → 10
+  - Added `prescriptionPillsPerRefill` column to medication_reminders table (default: 60)
+  - Added `prescriptionTotalRefills` column to medication_reminders table (default: 5)
+  - Migration MIGRATION_9_10 handles automatic upgrade
+  - Prescription metadata now part of medication record, not separate refill record
+
+TECHNICAL CHANGES:
+
+* Modified Files:
+  - MedicationReminder.kt: Added prescriptionPillsPerRefill and prescriptionTotalRefills fields
+  - DatabaseMigrations.kt: Created MIGRATION_9_10
+  - AppDatabase.kt: Updated version to 10, registered migration
+  - MainActivity.kt: Forms now save/load prescription fields from reminder
+  - MedicationReminderViewModel.kt: Simplified insert logic (removed auto-prescription creation)
+
+* Behavior Changes:
+  - insertWithPrescription no longer creates prescription records
+  - Prescription fields stored directly in reminder
+  - PrescriptionRefill records only created when explicitly recording pickups
+  - Edit form loads prescription values from reminder.prescriptionPillsPerRefill/TotalRefills
+
+USER WORKFLOW:
+
+* Before:
+  1. Enable prescription tracking
+  2. Enter current count: 60
+  3. System creates prescription + adds 60 pills
+  4. Inventory becomes 120 (wrong!)
+
+* After:
+  1. Enable prescription tracking
+  2. Enter current count: 60
+  3. Enter prescription details (60 pills/refill, 5 refills)
+  4. Inventory stays 60 (correct!)
+  5. Later: Click "Record Refill Pickup" → inventory increases
+
+---
+
+Session: 2025-10-19 (Part 4) - Improved Numeric Field Handling
+---------------------------------------------------------------
+
+CHANGES:
+
+* Default Total Refills Changed to 5
+  - Changed default value from 11 to 5 refills
+  - More realistic default for typical prescriptions
+  - Applies to: Add form, Edit form, and New Prescription dialog
+
+BUG FIXES:
+
+* Edit Form Now Uses Actual Prescription Values
+  - Previously: Edit form always showed "60" and "11" as defaults for prescription fields
+  - Now: Loads actual values from existing prescription record
+  - Uses LaunchedEffect to populate fields when prescription data loads from database
+  - Falls back to defaults only if no prescription exists yet
+  - Applies to: "Medication count per refill" and "Total refills authorized"
+
+IMPROVEMENTS:
+
+* Numeric Fields Can Now Be Empty
+  - Input fields no longer auto-fill with default values when cleared
+  - Users can clear a field without it immediately reverting to "1" or "60"
+  - Allows users to correct mistakes by clearing and re-entering values
+  - Applies to all prescription tracking fields (dosage, inventory, refills, period)
+
+* Numeric Keyboard for All Number Fields
+  - Added KeyboardType.Number to all numeric input fields
+  - Mobile keyboard automatically shows numeric layout
+  - Faster, more intuitive data entry on mobile devices
+
+* Form Validation Before Submission
+  - "Add Reminder" button disabled when required fields are empty or invalid
+  - "Save" button in edit mode disabled when fields are invalid
+  - Prevents submission of incomplete or malformed data
+  - Clear visual feedback when form is incomplete (disabled button state)
+
+TECHNICAL CHANGES:
+
+* Field Storage Changes:
+  - Prescription numeric fields now stored as Strings internally
+  - Allows empty state representation
+  - Converted to Int only on submission/save
+  - Validation ensures fields contain valid integers before conversion
+
+* Modified Files:
+  - MainActivity.kt: Updated Add form and Edit mode field handling
+  - Added KeyboardOptions import and KeyboardType enum
+
+* Validation Logic:
+  - Checks medication name is not blank
+  - If prescription tracking enabled, validates all prescription fields:
+    • Not empty
+    • Valid positive integers (via toIntOrNull())
+  - Button enabled state tied to validation result
+
+USER EXPERIENCE:
+
+* Before: Clear field → immediately shows "1" or "60" → frustrating
+* After: Clear field → stays empty → enter new value → validation feedback
+* Clear indication when form is ready to submit (button enabled/disabled)
+
+---
+
+Session: 2025-10-19 (Part 3) - Unified Prescription Tracking Form
+------------------------------------------------------------------
+
+NEW FEATURES:
+
+* Complete Prescription Entry in Single Form
+  - Add form and Edit form now have identical fields when prescription tracking is enabled
+  - All prescription details entered in one place via single "Enable Prescription Tracking" toggle
+  - Fields now include:
+    • Medication per dose
+    • Current medication count
+    • Medication count per refill (NEW in add/edit)
+    • Total refills authorized (NEW in add/edit)
+    • Refill period (days)
+
+* Automatic Prescription Record Creation
+  - When creating medication with tracking enabled, prescription record automatically created
+  - No separate "Add Prescription" button needed
+  - Prescription details stored immediately with medication
+  - Location: New insertWithPrescription method in MedicationReminderViewModel.kt
+
+IMPROVEMENTS:
+
+* Removed Confusing Separate "Add Prescription" Button
+  - Was creating extra step for users in edit mode
+  - All prescription fields now inline with other tracking settings
+  - Cleaner, more intuitive user experience
+
+* Consistent Add/Edit Experience
+  - Both forms now have identical prescription tracking sections
+  - Reduces user confusion about when/where to enter prescription details
+  - Single toggle controls all prescription-related fields
+
+TECHNICAL CHANGES:
+
+* Modified Files:
+  - MainActivity.kt: Added prescription fields to both Add and Edit forms, removed separate button
+  - MedicationReminderViewModel.kt: Added insertWithPrescription method
+  - MedicationReminderRepository.kt: Modified insert to return medication ID
+
+* Form Callback Changes:
+  - AddReminderForm now passes prescription parameters (pillsPerRefill, totalRefills)
+  - AddMedicationDialog updated to handle new callback signature
+  - Automatic prescription creation when tracking enabled
+
+USER-FACING IMPROVEMENTS:
+
+* Single workflow: Enable toggle → Fill all fields → Save
+* No more: Create medication → Edit → Click "Add Prescription" → Fill details
+* All prescription information captured upfront during medication creation
+
+---
+
+Session: 2025-10-19 (Part 2) - Terminology Consolidation
+---------------------------------------------------------
+
+IMPROVEMENTS:
+
+* Unified "Inventory Tracking" and "Prescription Details" → "Prescription Tracking"
+  - Renamed all UI elements from "Inventory Tracking" to "Prescription Tracking"
+  - Changed section header from "Prescription & Inventory" to "Prescription Tracking"
+  - Simplified button text from "Add Prescription Details" to "Add Prescription"
+  - Updated all code comments to reflect unified terminology
+  - No database schema changes - only UI and documentation updates
+
+* Affected Files:
+  - MainActivity.kt: Updated all UI text and section names
+  - MedicationReminder.kt: Updated field comments
+  - MedicationReminderDao.kt: Updated query section comments
+  - DatabaseMigrations.kt: Updated migration documentation
+  - MedicationReminderRepository.kt: Updated function documentation
+
+* User-Facing Changes:
+  - Toggle now reads "Enable Prescription Tracking" (was "Enable Inventory Tracking")
+  - Section title simplified to "Prescription Tracking"
+  - All buttons and dialogs use cleaner "Add Prescription" label
+  - Clearer understanding that this is one unified feature
+
+---
+
+Session: 2025-10-19 (Part 1) - Inventory Tracking Improvements
+---------------------------------------------------------------
+
+BUG FIXES:
+
+* Fixed Refill Count Not Updating Correctly
+  - Recording refill pickup now properly shows updated refills remaining
+  - Database query now orders by both date AND id to handle same-day refills
+  - Location: PrescriptionRefillDao.kt:15,18
+  - Technical: Added `id DESC` as secondary sort in ORDER BY clause
+
+IMPROVEMENTS:
+
+* Terminology Consistency - "Pills" → "Medication"
+  - Changed all user-facing text from "pills" to "medication" for clarity
+  - Affects: inventory display, dosage labels, refill dialogs
+  - Locations: MainActivity.kt (multiple instances throughout UI)
+  - Examples:
+    • "Pills remaining" → "Medication remaining"
+    • "Pills per dose" → "Medication per dose"
+    • "Current pill count" → "Current medication count"
+    • "Pills per refill" → "Medication count per refill"
+
+* Unified Prescription & Inventory Section
+  - Merged separate "Inventory Status" into comprehensive "Prescription & Inventory"
+  - All medication tracking info now in single, cohesive section
+  - Improved information hierarchy and visual flow
+  - Location: MainActivity.kt:507-600
+
+NEW FEATURES:
+
+* Editable Medication Per Dose
+  - Users can now modify dosagePerIntake directly in edit mode
+  - No need to delete and recreate medication to change dosage
+  - Persists with other medication edits
+  - Location: MainActivity.kt:266-268,348-352,428-430
+
+* Comprehensive Inventory Tracking Editing
+  - Enable/disable inventory tracking toggle in edit mode
+  - Edit medication per dose amount
+  - Edit refill period (days)
+  - View current inventory (read-only, updates via refill pickups)
+  - Access prescription management directly from edit screen
+  - All settings save together when editing medication
+  - Location: MainActivity.kt:329-414
+
+TECHNICAL DETAILS:
+
+* Modified Files:
+  - PrescriptionRefillDao.kt: Enhanced query ordering
+  - MainActivity.kt: Extensive UI updates for inventory editing
+
+* No Database Schema Changes
+  - All fields already existed, just made editable
+  - No migration required
+
+---
+
 Version 1.2 - Customizable Refill Period & Enhanced Calendar
 ------------------------------------------------------------
 

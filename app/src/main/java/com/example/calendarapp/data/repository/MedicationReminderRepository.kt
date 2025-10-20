@@ -19,9 +19,10 @@ class MedicationReminderRepository(
 ) {
     val allReminders: Flow<List<MedicationReminder>> = medicationReminderDao.getAllReminders()
 
-    suspend fun insert(reminder: MedicationReminder) {
+    suspend fun insert(reminder: MedicationReminder): Long {
         val id = medicationReminderDao.insertReminder(reminder)
         generateIntakesForReminder(reminder.copy(id = id.toInt()))
+        return id
     }
 
     suspend fun update(reminder: MedicationReminder) {
@@ -81,7 +82,7 @@ class MedicationReminderRepository(
     }
 
     /**
-     * Update intake taken status and adjust inventory if tracking is enabled.
+     * Update intake taken status and adjust inventory if prescription tracking is enabled.
      * Also triggers inventory alerts when needed.
      *
      * Note: Inventory only decrements when marking as taken.

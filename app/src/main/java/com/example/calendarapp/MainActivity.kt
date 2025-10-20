@@ -66,8 +66,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import com.example.calendarapp.data.model.MedicationIntake
@@ -177,7 +179,9 @@ fun MedicationReminderApp(viewModel: MedicationReminderViewModel) {
     if (showAddMedicationDialog) {
         AddMedicationDialog(
             onDismiss = { showAddMedicationDialog = false },
-            onAddReminder = { reminder ->
+            onAddReminder = { reminder, _, _ ->
+                // Prescription details are now stored in the reminder itself
+                // No need to pass them separately
                 viewModel.insert(reminder)
                 showAddMedicationDialog = false
             },
@@ -209,7 +213,7 @@ fun MedicationsTab(viewModel: MedicationReminderViewModel) {
 @Composable
 fun AddMedicationDialog(
     onDismiss: () -> Unit,
-    onAddReminder: (MedicationReminder) -> Unit,
+    onAddReminder: (reminder: MedicationReminder, pillsPerRefill: Int, totalRefills: Int) -> Unit,
     reminders: List<MedicationReminder>
 ) {
     AlertDialog(onDismissRequest = onDismiss, title = { Text("Add New Medication") }, text = {
@@ -263,11 +267,19 @@ fun ReminderItem(
     var editedReminderDays by remember { mutableStateOf(reminder.reminderDays) }
     var showRecordRefillDialog by remember { mutableStateOf(false) }
     var showNewPrescriptionDialog by remember { mutableStateOf(false) }
+    var editedDosagePerIntake by remember { mutableStateOf(reminder.dosagePerIntake.toString()) }
+    var editedCurrentInventory by remember { mutableStateOf(reminder.currentInventory.toString()) }
+    var editedInventoryTrackingEnabled by remember { mutableStateOf(reminder.inventoryTrackingEnabled) }
+    var editedRefillPeriodDays by remember { mutableStateOf(reminder.refillPeriodDays.toString()) }
 
     // Get latest refill info
     val refills by viewModel.getRefillsForReminder(reminder.id)
         .collectAsState(initial = emptyList())
     val latestRefill = refills.firstOrNull()
+
+    // Initialize prescription fields with actual values from reminder
+    var editedPillsPerRefill by remember { mutableStateOf(reminder.prescriptionPillsPerRefill.toString()) }
+    var editedTotalRefills by remember { mutableStateOf(reminder.prescriptionTotalRefills.toString()) }
 
     val currentDate = LocalDate.now()
     val currentDayIntakes = intakes.filter { it.intakeDateTime.toLocalDate() == currentDate }
@@ -320,24 +332,134 @@ fun ReminderItem(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 WeekdaySelector(
-
-                    // ... (keep the existing editing mode UI)
                     selectedDays = editedReminderDays, onDaysChanged = { editedReminderDays = it })
                 Spacer(modifier = Modifier.height(16.dp))
-                Row {
-                    Button(onClick = {
-                        onEdit(
-                            reminder.copy(
-                                medicationName = editedName,
-                                reminderTimes = editedTimes,
-                                frequency = editedFrequency,
-                                startDate = editedStartDate,
-                                endDate = editedEndDate,
-                                reminderDays = editedReminderDays
-                            )
+
+                // Prescription tracking section - editable
+                androidx.compose.material3.Divider()
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Enable Prescription Tracking")
+                    Spacer(modifier = Modifier.weight(1f))
+                    androidx.compose.material3.Switch(
+                        checked = editedInventoryTrackingEnabled,
+                        onCheckedChange = { editedInventoryTrackingEnabled = it }
+                    )
+                }
+
+                if (editedInventoryTrackingEnabled) {
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = editedDosagePerIntake,
+                        onValueChange = { editedDosagePerIntake = it },
+                        label = { Text("Medication per dose") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = editedCurrentInventory,
+                        onValueChange = { editedCurrentInventory = it },
+                        label = { Text("Current medication count") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = editedPillsPerRefill,
+                        onValueChange = { editedPillsPerRefill = it },
+                        label = { Text("Medication count per refill") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = editedTotalRefills,
+                        onValueChange = { editedTotalRefills = it },
+                        label = { Text("Total refills authorized") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = editedRefillPeriodDays,
+                        onValueChange = { editedRefillPeriodDays = it },
+                        label = { Text("Refill period (days)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Show refills info if available
+                    latestRefill?.let {
+                        Text(
+                            "Refills remaining: ${it.refillsRemaining} / ${it.totalRefillsAuthorized}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (it.refillsRemaining == 0) Color.Red else Color.Black
                         )
-                        isEditing = false
-                    }) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
+                    // Refill management buttons
+                    if (latestRefill != null && latestRefill.refillsRemaining > 0) {
+                        Button(
+                            onClick = { showRecordRefillDialog = true },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Record Refill Pickup")
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Validation
+                val isEditFormValid = editedName.isNotBlank() &&
+                    (!editedInventoryTrackingEnabled || (
+                        editedDosagePerIntake.isNotEmpty() && editedDosagePerIntake.toIntOrNull() != null &&
+                        editedCurrentInventory.isNotEmpty() && editedCurrentInventory.toIntOrNull() != null &&
+                        editedPillsPerRefill.isNotEmpty() && editedPillsPerRefill.toIntOrNull() != null &&
+                        editedTotalRefills.isNotEmpty() && editedTotalRefills.toIntOrNull() != null &&
+                        editedRefillPeriodDays.isNotEmpty() && editedRefillPeriodDays.toIntOrNull() != null
+                    ))
+
+                Row {
+                    Button(
+                        onClick = {
+                            onEdit(
+                                reminder.copy(
+                                    medicationName = editedName,
+                                    reminderTimes = editedTimes,
+                                    frequency = editedFrequency,
+                                    startDate = editedStartDate,
+                                    endDate = editedEndDate,
+                                    reminderDays = editedReminderDays,
+                                    dosagePerIntake = editedDosagePerIntake.toIntOrNull() ?: 1,
+                                    currentInventory = editedCurrentInventory.toIntOrNull() ?: 0,
+                                    inventoryTrackingEnabled = editedInventoryTrackingEnabled,
+                                    refillPeriodDays = editedRefillPeriodDays.toIntOrNull() ?: 30,
+                                    prescriptionPillsPerRefill = editedPillsPerRefill.toIntOrNull() ?: 60,
+                                    prescriptionTotalRefills = editedTotalRefills.toIntOrNull() ?: 5
+                                )
+                            )
+                            isEditing = false
+                        },
+                        enabled = isEditFormValid
+                    ) {
                         Text("Save")
                     }
                     Spacer(modifier = Modifier.width(8.dp))
@@ -415,7 +537,7 @@ fun ReminderItem(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        "Inventory Status",
+                        "Prescription Tracking",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                     )
@@ -430,14 +552,14 @@ fun ReminderItem(
                     }
 
                     Text(
-                        "Pills remaining: ${reminder.currentInventory}",
+                        "Medication remaining: ${reminder.currentInventory}",
                         style = MaterialTheme.typography.bodyLarge,
                         color = inventoryColor,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                     )
 
                     Text(
-                        "Dosage: ${reminder.dosagePerIntake} pill(s) per dose",
+                        "Dosage: ${reminder.dosagePerIntake} per dose",
                         style = MaterialTheme.typography.bodyMedium
                     )
 
@@ -462,7 +584,7 @@ fun ReminderItem(
                         )
                     } else if (reminder.currentInventory == 0) {
                         Text(
-                            "⚠ No pills remaining!",
+                            "⚠ No medication remaining!",
                             color = Color.Red,
                             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                             style = MaterialTheme.typography.bodyMedium
@@ -498,7 +620,7 @@ fun ReminderItem(
                             onClick = { showNewPrescriptionDialog = true },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("Add Prescription Details")
+                            Text("Add Prescription")
                         }
                     }
 
@@ -569,7 +691,8 @@ fun ReminderItem(
 
 @Composable
 fun AddReminderForm(
-    onAddReminder: (MedicationReminder) -> Unit, reminders: List<MedicationReminder>
+    onAddReminder: (reminder: MedicationReminder, pillsPerRefill: Int, totalRefills: Int) -> Unit,
+    reminders: List<MedicationReminder>
 ) {
     var medicationName by remember { mutableStateOf("Medication") }
     var frequency by remember { mutableStateOf(1) }
@@ -580,11 +703,13 @@ fun AddReminderForm(
     var showEndDatePicker by remember { mutableStateOf(false) }
     var reminderDays by remember { mutableStateOf(setOf(1, 2, 3, 4, 5, 6, 7)) }
 
-    // Inventory tracking fields
+    // Prescription tracking fields
     var inventoryTrackingEnabled by remember { mutableStateOf(false) }
-    var dosagePerIntake by remember { mutableStateOf(1) }
-    var currentInventory by remember { mutableStateOf(60) }
-    var refillPeriodDays by remember { mutableStateOf(30) }
+    var dosagePerIntake by remember { mutableStateOf("1") }
+    var currentInventory by remember { mutableStateOf("") }
+    var pillsPerRefill by remember { mutableStateOf("60") }
+    var totalRefills by remember { mutableStateOf("5") }
+    var refillPeriodDays by remember { mutableStateOf("30") }
 
     Column(
         modifier = Modifier
@@ -651,12 +776,12 @@ fun AddReminderForm(
         WeekdaySelector(selectedDays = reminderDays, onDaysChanged = { reminderDays = it })
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Inventory tracking section
+        // Prescription tracking section
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Enable Inventory Tracking")
+            Text("Enable Prescription Tracking")
             Spacer(modifier = Modifier.weight(1f))
             androidx.compose.material3.Switch(
                 checked = inventoryTrackingEnabled,
@@ -668,32 +793,65 @@ fun AddReminderForm(
             Spacer(modifier = Modifier.height(8.dp))
 
             OutlinedTextField(
-                value = dosagePerIntake.toString(),
-                onValueChange = { dosagePerIntake = it.toIntOrNull() ?: 1 },
-                label = { Text("Pills per dose") },
+                value = dosagePerIntake,
+                onValueChange = { dosagePerIntake = it },
+                label = { Text("Medication per dose") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
             OutlinedTextField(
-                value = currentInventory.toString(),
-                onValueChange = { currentInventory = it.toIntOrNull() ?: 0 },
-                label = { Text("Current pill count") },
+                value = currentInventory,
+                onValueChange = { currentInventory = it },
+                label = { Text("Current medication count") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
             OutlinedTextField(
-                value = refillPeriodDays.toString(),
-                onValueChange = { refillPeriodDays = it.toIntOrNull() ?: 30 },
+                value = pillsPerRefill,
+                onValueChange = { pillsPerRefill = it },
+                label = { Text("Medication count per refill") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedTextField(
+                value = totalRefills,
+                onValueChange = { totalRefills = it },
+                label = { Text("Total refills authorized") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedTextField(
+                value = refillPeriodDays,
+                onValueChange = { refillPeriodDays = it },
                 label = { Text("Refill period (days)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth()
             )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        // Validation
+        val isFormValid = medicationName.isNotBlank() &&
+            (!inventoryTrackingEnabled || (
+                dosagePerIntake.isNotEmpty() && dosagePerIntake.toIntOrNull() != null &&
+                currentInventory.isNotEmpty() && currentInventory.toIntOrNull() != null &&
+                pillsPerRefill.isNotEmpty() && pillsPerRefill.toIntOrNull() != null &&
+                totalRefills.isNotEmpty() && totalRefills.toIntOrNull() != null &&
+                refillPeriodDays.isNotEmpty() && refillPeriodDays.toIntOrNull() != null
+            ))
 
         Button(
             onClick = {
@@ -705,12 +863,14 @@ fun AddReminderForm(
                         startDate = startDate,
                         endDate = endDate,
                         reminderDays = reminderDays,
-                        dosagePerIntake = dosagePerIntake,
-                        currentInventory = currentInventory,
+                        dosagePerIntake = dosagePerIntake.toIntOrNull() ?: 1,
+                        currentInventory = currentInventory.toIntOrNull() ?: 0,
                         inventoryTrackingEnabled = inventoryTrackingEnabled,
-                        refillPeriodDays = refillPeriodDays
+                        refillPeriodDays = refillPeriodDays.toIntOrNull() ?: 30,
+                        prescriptionPillsPerRefill = pillsPerRefill.toIntOrNull() ?: 60,
+                        prescriptionTotalRefills = totalRefills.toIntOrNull() ?: 5
                     )
-                    onAddReminder(reminder)
+                    onAddReminder(reminder, pillsPerRefill.toIntOrNull() ?: 60, totalRefills.toIntOrNull() ?: 5)
                     // Reset form fields
                     medicationName = ""
                     frequency = 1
@@ -719,11 +879,15 @@ fun AddReminderForm(
                     endDate = null
                     reminderDays = setOf(1, 2, 3, 4, 5, 6, 7)
                     inventoryTrackingEnabled = false
-                    dosagePerIntake = 1
-                    currentInventory = 60
-                    refillPeriodDays = 30
+                    dosagePerIntake = "1"
+                    currentInventory = ""
+                    pillsPerRefill = "60"
+                    totalRefills = "5"
+                    refillPeriodDays = "30"
                 }
-            }, modifier = Modifier.fillMaxWidth()
+            },
+            enabled = isFormValid,
+            modifier = Modifier.fillMaxWidth()
         ) {
             Text("Add Reminder")
         }
@@ -742,7 +906,11 @@ fun FrequencySelector(frequency: Int, onFrequencyChange: (Int) -> Unit) {
             onClick = { if (frequency > 1) onFrequencyChange(frequency - 1) },
             modifier = Modifier.width(48.dp)
         ) {
-            Text("-")
+            Text(
+                text = "-",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+            )
         }
         Text(
             text = frequency.toString(),
@@ -752,7 +920,11 @@ fun FrequencySelector(frequency: Int, onFrequencyChange: (Int) -> Unit) {
             onClick = { onFrequencyChange(frequency + 1) },
             modifier = Modifier.width(48.dp)
         ) {
-            Text("+")
+            Text(
+                text = "+",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+            )
         }
     }
 }
@@ -860,9 +1032,9 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
                     .filter { it.reminderId == reminder.id }
                     .maxByOrNull { it.pickupDate }
 
-                // Generate next 12 estimated refill dates from the last pickup
-                if (latestRefillForReminder != null) {
-                    (1..12).map { multiplier ->
+                // Generate estimated refill dates for all remaining refills from the last pickup
+                if (latestRefillForReminder != null && latestRefillForReminder.refillsRemaining > 0) {
+                    (1..latestRefillForReminder.refillsRemaining).map { multiplier ->
                         latestRefillForReminder.pickupDate.plusDays(
                             (reminder.refillPeriodDays * multiplier).toLong()
                         )
@@ -1247,7 +1419,7 @@ fun RecordRefillDialog(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Text("Pills will increase by: ${latestRefill.pillsPerRefill}")
+                Text("Medication count will increase by: ${latestRefill.pillsPerRefill}")
                 Text("Refills: ${latestRefill.refillsRemaining} → ${latestRefill.refillsRemaining - 1}")
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -1289,11 +1461,11 @@ fun NewPrescriptionDialog(
     onAddPrescription: (pillsPerRefill: Int, totalRefills: Int) -> Unit
 ) {
     var pillsPerRefill by remember { mutableStateOf("60") }
-    var totalRefills by remember { mutableStateOf("11") }
+    var totalRefills by remember { mutableStateOf("5") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Prescription Details") },
+        title = { Text("Add Prescription") },
         text = {
             Column {
                 Text(
@@ -1305,7 +1477,7 @@ fun NewPrescriptionDialog(
                 OutlinedTextField(
                     value = pillsPerRefill,
                     onValueChange = { pillsPerRefill = it },
-                    label = { Text("Pills per refill") },
+                    label = { Text("Medication count per refill") },
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -1323,7 +1495,7 @@ fun NewPrescriptionDialog(
             Button(
                 onClick = {
                     val pills = pillsPerRefill.toIntOrNull() ?: 60
-                    val refills = totalRefills.toIntOrNull() ?: 11
+                    val refills = totalRefills.toIntOrNull() ?: 5
                     onAddPrescription(pills, refills)
                 }
             ) {

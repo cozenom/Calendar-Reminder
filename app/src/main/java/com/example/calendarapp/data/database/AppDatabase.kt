@@ -14,7 +14,7 @@ import com.example.calendarapp.data.model.PrescriptionRefill
 
 @Database(
     entities = [MedicationReminder::class, MedicationIntake::class, PrescriptionRefill::class],
-    version = 9,
+    version = 10,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -37,7 +37,8 @@ abstract class AppDatabase : RoomDatabase() {
                     .addMigrations(
                         DatabaseMigrations.MIGRATION_5_6,
                         DatabaseMigrations.MIGRATION_6_7,
-                        DatabaseMigrations.MIGRATION_8_9
+                        DatabaseMigrations.MIGRATION_8_9,
+                        DatabaseMigrations.MIGRATION_9_10
                     )
                     .fallbackToDestructiveMigration() // Temporary: allows app to launch by recreating DB
                     .build()

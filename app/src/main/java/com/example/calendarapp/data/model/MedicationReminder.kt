@@ -15,9 +15,11 @@ data class MedicationReminder(
     val endDate: LocalDate? = null,
     val reminderDays: Set<Int> = setOf(1, 2, 3, 4, 5, 6, 7), // 1 = Monday, 7 = Sunday
 
-    // Inventory tracking fields
+    // Prescription tracking fields
     val dosagePerIntake: Int = 1,                    // Pills per dose (e.g., 1 or 2)
     val currentInventory: Int = 0,                   // Current pill count
-    val inventoryTrackingEnabled: Boolean = false,   // Toggle inventory features
-    val refillPeriodDays: Int = 30                   // Days between refills (default 30)
+    val inventoryTrackingEnabled: Boolean = false,   // Toggle prescription tracking
+    val refillPeriodDays: Int = 30,                  // Days between refills (default 30)
+    val prescriptionPillsPerRefill: Int = 60,        // Pills in each refill bottle
+    val prescriptionTotalRefills: Int = 5            // Total refills authorized on prescription
 )

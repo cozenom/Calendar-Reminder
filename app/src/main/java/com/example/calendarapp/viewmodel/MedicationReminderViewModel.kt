@@ -39,6 +39,18 @@ class MedicationReminderViewModel(application: Application) : AndroidViewModel(a
         MedicationReminderWorker.rescheduleNotifications(getApplication())
     }
 
+    fun insertWithPrescription(
+        reminder: MedicationReminder,
+        pillsPerRefill: Int,
+        totalRefills: Int
+    ) = viewModelScope.launch {
+        val reminderId = repository.insert(reminder)
+        // Note: We don't automatically create a prescription record when enabling tracking
+        // The "Current medication count" field sets the initial inventory
+        // Prescription records are only created when explicitly recording a refill pickup
+        MedicationReminderWorker.rescheduleNotifications(getApplication())
+    }
+
     fun update(reminder: MedicationReminder) = viewModelScope.launch {
         repository.update(reminder)
         MedicationReminderWorker.rescheduleNotifications(getApplication())

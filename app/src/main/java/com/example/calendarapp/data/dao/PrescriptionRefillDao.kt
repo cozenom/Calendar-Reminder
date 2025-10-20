@@ -12,10 +12,10 @@ import java.time.LocalDate
 
 @Dao
 interface PrescriptionRefillDao {
-    @Query("SELECT * FROM prescription_refills WHERE reminderId = :reminderId ORDER BY pickupDate DESC")
+    @Query("SELECT * FROM prescription_refills WHERE reminderId = :reminderId ORDER BY pickupDate DESC, id DESC")
     fun getRefillsForReminder(reminderId: Int): Flow<List<PrescriptionRefill>>
 
-    @Query("SELECT * FROM prescription_refills WHERE reminderId = :reminderId ORDER BY pickupDate DESC LIMIT 1")
+    @Query("SELECT * FROM prescription_refills WHERE reminderId = :reminderId ORDER BY pickupDate DESC, id DESC LIMIT 1")
     suspend fun getLatestRefill(reminderId: Int): PrescriptionRefill?
 
     @Query("SELECT * FROM prescription_refills WHERE pickupDate BETWEEN :start AND :end ORDER BY pickupDate ASC")

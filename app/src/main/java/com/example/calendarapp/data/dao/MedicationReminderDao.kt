@@ -30,7 +30,7 @@ interface MedicationReminderDao {
     @Query("SELECT * FROM medication_reminders WHERE id = :id")
     fun getReminderById(id: Int): Flow<MedicationReminder>
 
-    // Inventory tracking queries
+    // Prescription tracking queries
     @Query("UPDATE medication_reminders SET currentInventory = :inventory WHERE id = :id")
     suspend fun updateInventory(id: Int, inventory: Int)
 

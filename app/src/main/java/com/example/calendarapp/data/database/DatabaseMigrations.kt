@@ -32,15 +32,15 @@ object DatabaseMigrations {
     /**
      * Migration from version 6 to 7.
      *
-     * Adds inventory tracking functionality.
+     * Adds prescription tracking functionality.
      *
      * Changes:
-     * - Add inventory fields to medication_reminders table
+     * - Add prescription tracking fields to medication_reminders table
      * - Create prescription_refills table for refill history
      */
     val MIGRATION_6_7 = object : Migration(6, 7) {
         override fun migrate(db: SupportSQLiteDatabase) {
-            // Add inventory tracking columns to medication_reminders
+            // Add prescription tracking columns to medication_reminders
             db.execSQL("ALTER TABLE medication_reminders ADD COLUMN dosagePerIntake INTEGER NOT NULL DEFAULT 1")
             db.execSQL("ALTER TABLE medication_reminders ADD COLUMN currentInventory INTEGER NOT NULL DEFAULT 0")
             db.execSQL("ALTER TABLE medication_reminders ADD COLUMN inventoryTrackingEnabled INTEGER NOT NULL DEFAULT 0")
@@ -77,6 +77,27 @@ object DatabaseMigrations {
         override fun migrate(db: SupportSQLiteDatabase) {
             // Add refill period column with default of 30 days
             db.execSQL("ALTER TABLE medication_reminders ADD COLUMN refillPeriodDays INTEGER NOT NULL DEFAULT 30")
+        }
+    }
+
+    /**
+     * Migration from version 9 to 10.
+     *
+     * Adds prescription metadata fields to medication reminders.
+     *
+     * Changes:
+     * - Add prescriptionPillsPerRefill column to medication_reminders table
+     * - Add prescriptionTotalRefills column to medication_reminders table
+     *
+     * These fields store prescription details (pills per refill, total refills authorized)
+     * directly on the medication record, eliminating the need to auto-create prescription
+     * refill records when enabling prescription tracking.
+     */
+    val MIGRATION_9_10 = object : Migration(9, 10) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Add prescription metadata columns
+            db.execSQL("ALTER TABLE medication_reminders ADD COLUMN prescriptionPillsPerRefill INTEGER NOT NULL DEFAULT 60")
+            db.execSQL("ALTER TABLE medication_reminders ADD COLUMN prescriptionTotalRefills INTEGER NOT NULL DEFAULT 5")
         }
     }
 }
