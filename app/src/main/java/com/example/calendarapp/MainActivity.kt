@@ -179,10 +179,8 @@ fun MedicationReminderApp(viewModel: MedicationReminderViewModel) {
     if (showAddMedicationDialog) {
         AddMedicationDialog(
             onDismiss = { showAddMedicationDialog = false },
-            onAddReminder = { reminder, _, _ ->
-                // Prescription details are now stored in the reminder itself
-                // No need to pass them separately
-                viewModel.insert(reminder)
+            onAddReminder = { reminder, pillsPerRefill, totalRefills ->
+                viewModel.insertWithPrescription(reminder, pillsPerRefill, totalRefills)
                 showAddMedicationDialog = false
             },
             reminders = viewModel.allReminders.collectAsState(initial = emptyList()).value
@@ -204,7 +202,6 @@ fun MedicationsTab(viewModel: MedicationReminderViewModel) {
             reminders = reminders,
             intakes = intakes,
             onDeleteReminder = { viewModel.delete(it) },
-            onEditReminder = { viewModel.update(it) },
             viewModel = viewModel
         )
     }
@@ -232,7 +229,6 @@ fun ReminderList(
     reminders: List<MedicationReminder>,
     intakes: List<MedicationIntake>,
     onDeleteReminder: (MedicationReminder) -> Unit,
-    onEditReminder: (MedicationReminder) -> Unit,
     viewModel: MedicationReminderViewModel
 ) {
     LazyColumn {
@@ -241,7 +237,6 @@ fun ReminderList(
                 reminder = reminder,
                 intakes = intakes.filter { it.reminderId == reminder.id },
                 onDelete = { onDeleteReminder(reminder) },
-                onEdit = { onEditReminder(it) },
                 viewModel = viewModel
             )
         }
@@ -253,7 +248,6 @@ fun ReminderItem(
     reminder: MedicationReminder,
     intakes: List<MedicationIntake>,
     onDelete: () -> Unit,
-    onEdit: (MedicationReminder) -> Unit,
     viewModel: MedicationReminderViewModel
 ) {
     var isEditing by remember { mutableStateOf(false) }
@@ -273,9 +267,8 @@ fun ReminderItem(
     var editedRefillPeriodDays by remember { mutableStateOf(reminder.refillPeriodDays.toString()) }
 
     // Get latest refill info
-    val refills by viewModel.getRefillsForReminder(reminder.id)
-        .collectAsState(initial = emptyList())
-    val latestRefill = refills.firstOrNull()
+    val latestRefill by viewModel.getLatestRefillFlow(reminder.id)
+        .collectAsState(initial = null)
 
     // Initialize prescription fields with actual values from reminder
     var editedPillsPerRefill by remember { mutableStateOf(reminder.prescriptionPillsPerRefill.toString()) }
@@ -415,7 +408,7 @@ fun ReminderItem(
                     }
 
                     // Refill management buttons
-                    if (latestRefill != null && latestRefill.refillsRemaining > 0) {
+                    if ((latestRefill?.refillsRemaining ?: 0) > 0) {
                         Button(
                             onClick = { showRecordRefillDialog = true },
                             modifier = Modifier.fillMaxWidth()
@@ -440,21 +433,24 @@ fun ReminderItem(
                 Row {
                     Button(
                         onClick = {
-                            onEdit(
-                                reminder.copy(
-                                    medicationName = editedName,
-                                    reminderTimes = editedTimes,
-                                    frequency = editedFrequency,
-                                    startDate = editedStartDate,
-                                    endDate = editedEndDate,
-                                    reminderDays = editedReminderDays,
-                                    dosagePerIntake = editedDosagePerIntake.toIntOrNull() ?: 1,
-                                    currentInventory = editedCurrentInventory.toIntOrNull() ?: 0,
-                                    inventoryTrackingEnabled = editedInventoryTrackingEnabled,
-                                    refillPeriodDays = editedRefillPeriodDays.toIntOrNull() ?: 30,
-                                    prescriptionPillsPerRefill = editedPillsPerRefill.toIntOrNull() ?: 60,
-                                    prescriptionTotalRefills = editedTotalRefills.toIntOrNull() ?: 5
-                                )
+                            val updatedReminder = reminder.copy(
+                                medicationName = editedName,
+                                reminderTimes = editedTimes,
+                                frequency = editedFrequency,
+                                startDate = editedStartDate,
+                                endDate = editedEndDate,
+                                reminderDays = editedReminderDays,
+                                dosagePerIntake = editedDosagePerIntake.toIntOrNull() ?: 1,
+                                currentInventory = editedCurrentInventory.toIntOrNull() ?: 0,
+                                inventoryTrackingEnabled = editedInventoryTrackingEnabled,
+                                refillPeriodDays = editedRefillPeriodDays.toIntOrNull() ?: 30,
+                                prescriptionPillsPerRefill = editedPillsPerRefill.toIntOrNull() ?: 60,
+                                prescriptionTotalRefills = editedTotalRefills.toIntOrNull() ?: 5
+                            )
+                            viewModel.updateWithPrescription(
+                                updatedReminder,
+                                editedPillsPerRefill.toIntOrNull() ?: 60,
+                                editedTotalRefills.toIntOrNull() ?: 5
                             )
                             isEditing = false
                         },
@@ -594,7 +590,7 @@ fun ReminderItem(
                     // Refill management buttons
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    if (latestRefill != null && latestRefill.refillsRemaining > 0) {
+                    if ((latestRefill?.refillsRemaining ?: 0) > 0) {
                         Button(
                             onClick = { showRecordRefillDialog = true },
                             modifier = Modifier.fillMaxWidth()
@@ -614,14 +610,6 @@ fun ReminderItem(
                             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                             style = MaterialTheme.typography.bodySmall
                         )
-                    } else {
-                        // No prescription on file
-                        Button(
-                            onClick = { showNewPrescriptionDialog = true },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Add Prescription")
-                        }
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -664,16 +652,18 @@ fun ReminderItem(
     }
 
     // Record Refill Dialog
-    if (showRecordRefillDialog && latestRefill != null) {
-        RecordRefillDialog(
-            reminder = reminder,
-            latestRefill = latestRefill,
-            onDismiss = { showRecordRefillDialog = false },
-            onRecordRefill = { pickupDate ->
-                viewModel.recordRefillPickup(reminder.id, reminder, latestRefill)
-                showRecordRefillDialog = false
-            }
-        )
+    if (showRecordRefillDialog) {
+        latestRefill?.let { refill ->
+            RecordRefillDialog(
+                reminder = reminder,
+                latestRefill = refill,
+                onDismiss = { showRecordRefillDialog = false },
+                onRecordRefill = { pickupDate ->
+                    viewModel.recordRefillPickup(reminder.id, reminder, refill, pickupDate)
+                    showRecordRefillDialog = false
+                }
+            )
+        }
     }
 
     // New Prescription Dialog
@@ -1022,13 +1012,14 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
     val selectedDateIntakes by viewModel.getIntakesForDate(selectedDate)
         .collectAsState(initial = emptyList())
     val refills by viewModel.getRefillsForMonth(currentMonth).collectAsState(initial = emptyList())
+    val allRefills by viewModel.getAllRefills().collectAsState(initial = emptyList())
 
     // Calculate estimated refill due dates (based on custom refill period from last pickup)
-    val estimatedRefillDates = remember(allReminders, refills) {
+    val estimatedRefillDates = remember(allReminders, allRefills) {
         allReminders.filter { it.inventoryTrackingEnabled }
             .flatMap { reminder ->
                 // Find the latest refill for this reminder
-                val latestRefillForReminder = refills
+                val latestRefillForReminder = allRefills
                     .filter { it.reminderId == reminder.id }
                     .maxByOrNull { it.pickupDate }
 

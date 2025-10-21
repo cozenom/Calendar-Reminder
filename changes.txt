@@ -1,6 +1,205 @@
 MEDICATION REMINDER APP - CHANGE LOG
 =====================================
 
+Session: 2025-10-20 - Automatic Prescription Setup & Orange Dots Fix
+---------------------------------------------------------------------
+
+BUG FIXES:
+
+* Fixed Refills Remaining Not Decrementing After Recording Pickup (MAJOR BUG)
+  - Problem: After recording a refill pickup, the "Refills remaining" count in medication card didn't decrease
+  - Symptom: User records pickup → Dialog closes → Medication card still shows old count (e.g., 5/5 instead of 4/5)
+  - Root cause: UI was fetching full refills list and taking firstOrNull(), which may not update reactively
+  - Why it failed: Flow-based query on full list wasn't triggering UI recomposition reliably when new entry added
+  - Solution: Created dedicated getLatestRefillFlow() query with LIMIT 1 for more efficient and reliable updates
+  - Follow-up fix: Fixed smart cast errors caused by nullable Flow<PrescriptionRefill?>
+  - Used safe call operators (latestRefill?.refillsRemaining ?: 0) and .let blocks for null handling
+  - Result: Recording pickup now immediately decrements the displayed count without compiler errors
+  - Technical improvement: Single-row query with LIMIT 1 is more efficient than fetching full list
+  - Locations: PrescriptionRefillDao.kt:21-22, PrescriptionRefillRepository.kt:30-32, MedicationReminderViewModel.kt:132-134, MainActivity.kt:270-271,411,593,655-666
+
+* Fixed Date Picker Not Working for Refill Pickups (MAJOR BUG)
+  - Problem: RecordRefillDialog has a date picker to select pickup date, but selected date was never used
+  - Symptom: User selects "picked up 2 days early" → System records as today → Orange dots don't shift
+  - Root cause: pickupDate parameter captured in callback but never passed to ViewModel or repository
+  - Why it failed: ViewModel.recordRefillPickup() didn't accept pickupDate parameter, always defaulted to LocalDate.now()
+  - Real-world use cases: Pharmacy fills early, user picks up late due to schedule, recording past pickups
+  - Solution: Added pickupDate parameter to recordRefillPickup() method in ViewModel (defaults to today for quick workflow)
+  - Updated MainActivity.kt callback to pass pickupDate from dialog to ViewModel
+  - Result: Early pickups shift orange dots earlier, late pickups shift orange dots later
+  - Example: Pick up 2 days early → Orange dots shift 2 days earlier for all future refills
+  - Locations: MedicationReminderViewModel.kt:136,138, MainActivity.kt:662
+
+* Fixed Editing Total Refills Not Updating Orange Dots (MAJOR BUG)
+  - Problem: When editing "Total refills authorized" field, orange dots didn't update to reflect the new count
+  - Symptom: User could change refills from 5 to 10, but calendar still showed only 5 future orange dots
+  - Root cause: updateWithPrescription() only updated MedicationReminder table, not PrescriptionRefill table
+  - Why it failed: Orange dots calculate from PrescriptionRefill.refillsRemaining, which was never updated during edit
+  - Solution: Added updateLatestRefillCounts() repository method to sync prescription records when editing
+  - Logic: Calculates difference between old and new totalRefills, adjusts refillsRemaining accordingly
+  - Example: Had 5 refills with 3 remaining → Edit to 10 total → Now 8 remaining (3 + difference of 5)
+  - Result: Editing prescription details now immediately updates orange dots on calendar
+  - Locations: PrescriptionRefillDao.kt:27-28, PrescriptionRefillRepository.kt:30-55, MedicationReminderViewModel.kt:73-74
+
+* Fixed Orange Dots Only Showing in Current Month (MAJOR BUG)
+  - Problem: Orange dots (estimated future refill dates) only displayed when viewing the current month
+  - Symptom: When navigating to future months in calendar, orange dots disappeared
+  - Root cause: estimatedRefillDates calculation used getRefillsForMonth(currentMonth), which only fetched refills from the currently viewed month
+  - Why it failed: When viewing future months with no past pickups, refills list was empty, so no estimated dates were calculated
+  - Solution: Created getAllRefills() function to fetch ALL refill records across all time
+  - Updated estimatedRefillDates calculation to use allRefills instead of month-limited refills
+  - Result: Orange dots now appear correctly in all future months where estimated refills are calculated
+  - Locations: PrescriptionRefillDao.kt:24-25, PrescriptionRefillRepository.kt:22-24, MedicationReminderViewModel.kt:120-122, MainActivity.kt:1014,1017,1021
+
+* Fixed Orange Dots Not Appearing
+  - Problem: Orange dots disappeared after removing "Add Prescription" button
+  - Root cause: recordNewPrescription() was adding pills to inventory on top of user's entered count
+  - Example: User enters 60 pills → system adds 60 more → 120 total (incorrect)
+  - Solution: Created new initializePrescriptionTracking() function
+  - New function creates prescription record WITHOUT modifying inventory
+  - Locations: PrescriptionRefillRepository.kt:31-45, MedicationReminderViewModel.kt:50,70
+
+NEW FEATURES:
+
+* Automatic Prescription Record Creation
+  - Prescription records now created automatically when enabling tracking
+  - No separate "Add Prescription" button needed for initial setup
+  - Happens both when creating new medications and editing existing ones
+  - Locations: MedicationReminderViewModel.kt:42-53,60-74
+
+IMPROVEMENTS:
+
+* Removed Redundant "Add Prescription" Button
+  - Removed button that appeared when no prescription was on file
+  - Prescription setup now happens automatically when toggle is enabled
+  - Kept "Add New Prescription" button for when refills are exhausted (user needs new script)
+  - Location: MainActivity.kt:595-615 (removed lines)
+
+* Simplified Edit Mode Save Process
+  - Edit mode now calls updateWithPrescription() instead of just onEdit()
+  - Automatically handles prescription record creation if needed
+  - Prescription details saved alongside other medication fields
+  - Location: MainActivity.kt:440-460
+
+TECHNICAL CHANGES:
+
+* New DAO Query: getLatestRefillFlow()
+  - Returns Flow<PrescriptionRefill?> for single latest refill with reactive updates
+  - Uses LIMIT 1 for efficient single-row query instead of fetching full list
+  - Orders by pickupDate DESC, id DESC to get most recent pickup
+  - More reliable for UI updates than fetching full list and taking firstOrNull()
+  - Location: PrescriptionRefillDao.kt:21-22
+
+* New Repository Function: getLatestRefillFlow()
+  - Exposes getLatestRefillFlow() from DAO to repository layer
+  - Used for efficient, reactive latest refill updates in UI
+  - Location: PrescriptionRefillRepository.kt:30-32
+
+* New ViewModel Function: getLatestRefillFlow()
+  - Exposes getLatestRefillFlow() from repository to UI layer
+  - Used by ReminderItem to display current refills remaining count
+  - Location: MedicationReminderViewModel.kt:132-134
+
+* Updated MainActivity.kt ReminderItem
+  - Changed from getRefillsForReminder().collectAsState().firstOrNull() to getLatestRefillFlow().collectAsState()
+  - More efficient: single-row query instead of full list
+  - More reliable: dedicated Flow for single row updates better than list firstOrNull()
+  - Location: MainActivity.kt:270-271
+
+* Fixed Smart Cast Errors in MainActivity.kt
+  - latestRefill is now nullable (Flow<PrescriptionRefill?>) which prevents smart casting after null checks
+  - Replaced null check patterns with safe call operators: (latestRefill?.refillsRemaining ?: 0)
+  - Used .let blocks for multiple references: latestRefill?.let { refill -> ... }
+  - Locations: MainActivity.kt:411,593,655-666
+
+* Updated ViewModel Function: recordRefillPickup()
+  - Added pickupDate parameter with default value of LocalDate.now()
+  - Passes pickupDate to repository method
+  - Default behavior: Quick "Record Pickup" uses today's date (no date selection needed)
+  - Custom behavior: User can select different date via date picker → Orange dots shift accordingly
+  - Location: MedicationReminderViewModel.kt:132-140 (added parameter at line 136, passed at line 138)
+
+* Updated MainActivity.kt Callback
+  - onRecordRefill callback now passes pickupDate to ViewModel
+  - Previously captured pickupDate but never used it
+  - Now properly wires date picker selection through to database
+  - Location: MainActivity.kt:661-664 (updated line 662)
+
+* New DAO Query: updateRefillCounts()
+  - Updates totalRefillsAuthorized and refillsRemaining for a specific refill record
+  - Efficient query-based update without fetching full object
+  - Location: PrescriptionRefillDao.kt:27-28
+
+* New Repository Function: updateLatestRefillCounts()
+  - Updates prescription refill counts when user edits medication details
+  - Calculates difference between old and new totalRefills
+  - Adjusts refillsRemaining by the difference (e.g., 3 remaining + difference of 5 = 8 remaining)
+  - Also updates pillsPerRefill if changed
+  - Called from updateWithPrescription() when prescription record exists
+  - Location: PrescriptionRefillRepository.kt:30-55
+
+* Updated ViewModel Function: updateWithPrescription()
+  - Now calls updateLatestRefillCounts() when prescription record exists
+  - Syncs both MedicationReminder and PrescriptionRefill tables
+  - Ensures orange dots reflect edited refill counts immediately
+  - Location: MedicationReminderViewModel.kt:60-78 (updated logic at lines 73-74)
+
+* New DAO Query: getAllRefills()
+  - Fetches all prescription refill records across all dates (not limited to a date range)
+  - Returns Flow<List<PrescriptionRefill>> ordered by pickupDate ascending
+  - Location: PrescriptionRefillDao.kt:24-25
+
+* New Repository Function: getAllRefills()
+  - Exposes getAllRefills() from DAO to repository layer
+  - Used for calculating estimated refill dates across all calendar months
+  - Location: PrescriptionRefillRepository.kt:22-24
+
+* New ViewModel Function: getAllRefills()
+  - Exposes getAllRefills() from repository to UI layer
+  - Used by CalendarTab to calculate estimated refill dates for all months
+  - Location: MedicationReminderViewModel.kt:120-122
+
+* Updated CalendarTab estimatedRefillDates Calculation
+  - Now uses allRefills instead of month-limited refills
+  - Calculates estimated dates based on ALL refill records, not just current month
+  - remember() dependency changed from 'refills' to 'allRefills'
+  - Location: MainActivity.kt:1014,1017,1021
+
+* New Repository Function: initializePrescriptionTracking()
+  - Creates prescription refill record without modifying inventory
+  - Used for initial setup when user already specified their current count
+  - Separate from recordNewPrescription() which adds pills (for actual pickups)
+  - Location: PrescriptionRefillRepository.kt:31-45
+
+* New ViewModel Function: updateWithPrescription()
+  - Handles medication updates with automatic prescription initialization
+  - Checks if prescription record exists before creating new one
+  - Only creates record if tracking is enabled and no record exists
+  - Location: MedicationReminderViewModel.kt:60-74
+
+* Modified Files:
+  - PrescriptionRefillDao.kt: Added getAllRefills() query, updateRefillCounts() query, getLatestRefillFlow() query
+  - PrescriptionRefillRepository.kt: Added getAllRefills(), initializePrescriptionTracking(), updateLatestRefillCounts(), getLatestRefillFlow()
+  - MedicationReminderViewModel.kt: Added getAllRefills(), getLatestRefillFlow(), updated insert and update functions, updateWithPrescription() now syncs refill records, recordRefillPickup() now accepts pickupDate parameter
+  - MainActivity.kt: Updated CalendarTab to use allRefills, removed "Add Prescription" button, updated edit save logic, updated onRecordRefill callback to pass pickupDate, ReminderItem now uses getLatestRefillFlow() for refills remaining display
+
+USER WORKFLOW:
+
+* Before:
+  1. Enable prescription tracking → Save
+  2. Open medication → Click "Add Prescription" button
+  3. Enter prescription details
+  4. Orange dots appear (maybe)
+
+* After:
+  1. Enable prescription tracking
+  2. Fill in all fields (including prescription details)
+  3. Save
+  4. Orange dots appear immediately ✓
+  5. Inventory stays exactly what you entered ✓
+
+---
+
 Session: 2025-10-19 (Part 6) - Inventory Editing & Orange Dots Fix
 -------------------------------------------------------------------
 

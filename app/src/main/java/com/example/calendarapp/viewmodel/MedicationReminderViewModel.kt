@@ -45,14 +45,35 @@ class MedicationReminderViewModel(application: Application) : AndroidViewModel(a
         totalRefills: Int
     ) = viewModelScope.launch {
         val reminderId = repository.insert(reminder)
-        // Note: We don't automatically create a prescription record when enabling tracking
-        // The "Current medication count" field sets the initial inventory
-        // Prescription records are only created when explicitly recording a refill pickup
+        // Automatically initialize prescription tracking if enabled
+        if (reminder.inventoryTrackingEnabled) {
+            refillRepository.initializePrescriptionTracking(reminderId.toInt(), pillsPerRefill, totalRefills)
+        }
         MedicationReminderWorker.rescheduleNotifications(getApplication())
     }
 
     fun update(reminder: MedicationReminder) = viewModelScope.launch {
         repository.update(reminder)
+        MedicationReminderWorker.rescheduleNotifications(getApplication())
+    }
+
+    fun updateWithPrescription(
+        reminder: MedicationReminder,
+        pillsPerRefill: Int,
+        totalRefills: Int
+    ) = viewModelScope.launch {
+        repository.update(reminder)
+        // If tracking is enabled, sync prescription record
+        if (reminder.inventoryTrackingEnabled) {
+            val existingRefill = refillRepository.getLatestRefill(reminder.id)
+            if (existingRefill == null) {
+                // No prescription record exists, initialize it
+                refillRepository.initializePrescriptionTracking(reminder.id, pillsPerRefill, totalRefills)
+            } else {
+                // Prescription record exists, update the counts to match edited values
+                refillRepository.updateLatestRefillCounts(reminder.id, totalRefills, pillsPerRefill)
+            }
+        }
         MedicationReminderWorker.rescheduleNotifications(getApplication())
     }
 
@@ -100,16 +121,25 @@ class MedicationReminderViewModel(application: Application) : AndroidViewModel(a
         )
     }
 
+    fun getAllRefills(): Flow<List<PrescriptionRefill>> {
+        return refillRepository.getAllRefills()
+    }
+
     suspend fun getLatestRefill(reminderId: Int): PrescriptionRefill? {
         return refillRepository.getLatestRefill(reminderId)
+    }
+
+    fun getLatestRefillFlow(reminderId: Int): Flow<PrescriptionRefill?> {
+        return refillRepository.getLatestRefillFlow(reminderId)
     }
 
     fun recordRefillPickup(
         reminderId: Int,
         currentReminder: MedicationReminder,
-        latestRefill: PrescriptionRefill
+        latestRefill: PrescriptionRefill,
+        pickupDate: LocalDate = LocalDate.now()
     ) = viewModelScope.launch {
-        refillRepository.recordRefillPickup(reminderId, currentReminder, latestRefill)
+        refillRepository.recordRefillPickup(reminderId, currentReminder, latestRefill, pickupDate)
         MedicationReminderWorker.rescheduleNotifications(getApplication())
     }
 

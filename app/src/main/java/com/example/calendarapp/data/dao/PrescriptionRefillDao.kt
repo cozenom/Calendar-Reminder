@@ -18,8 +18,17 @@ interface PrescriptionRefillDao {
     @Query("SELECT * FROM prescription_refills WHERE reminderId = :reminderId ORDER BY pickupDate DESC, id DESC LIMIT 1")
     suspend fun getLatestRefill(reminderId: Int): PrescriptionRefill?
 
+    @Query("SELECT * FROM prescription_refills WHERE reminderId = :reminderId ORDER BY pickupDate DESC, id DESC LIMIT 1")
+    fun getLatestRefillFlow(reminderId: Int): Flow<PrescriptionRefill?>
+
     @Query("SELECT * FROM prescription_refills WHERE pickupDate BETWEEN :start AND :end ORDER BY pickupDate ASC")
     fun getRefillsForDateRange(start: LocalDate, end: LocalDate): Flow<List<PrescriptionRefill>>
+
+    @Query("SELECT * FROM prescription_refills ORDER BY pickupDate ASC")
+    fun getAllRefills(): Flow<List<PrescriptionRefill>>
+
+    @Query("UPDATE prescription_refills SET totalRefillsAuthorized = :totalRefills, refillsRemaining = :refillsRemaining WHERE id = :refillId")
+    suspend fun updateRefillCounts(refillId: Int, totalRefills: Int, refillsRemaining: Int)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(refill: PrescriptionRefill): Long
