@@ -18,9 +18,8 @@ local.properties
 *.dex
 output.json
 
-# Ignore all text files except changes.txt
+# Ignore all text files (including changes.txt for local dev notes)
 *.txt
-!changes.txt
 
 # Ignore all markdown files except README.md and schemas/README.md
 *.md

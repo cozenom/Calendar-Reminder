@@ -528,16 +528,24 @@ fun ReminderItem(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Inventory count with modern styling
+                    // Calculate days of supply remaining
+                    val dailyConsumption = reminder.frequency * reminder.dosagePerIntake
+                    val daysRemaining = if (dailyConsumption > 0) {
+                        reminder.currentInventory / dailyConsumption
+                    } else 0
+
+                    // Inventory count with 3-tier color coding based on days remaining
                     val inventoryContainerColor = when {
-                        reminder.currentInventory == 0 -> MaterialTheme.colorScheme.errorContainer
-                        reminder.currentInventory <= 10 -> MaterialTheme.colorScheme.tertiaryContainer
-                        else -> MaterialTheme.colorScheme.primaryContainer
+                        reminder.currentInventory == 0 -> Color(0xFFFFCDD2) // Darker red for empty
+                        daysRemaining <= 3 -> Color(0xFFFFEBEE) // Light red for urgent (≤3 days)
+                        daysRemaining < 7 -> Color(0xFFFFF3E0) // Light orange for warning (<7 days)
+                        else -> Color(0xFFE8F5E9) // Light green for good stock (>7 days)
                     }
                     val inventoryContentColor = when {
-                        reminder.currentInventory == 0 -> MaterialTheme.colorScheme.onErrorContainer
-                        reminder.currentInventory <= 10 -> MaterialTheme.colorScheme.onTertiaryContainer
-                        else -> MaterialTheme.colorScheme.onPrimaryContainer
+                        reminder.currentInventory == 0 -> Color(0xFFB71C1C) // Dark red text for empty
+                        daysRemaining <= 3 -> Color(0xFFC62828) // Dark red text for urgent
+                        daysRemaining < 7 -> Color(0xFFE65100) // Dark orange text for warning
+                        else -> Color(0xFF2E7D32) // Dark green text for good stock
                     }
 
                     androidx.compose.material3.Surface(
@@ -582,11 +590,12 @@ fun ReminderItem(
                         )
                     }
 
-                    if (reminder.currentInventory <= 10 && reminder.currentInventory > 0) {
+                    // Warning messages based on days remaining
+                    if (daysRemaining <= 3 && reminder.currentInventory > 0) {
                         Spacer(modifier = Modifier.height(8.dp))
                         androidx.compose.material3.Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.tertiaryContainer,
+                            color = Color(0xFFFFEBEE), // Light red
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
@@ -596,13 +605,39 @@ fun ReminderItem(
                                 Text(
                                     "⚠",
                                     style = MaterialTheme.typography.titleMedium,
-                                    modifier = Modifier.padding(end = 8.dp)
+                                    modifier = Modifier.padding(end = 8.dp),
+                                    color = Color(0xFFC62828) // Dark red
                                 )
                                 Text(
-                                    "Low inventory! Time to pick up refill.",
+                                    "Only $daysRemaining days left! Refill urgently needed.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                    color = Color(0xFFC62828) // Dark red
+                                )
+                            }
+                        }
+                    } else if (daysRemaining < 7 && reminder.currentInventory > 0) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        androidx.compose.material3.Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFFFFF3E0), // Light orange
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "⚠",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    modifier = Modifier.padding(end = 8.dp),
+                                    color = Color(0xFFE65100) // Dark orange
+                                )
+                                Text(
+                                    "$daysRemaining days remaining. Time to pick up refill.",
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                    color = Color(0xFFE65100) // Dark orange
                                 )
                             }
                         }
@@ -610,7 +645,7 @@ fun ReminderItem(
                         Spacer(modifier = Modifier.height(8.dp))
                         androidx.compose.material3.Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.errorContainer,
+                            color = Color(0xFFFFCDD2), // Darker red
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
@@ -620,13 +655,14 @@ fun ReminderItem(
                                 Text(
                                     "⚠",
                                     style = MaterialTheme.typography.titleMedium,
-                                    modifier = Modifier.padding(end = 8.dp)
+                                    modifier = Modifier.padding(end = 8.dp),
+                                    color = Color(0xFFB71C1C) // Dark red
                                 )
                                 Text(
                                     "No medication remaining!",
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                    color = Color(0xFFB71C1C) // Dark red
                                 )
                             }
                         }
@@ -646,7 +682,7 @@ fun ReminderItem(
                     } else if (latestRefill?.refillsRemaining == 0) {
                         androidx.compose.material3.Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.errorContainer,
+                            color = Color(0xFFFFCDD2), // Darker red
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
@@ -654,13 +690,14 @@ fun ReminderItem(
                                     Text(
                                         "⚠",
                                         style = MaterialTheme.typography.titleMedium,
-                                        modifier = Modifier.padding(end = 8.dp)
+                                        modifier = Modifier.padding(end = 8.dp),
+                                        color = Color(0xFFB71C1C) // Dark red
                                     )
                                     Text(
                                         "No refills left. Get new prescription from doctor.",
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                        color = Color(0xFFB71C1C) // Dark red
                                     )
                                 }
                             }
