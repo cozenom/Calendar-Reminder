@@ -27,6 +27,10 @@ class MedicationReminderRepository(
 
     suspend fun update(reminder: MedicationReminder) {
         medicationReminderDao.updateReminder(reminder)
+        // Delete all future intakes for this reminder
+        medicationIntakeDao.deleteFutureIntakesForReminder(reminder.id, LocalDateTime.now())
+        // Regenerate intakes with updated schedule
+        generateIntakesForReminder(reminder)
     }
 
     suspend fun delete(reminder: MedicationReminder) {

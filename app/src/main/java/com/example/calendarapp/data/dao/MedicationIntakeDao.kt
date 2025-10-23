@@ -44,4 +44,7 @@ interface MedicationIntakeDao {
 
     @Query("SELECT * FROM medication_intake WHERE intakeDateTime > :now ORDER BY intakeDateTime ASC")
     suspend fun getFutureIntakes(now: LocalDateTime): List<MedicationIntake>
+
+    @Query("DELETE FROM medication_intake WHERE reminderId = :reminderId AND intakeDateTime > :fromDateTime")
+    suspend fun deleteFutureIntakesForReminder(reminderId: Int, fromDateTime: LocalDateTime)
 }

@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -69,6 +70,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
@@ -1022,12 +1024,13 @@ fun FrequencySelector(frequency: Int, onFrequencyChange: (Int) -> Unit) {
         Spacer(modifier = Modifier.width(8.dp))
         Button(
             onClick = { if (frequency > 1) onFrequencyChange(frequency - 1) },
-            modifier = Modifier.width(48.dp)
+            modifier = Modifier.width(48.dp),
+            contentPadding = PaddingValues(0.dp)
         ) {
             Text(
                 text = "-",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                fontSize = 20.sp,
+                color = Color.White
             )
         }
         Text(
@@ -1036,12 +1039,13 @@ fun FrequencySelector(frequency: Int, onFrequencyChange: (Int) -> Unit) {
         )
         Button(
             onClick = { onFrequencyChange(frequency + 1) },
-            modifier = Modifier.width(48.dp)
+            modifier = Modifier.width(48.dp),
+            contentPadding = PaddingValues(0.dp)
         ) {
             Text(
                 text = "+",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                fontSize = 20.sp,
+                color = Color.White
             )
         }
     }
