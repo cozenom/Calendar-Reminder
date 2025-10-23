@@ -4,6 +4,26 @@ MEDICATION REMINDER APP - CHANGE LOG
 Session: 2025-10-22 - Major UI/UX Visual Design Overhaul
 ---------------------------------------------------------
 
+UX IMPROVEMENTS:
+
+* Removed "Today's Intakes" Section from Medications Tab
+  - Cleaned up medication cards by removing redundant intake display
+  - Cards now 30-40% shorter and faster to scroll through
+  - Better separation of concerns:
+    • Medications tab = manage/configure medications
+    • Calendar tab = track daily intakes (primary tracking interface)
+  - Removed unnecessary database queries from Medications tab
+  - All intake tracking functionality remains in Calendar tab
+  - Cleaner, more focused user interface
+  - Locations: MainActivity.kt (removed ~55 lines from ReminderItem, simplified MedicationsTab, ReminderList)
+
+* Fixed Calendar Event Colors
+  - Medication event items below calendar now use clear light green/red colors
+  - Taken: Light green background (#E8F5E9) with dark green text (#2E7D32)
+  - Not Taken: Light red background (#FFEBEE) with dark red text (#C62828)
+  - Easy visual recognition at a glance
+  - Location: MainActivity.kt:1577-1586
+
 DEPENDENCY UPDATES:
 
 * Updated Compose BOM from 2023.08.00 → 2024.10.01

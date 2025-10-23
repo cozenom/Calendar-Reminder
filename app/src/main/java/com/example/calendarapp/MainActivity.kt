@@ -192,15 +192,12 @@ fun MedicationReminderApp(viewModel: MedicationReminderViewModel) {
 @Composable
 fun MedicationsTab(viewModel: MedicationReminderViewModel) {
     val reminders by viewModel.allReminders.collectAsState(initial = emptyList())
-    val currentDate = remember { LocalDate.now() }
-    val intakes by viewModel.getIntakesForDate(currentDate).collectAsState(initial = emptyList())
 
     Column(modifier = Modifier.padding(16.dp)) {
         Text("Your Medications", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(16.dp))
         ReminderList(
             reminders = reminders,
-            intakes = intakes,
             onDeleteReminder = { viewModel.delete(it) },
             viewModel = viewModel
         )
@@ -227,7 +224,6 @@ fun AddMedicationDialog(
 @Composable
 fun ReminderList(
     reminders: List<MedicationReminder>,
-    intakes: List<MedicationIntake>,
     onDeleteReminder: (MedicationReminder) -> Unit,
     viewModel: MedicationReminderViewModel
 ) {
@@ -235,7 +231,6 @@ fun ReminderList(
         items(reminders) { reminder ->
             ReminderItem(
                 reminder = reminder,
-                intakes = intakes.filter { it.reminderId == reminder.id },
                 onDelete = { onDeleteReminder(reminder) },
                 viewModel = viewModel
             )
@@ -246,7 +241,6 @@ fun ReminderList(
 @Composable
 fun ReminderItem(
     reminder: MedicationReminder,
-    intakes: List<MedicationIntake>,
     onDelete: () -> Unit,
     viewModel: MedicationReminderViewModel
 ) {
@@ -273,9 +267,6 @@ fun ReminderItem(
     // Initialize prescription fields with actual values from reminder
     var editedPillsPerRefill by remember { mutableStateOf(reminder.prescriptionPillsPerRefill.toString()) }
     var editedTotalRefills by remember { mutableStateOf(reminder.prescriptionTotalRefills.toString()) }
-
-    val currentDate = LocalDate.now()
-    val currentDayIntakes = intakes.filter { it.intakeDateTime.toLocalDate() == currentDate }
 
     Card(
         modifier = Modifier
@@ -518,68 +509,7 @@ fun ReminderItem(
                     reminder.reminderDays.sorted().joinToString(", ") { getDayName(it) }
                 }")
 
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Display intakes for the current day with status
-                Text(
-                    "Today's Intakes",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                if (currentDayIntakes.isNotEmpty()) {
-                    currentDayIntakes.forEach { intake ->
-                        val containerColor = if (intake.taken) {
-                            MaterialTheme.colorScheme.primaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.errorContainer
-                        }
-                        val contentColor = if (intake.taken) {
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.onErrorContainer
-                        }
-                        val statusIcon = if (intake.taken) "✓" else "✗"
-
-                        androidx.compose.material3.Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            color = containerColor
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = statusIcon,
-                                    style = MaterialTheme.typography.titleLarge,
-                                    color = contentColor,
-                                    modifier = Modifier.padding(end = 12.dp)
-                                )
-                                Text(
-                                    text = intake.intakeDateTime.format(
-                                        DateTimeFormatter.ofPattern("HH:mm")
-                                    ),
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
-                                    color = contentColor,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Text(
-                                    text = if (intake.taken) "Taken" else "Not Taken",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = contentColor
-                                )
-                            }
-                        }
-                    }
-                } else {
-                    Text("No intakes scheduled for today")
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 // Inventory status display
                 if (reminder.inventoryTrackingEnabled) {
