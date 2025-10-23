@@ -1,6 +1,161 @@
 MEDICATION REMINDER APP - CHANGE LOG
 =====================================
 
+Session: 2025-10-22 - Major UI/UX Visual Design Overhaul
+---------------------------------------------------------
+
+DEPENDENCY UPDATES:
+
+* Updated Compose BOM from 2023.08.00 → 2024.10.01
+  - Brings Material3 from ~1.0.x to 1.3.x (15+ months of updates)
+  - Enables access to latest Material Design 3 components
+  - Includes HorizontalDivider and other newer APIs
+  - Better performance and stability improvements
+  - Bug fixes and optimizations from 15 months of development
+  - Future-proofs the app with latest stable Compose libraries
+  - Fully backward compatible with existing code
+
+IMPROVEMENTS:
+
+* Complete Visual Design Modernization
+  - Transformed entire app with modern Material Design 3 aesthetic
+  - Replaced all harsh, outdated colors with professional Material Theme color system
+  - Added elevation, shadows, and depth throughout for premium feel
+  - Increased corner radius to 12dp-16dp for softer, more modern appearance
+  - Enhanced spacing and padding (16dp → 20dp in cards) for better breathing room
+  - Professional, polished look that matches modern Android design standards
+
+* Medication Cards Redesign
+  - Cards now feature 16dp rounded corners with 4dp elevation for depth
+  - Increased internal padding from 16dp to 20dp for more spacious feel
+  - Intake status indicators completely redesigned:
+    • Replaced harsh red/green backgrounds with Material Theme containers
+    • Added checkmark (✓) and X (✗) icons for instant visual recognition
+    • Used primaryContainer/errorContainer for subtle, professional colors
+    • Surface-based design with 12dp rounded corners
+  - Prescription tracking section features prominent card with large number display
+  - Inventory warnings now in attractive colored surfaces with icons
+  - Improved button layout with equal-width responsive design
+  - Edit/Delete buttons use Button + OutlinedButton for visual hierarchy
+  - All buttons feature 12dp rounded corners for consistency
+
+* Calendar Visual Improvements
+  - Added comprehensive legend explaining all indicator types:
+    • Blue dots = Actual refill pickups
+    • Orange dots = Estimated future refills
+    • Green/Red dots = Medication doses taken/not taken
+  - Legend in attractive surfaceVariant container with clear labels
+  - Calendar grid improvements:
+    • Weekday headers now bold and colored with primary theme
+    • Date cells with 8dp rounded corners and better padding
+    • Selected date more prominent with bold text
+    • Improved spacing between cells (2dp) for cleaner grid
+  - Medication event items now use Surface with icons and better typography
+  - More readable date numbers with improved font weights
+
+* Typography & Spacing Enhancements
+  - Consistent use of Material Design typography scale throughout
+  - Section headers use titleMedium with SemiBold weight
+  - Body text uses proper hierarchy (bodyLarge, bodyMedium, labelMedium)
+  - Increased spacing between sections (8dp → 12dp in many places)
+  - Better visual hierarchy with strategic font weights
+  - Larger touch targets for improved usability
+
+* Forms & Dialogs Polish
+  - All buttons now have 12dp rounded corners for modern look
+  - Date/time pickers redesigned as OutlinedButtons with better formatting
+  - Improved date format display (e.g., "MMM dd, yyyy" instead of ISO format)
+  - Form buttons use proper spacing with Arrangement.spacedBy
+  - Dialog action buttons consistently styled
+  - Better button hierarchy (filled vs outlined vs text)
+  - Full-width buttons where appropriate for easier tapping
+
+* Color System Overhaul
+  - Removed ALL hardcoded colors (Color(200, 255, 200), Color.Red, etc.)
+  - Now exclusively uses Material Theme color roles:
+    • primaryContainer/onPrimaryContainer for positive states
+    • errorContainer/onErrorContainer for errors/warnings
+    • tertiaryContainer/onTertiaryContainer for warnings
+    • surfaceVariant for subtle backgrounds
+    • outlineVariant for dividers
+  - Proper contrast ratios for accessibility
+  - Colors adapt to system theme (light/dark mode ready)
+  - Professional, cohesive color palette throughout
+
+* Status Indicators & Icons
+  - Added ✓ (checkmark) and ✗ (X mark) icons to all intake displays
+  - Warning icon (⚠) consistently used for alerts
+  - Icons provide instant visual recognition without reading text
+  - Better icon spacing and sizing for clarity
+  - Status surfaces use proper Material containers instead of plain backgrounds
+
+* Button Consistency
+  - Primary actions: Filled Button with rounded corners
+  - Secondary actions: OutlinedButton with rounded corners
+  - Tertiary actions: TextButton with rounded corners
+  - Equal-width button pairs for balanced layout
+  - Proper spacing between button groups
+  - Disabled state properly styled
+  - All buttons use 12dp rounded corners uniformly
+
+* Dividers & Separators
+  - Replaced deprecated Divider with HorizontalDivider
+  - Added proper spacing around dividers (12dp vertical padding)
+  - Used outlineVariant color for subtle, professional look
+  - 1dp thickness for clean separation
+
+TECHNICAL CHANGES:
+
+* Modified Files:
+  - MainActivity.kt: Comprehensive visual redesign of all UI components
+    • Card styling (lines 280-287)
+    • Intake display (lines 495-548)
+    • Prescription tracking (lines 557-614)
+    • Warning messages (lines 626-674)
+    • Button styling throughout
+    • Calendar legend (lines 1191-1251)
+    • Calendar grid (lines 1329-1372)
+    • MedicationEventItem (lines 1451-1499)
+    • All dialog buttons updated
+    • Form buttons and pickers improved
+
+* No Database Changes:
+  - All improvements are purely visual/UI
+  - No migrations needed
+  - No data model changes
+  - Backward compatible with existing data
+
+* Material Design 3 Components Used:
+  - Surface for containers
+  - HorizontalDivider for separators
+  - OutlinedButton for secondary actions
+  - TextButton for tertiary actions
+  - Proper use of color roles and typography scale
+  - CardDefaults.cardElevation for depth
+
+USER EXPERIENCE:
+
+* Before:
+  - Harsh red/green backgrounds that looked unprofessional
+  - Flat design with no depth or visual interest
+  - Inconsistent button styles and shapes
+  - Hardcoded colors that looked dated
+  - Poor spacing creating cluttered feel
+  - No visual indicators for calendar dots
+  - Plain, uninspiring interface
+
+* After:
+  - Beautiful, modern Material Design 3 aesthetic ✓
+  - Professional color scheme with proper theming ✓
+  - Depth and elevation creating visual interest ✓
+  - Consistent 12dp rounded corners everywhere ✓
+  - Spacious, breathing layout with better padding ✓
+  - Clear calendar legend explaining all indicators ✓
+  - Icons throughout for better visual communication ✓
+  - Polished, premium feel that rivals commercial apps ✓
+
+---
+
 Session: 2025-10-20 - Automatic Prescription Setup & Orange Dots Fix
 ---------------------------------------------------------------------
 

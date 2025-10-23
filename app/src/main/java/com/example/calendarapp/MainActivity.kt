@@ -280,11 +280,15 @@ fun ReminderItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp)
+            .padding(vertical = 8.dp),
+        shape = RoundedCornerShape(16.dp),
+        elevation = androidx.compose.material3.CardDefaults.cardElevation(
+            defaultElevation = 4.dp
+        )
     ) {
         Column(
             modifier = Modifier
-                .padding(16.dp)
+                .padding(20.dp)
         ) {
             if (isEditing) {
                 // Editing mode UI
@@ -308,18 +312,35 @@ fun ReminderItem(
                     })
                     Spacer(modifier = Modifier.height(8.dp))
                 }
-                Button(onClick = { showStartDatePicker = true }) {
-                    Text("Select Start Date: ${editedStartDate.format(DateTimeFormatter.ISO_LOCAL_DATE)}")
+                androidx.compose.material3.OutlinedButton(
+                    onClick = { showStartDatePicker = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Start Date: ${editedStartDate.format(DateTimeFormatter.ofPattern("MMM dd, yyyy"))}")
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-                Row {
-                    Button(onClick = { showEndDatePicker = true }) {
-                        Text("Select End Date: ${editedEndDate?.format(DateTimeFormatter.ISO_LOCAL_DATE) ?: "Not set"}")
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    androidx.compose.material3.OutlinedButton(
+                        onClick = { showEndDatePicker = true },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            if (editedEndDate != null) "End: ${editedEndDate?.format(DateTimeFormatter.ofPattern("MMM dd"))}"
+                            else "Set End Date",
+                            maxLines = 1
+                        )
                     }
                     if (editedEndDate != null) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Button(onClick = { editedEndDate = null }) {
-                            Text("Clear End Date")
+                        androidx.compose.material3.TextButton(
+                            onClick = { editedEndDate = null },
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Clear")
                         }
                     }
                 }
@@ -329,8 +350,11 @@ fun ReminderItem(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Prescription tracking section - editable
-                androidx.compose.material3.Divider()
-                Spacer(modifier = Modifier.height(8.dp))
+                androidx.compose.material3.HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 12.dp),
+                    thickness = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -411,7 +435,8 @@ fun ReminderItem(
                     if ((latestRefill?.refillsRemaining ?: 0) > 0) {
                         Button(
                             onClick = { showRecordRefillDialog = true },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
                             Text("Record Refill Pickup")
                         }
@@ -430,7 +455,10 @@ fun ReminderItem(
                         editedRefillPeriodDays.isNotEmpty() && editedRefillPeriodDays.toIntOrNull() != null
                     ))
 
-                Row {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     Button(
                         onClick = {
                             val updatedReminder = reminder.copy(
@@ -454,12 +482,17 @@ fun ReminderItem(
                             )
                             isEditing = false
                         },
-                        enabled = isEditFormValid
+                        enabled = isEditFormValid,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Text("Save")
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(onClick = { isEditing = false }) {
+                    androidx.compose.material3.OutlinedButton(
+                        onClick = { isEditing = false },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
                         Text("Cancel")
                     }
                 }
@@ -488,37 +521,58 @@ fun ReminderItem(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // Display intakes for the current day with status
-                Text("Today's intakes:", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Today's Intakes",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
                 if (currentDayIntakes.isNotEmpty()) {
                     currentDayIntakes.forEach { intake ->
-                        val backgroundColor = if (intake.taken) {
-                            Color(200, 255, 200) // Light green background for taken
+                        val containerColor = if (intake.taken) {
+                            MaterialTheme.colorScheme.primaryContainer
                         } else {
-                            Color(255, 200, 200) // Light red background for not taken
+                            MaterialTheme.colorScheme.errorContainer
                         }
-                        val textColor = if (intake.taken) {
-                            Color(0, 100, 0) // Dark green text for taken
+                        val contentColor = if (intake.taken) {
+                            MaterialTheme.colorScheme.onPrimaryContainer
                         } else {
-                            Color(150, 0, 0) // Dark red text for not taken
+                            MaterialTheme.colorScheme.onErrorContainer
                         }
-                        Row(
+                        val statusIcon = if (intake.taken) "✓" else "✗"
+
+                        androidx.compose.material3.Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(backgroundColor)
-                                .padding(8.dp), verticalAlignment = Alignment.CenterVertically
+                                .padding(vertical = 4.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            color = containerColor
                         ) {
-                            Text(
-                                text = "Intake at ${
-                                    intake.intakeDateTime.format(
-                                        DateTimeFormatter.ofPattern(
-                                            "HH:mm"
-                                        )
-                                    )
-                                }", modifier = Modifier.weight(1f), color = textColor
-                            )
-                            Text(
-                                text = if (intake.taken) "Taken" else "Not Taken", color = textColor
-                            )
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = statusIcon,
+                                    style = MaterialTheme.typography.titleLarge,
+                                    color = contentColor,
+                                    modifier = Modifier.padding(end = 12.dp)
+                                )
+                                Text(
+                                    text = intake.intakeDateTime.format(
+                                        DateTimeFormatter.ofPattern("HH:mm")
+                                    ),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                                    color = contentColor,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text(
+                                    text = if (intake.taken) "Taken" else "Not Taken",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = contentColor
+                                )
+                            }
                         }
                     }
                 } else {
@@ -529,35 +583,64 @@ fun ReminderItem(
 
                 // Inventory status display
                 if (reminder.inventoryTrackingEnabled) {
-                    androidx.compose.material3.Divider()
-                    Spacer(modifier = Modifier.height(8.dp))
+                    androidx.compose.material3.HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        thickness = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
 
                     Text(
                         "Prescription Tracking",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
                     )
 
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                    // Inventory count with color coding
-                    val inventoryColor = when {
-                        reminder.currentInventory == 0 -> Color.Red
-                        reminder.currentInventory <= 10 -> Color(255, 165, 0) // Orange
-                        else -> Color(0, 128, 0) // Green
+                    // Inventory count with modern styling
+                    val inventoryContainerColor = when {
+                        reminder.currentInventory == 0 -> MaterialTheme.colorScheme.errorContainer
+                        reminder.currentInventory <= 10 -> MaterialTheme.colorScheme.tertiaryContainer
+                        else -> MaterialTheme.colorScheme.primaryContainer
+                    }
+                    val inventoryContentColor = when {
+                        reminder.currentInventory == 0 -> MaterialTheme.colorScheme.onErrorContainer
+                        reminder.currentInventory <= 10 -> MaterialTheme.colorScheme.onTertiaryContainer
+                        else -> MaterialTheme.colorScheme.onPrimaryContainer
                     }
 
-                    Text(
-                        "Medication remaining: ${reminder.currentInventory}",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = inventoryColor,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-                    )
+                    androidx.compose.material3.Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = inventoryContainerColor,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "Medication Remaining",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = inventoryContentColor
+                                )
+                                Text(
+                                    "${reminder.currentInventory}",
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                    color = inventoryContentColor
+                                )
+                            }
+                            Text(
+                                "${reminder.dosagePerIntake} per dose",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = inventoryContentColor
+                            )
+                        }
+                    }
 
-                    Text(
-                        "Dosage: ${reminder.dosagePerIntake} per dose",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     // Show refills info if available
                     latestRefill?.let {
@@ -569,22 +652,54 @@ fun ReminderItem(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
-
                     if (reminder.currentInventory <= 10 && reminder.currentInventory > 0) {
-                        Text(
-                            "⚠ Low inventory! Time to pick up refill.",
-                            color = Color(255, 165, 0),
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        androidx.compose.material3.Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.tertiaryContainer,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "⚠",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    modifier = Modifier.padding(end = 8.dp)
+                                )
+                                Text(
+                                    "Low inventory! Time to pick up refill.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                            }
+                        }
                     } else if (reminder.currentInventory == 0) {
-                        Text(
-                            "⚠ No medication remaining!",
-                            color = Color.Red,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        androidx.compose.material3.Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "⚠",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    modifier = Modifier.padding(end = 8.dp)
+                                )
+                                Text(
+                                    "No medication remaining!",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            }
+                        }
                     }
 
                     // Refill management buttons
@@ -593,34 +708,62 @@ fun ReminderItem(
                     if ((latestRefill?.refillsRemaining ?: 0) > 0) {
                         Button(
                             onClick = { showRecordRefillDialog = true },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
                             Text("Record Refill Pickup")
                         }
                     } else if (latestRefill?.refillsRemaining == 0) {
+                        androidx.compose.material3.Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        "⚠",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        modifier = Modifier.padding(end = 8.dp)
+                                    )
+                                    Text(
+                                        "No refills left. Get new prescription from doctor.",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
                         Button(
                             onClick = { showNewPrescriptionDialog = true },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
                             Text("Add New Prescription")
                         }
-                        Text(
-                            "⚠ No refills left. Get new prescription from doctor.",
-                            color = Color.Red,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                            style = MaterialTheme.typography.bodySmall
-                        )
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
                 }
 
-                Row {
-                    Button(onClick = { isEditing = true }) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = { isEditing = true },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
                         Text("Edit")
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(onClick = onDelete) {
+                    androidx.compose.material3.OutlinedButton(
+                        onClick = onDelete,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
                         Text("Delete")
                     }
                 }
@@ -729,19 +872,36 @@ fun AddReminderForm(
             Spacer(modifier = Modifier.height(8.dp))
         }
 
-        Button(onClick = { showStartDatePicker = true }) {
-            Text("Select Start Date: ${startDate.format(DateTimeFormatter.ISO_LOCAL_DATE)}")
+        androidx.compose.material3.OutlinedButton(
+            onClick = { showStartDatePicker = true },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text("Start Date: ${startDate.format(DateTimeFormatter.ofPattern("MMM dd, yyyy"))}")
         }
         Spacer(modifier = Modifier.height(8.dp))
 
-        Row {
-            Button(onClick = { showEndDatePicker = true }) {
-                Text("Select End Date: ${endDate?.format(DateTimeFormatter.ISO_LOCAL_DATE) ?: "Not set"}")
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            androidx.compose.material3.OutlinedButton(
+                onClick = { showEndDatePicker = true },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(
+                    if (endDate != null) "End: ${endDate?.format(DateTimeFormatter.ofPattern("MMM dd"))}"
+                    else "Set End Date",
+                    maxLines = 1
+                )
             }
             if (endDate != null) {
-                Spacer(modifier = Modifier.width(8.dp))
-                Button(onClick = { endDate = null }) {
-                    Text("Clear End Date")
+                androidx.compose.material3.TextButton(
+                    onClick = { endDate = null },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Clear")
                 }
             }
         }
@@ -877,9 +1037,10 @@ fun AddReminderForm(
                 }
             },
             enabled = isFormValid,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
         ) {
-            Text("Add Reminder")
+            Text("Add Reminder", style = MaterialTheme.typography.labelLarge)
         }
     }
 }
@@ -983,19 +1144,23 @@ fun AndroidTimePicker(
 
     val timeFormat = if (is24HourFormat) "HH:mm" else "hh:mm a"
 
-    Button(onClick = {
-        TimePickerDialog(
-            context,
-            { _, hour, minute ->
-                selectedTime = LocalTime.of(hour, minute)
-                onTimeSelected(selectedTime)
-            },
-            selectedTime.hour,
-            selectedTime.minute,
-            is24HourFormat // Use the system setting for 24-hour format
-        ).show()
-    }) {
-        Text("Select Time: ${selectedTime.format(DateTimeFormatter.ofPattern(timeFormat))}")
+    androidx.compose.material3.OutlinedButton(
+        onClick = {
+            TimePickerDialog(
+                context,
+                { _, hour, minute ->
+                    selectedTime = LocalTime.of(hour, minute)
+                    onTimeSelected(selectedTime)
+                },
+                selectedTime.hour,
+                selectedTime.minute,
+                is24HourFormat // Use the system setting for 24-hour format
+            ).show()
+        },
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Text("Time: ${selectedTime.format(DateTimeFormatter.ofPattern(timeFormat))}")
     }
 }
 
@@ -1061,6 +1226,70 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
         }
 
         Spacer(modifier = Modifier.height(8.dp))
+
+        // Legend
+        androidx.compose.material3.Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.padding(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Blue dot - Actual refills
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(Color.Blue, CircleShape)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        "Pickup",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                // Orange dot - Estimated refills
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(Color(0xFFFFA500), CircleShape)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        "Est. Refill",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                // Green/Red dots - Intakes
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(Color(0xFF4CAF50), CircleShape)
+                    )
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(Color(0xFFF44336), CircleShape)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        "Doses",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         CalendarView(
             currentMonth = currentMonth,
@@ -1139,7 +1368,10 @@ fun CalendarView(
                 Text(
                     text = listOf("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su")[index],
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(4.dp)
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(8.dp)
                 )
             }
             items(totalDays) { index ->
@@ -1154,14 +1386,16 @@ fun CalendarView(
 
                     Column(
                         modifier = Modifier
-                            .padding(4.dp)
+                            .padding(2.dp)
+                            .clip(RoundedCornerShape(8.dp))
                             .clickable { onDateSelected(date) }
                             .background(
                                 if (isSelected) MaterialTheme.colorScheme.primaryContainer
                                 else Color.Transparent,
-                                shape = RoundedCornerShape(4.dp)
+                                shape = RoundedCornerShape(8.dp)
                             )
-                            .padding(4.dp)
+                            .padding(6.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -1171,7 +1405,9 @@ fun CalendarView(
                             Text(
                                 text = day.toString(),
                                 textAlign = TextAlign.Center,
-                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (isSelected) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal,
+                                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
                             )
                             if (hasRefill) {
                                 Spacer(modifier = Modifier.width(2.dp))
@@ -1272,12 +1508,22 @@ fun CalendarDialog(
         title = { Text(currentMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy"))) },
         text = {
             Column {
-                Row {
-                    Button(onClick = { currentMonth = currentMonth.minusMonths(1) }) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    androidx.compose.material3.OutlinedButton(
+                        onClick = { currentMonth = currentMonth.minusMonths(1) },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
                         Text("Previous")
                     }
-                    Spacer(modifier = Modifier.weight(1f))
-                    Button(onClick = { currentMonth = currentMonth.plusMonths(1) }) {
+                    androidx.compose.material3.OutlinedButton(
+                        onClick = { currentMonth = currentMonth.plusMonths(1) },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
                         Text("Next")
                     }
                 }
@@ -1299,7 +1545,10 @@ fun CalendarDialog(
         },
         confirmButton = {},
         dismissButton = {
-            Button(onClick = onDismissRequest) {
+            TextButton(
+                onClick = onDismissRequest,
+                shape = RoundedCornerShape(12.dp)
+            ) {
                 Text("Cancel")
             }
         })
@@ -1325,36 +1574,50 @@ fun DayView(
 fun MedicationEventItem(
     intake: MedicationIntake, onClick: () -> Unit
 ) {
-    val backgroundColor = if (intake.taken) {
-        Color(200, 255, 200) // Light green background for taken
+    val containerColor = if (intake.taken) {
+        Color(0xFFE8F5E9) // Light green
     } else {
-        Color(255, 200, 200) // Light red background for not taken
+        Color(0xFFFFEBEE) // Light red
     }
-    val textColor = if (intake.taken) {
-        Color(0, 100, 0) // Dark green text for taken
+    val contentColor = if (intake.taken) {
+        Color(0xFF2E7D32) // Dark green text
     } else {
-        Color(150, 0, 0) // Dark red text for not taken
+        Color(0xFFC62828) // Dark red text
     }
+    val statusIcon = if (intake.taken) "✓" else "✗"
 
-    Row(
+    androidx.compose.material3.Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .background(backgroundColor)
-            .clickable(onClick = onClick)
-            .padding(8.dp), verticalAlignment = Alignment.CenterVertically
+            .padding(vertical = 4.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = containerColor,
+        onClick = onClick
     ) {
-        Text(
-            text = intake.intakeDateTime.format(DateTimeFormatter.ofPattern("HH:mm")),
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.width(60.dp),
-            color = textColor
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = intake.medicationName,
-            style = MaterialTheme.typography.bodyLarge,
-            color = textColor
-        )
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = statusIcon,
+                style = MaterialTheme.typography.titleMedium,
+                color = contentColor,
+                modifier = Modifier.padding(end = 12.dp)
+            )
+            Text(
+                text = intake.intakeDateTime.format(DateTimeFormatter.ofPattern("HH:mm")),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                modifier = Modifier.width(60.dp),
+                color = contentColor
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = intake.medicationName,
+                style = MaterialTheme.typography.bodyLarge,
+                color = contentColor
+            )
+        }
     }
 }
 
@@ -1368,22 +1631,32 @@ fun EventDetailsDialog(
             Text("Status: ${if (intake.taken) "Taken" else "Not Taken"}")
             Spacer(modifier = Modifier.height(16.dp))
             Row(
-                modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Button(
-                    onClick = { onStatusChange(true) }, enabled = !intake.taken
+                    onClick = { onStatusChange(true) },
+                    enabled = !intake.taken,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Mark as Taken")
+                    Text("✓ Taken")
                 }
-                Button(
-                    onClick = { onStatusChange(false) }, enabled = intake.taken
+                androidx.compose.material3.OutlinedButton(
+                    onClick = { onStatusChange(false) },
+                    enabled = intake.taken,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Mark as Not Taken")
+                    Text("✗ Not Taken")
                 }
             }
         }
     }, confirmButton = {
-        TextButton(onClick = onDismiss) {
+        TextButton(
+            onClick = onDismiss,
+            shape = RoundedCornerShape(12.dp)
+        ) {
             Text("Close")
         }
     })
@@ -1415,18 +1688,28 @@ fun RecordRefillDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Button(onClick = { showDatePicker = true }) {
+                androidx.compose.material3.OutlinedButton(
+                    onClick = { showDatePicker = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
                     Text("Pickup Date: ${pickupDate.format(DateTimeFormatter.ofPattern("MMM dd, yyyy"))}")
                 }
             }
         },
         confirmButton = {
-            Button(onClick = { onRecordRefill(pickupDate) }) {
+            Button(
+                onClick = { onRecordRefill(pickupDate) },
+                shape = RoundedCornerShape(12.dp)
+            ) {
                 Text("Record Pickup")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(12.dp)
+            ) {
                 Text("Cancel")
             }
         }
@@ -1488,13 +1771,17 @@ fun NewPrescriptionDialog(
                     val pills = pillsPerRefill.toIntOrNull() ?: 60
                     val refills = totalRefills.toIntOrNull() ?: 5
                     onAddPrescription(pills, refills)
-                }
+                },
+                shape = RoundedCornerShape(12.dp)
             ) {
                 Text("Add Prescription")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(12.dp)
+            ) {
                 Text("Cancel")
             }
         }
