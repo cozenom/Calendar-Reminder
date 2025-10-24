@@ -1,7 +1,6 @@
 package com.example.calendarapp.data.dao
 
 import androidx.room.Dao
-import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
@@ -27,15 +26,9 @@ interface PrescriptionRefillDao {
     @Query("SELECT * FROM prescription_refills ORDER BY pickupDate ASC")
     fun getAllRefills(): Flow<List<PrescriptionRefill>>
 
-    @Query("UPDATE prescription_refills SET totalRefillsAuthorized = :totalRefills, refillsRemaining = :refillsRemaining WHERE id = :refillId")
-    suspend fun updateRefillCounts(refillId: Int, totalRefills: Int, refillsRemaining: Int)
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(refill: PrescriptionRefill): Long
 
     @Update
     suspend fun update(refill: PrescriptionRefill)
-
-    @Delete
-    suspend fun delete(refill: PrescriptionRefill)
 }

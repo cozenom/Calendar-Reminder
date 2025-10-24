@@ -40,7 +40,7 @@ interface MedicationIntakeDao {
     suspend fun updateTakenStatus(intakeId: Int, taken: Boolean)
 
     @Query("SELECT * FROM medication_intake WHERE id = :intakeId")
-    suspend fun getIntakeById(intakeId: Int): MedicationIntake
+    suspend fun getIntakeById(intakeId: Int): MedicationIntake?
 
     @Query("SELECT * FROM medication_intake WHERE intakeDateTime > :now ORDER BY intakeDateTime ASC")
     suspend fun getFutureIntakes(now: LocalDateTime): List<MedicationIntake>

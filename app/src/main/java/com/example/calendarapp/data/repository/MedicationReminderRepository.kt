@@ -41,10 +41,6 @@ class MedicationReminderRepository(
         return medicationReminderDao.getActiveReminders(date)
     }
 
-    fun getReminderById(id: Int): Flow<MedicationReminder> {
-        return medicationReminderDao.getReminderById(id)
-    }
-
     private suspend fun generateIntakesForReminder(reminder: MedicationReminder) {
         val currentDate = LocalDate.now()
         val endDate = reminder.endDate ?: currentDate.plusYears(1)
@@ -64,25 +60,6 @@ class MedicationReminderRepository(
             }
             date = date.plusDays(1)
         }
-    }
-
-    fun getIntakesForReminder(reminderId: Int): Flow<List<MedicationIntake>> {
-        return medicationIntakeDao.getIntakesForReminder(reminderId)
-    }
-
-    fun getIntakesForDateRange(
-        start: LocalDateTime,
-        end: LocalDateTime
-    ): Flow<List<MedicationIntake>> {
-        return medicationIntakeDao.getIntakesForDateRange(start, end)
-    }
-
-    fun getMissedIntakes(dateTime: LocalDateTime): Flow<List<MedicationIntake>> {
-        return medicationIntakeDao.getMissedIntakes(dateTime)
-    }
-
-    fun getUpcomingIntakes(start: LocalDateTime, end: LocalDateTime): List<MedicationIntake> {
-        return medicationIntakeDao.getUpcomingIntakes(start, end)
     }
 
     /**
