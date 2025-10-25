@@ -33,6 +33,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -60,6 +62,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -83,6 +86,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private lateinit var viewModel: MedicationReminderViewModel
@@ -1127,16 +1131,27 @@ fun AndroidTimePicker(
 @Composable
 fun CalendarTab(viewModel: MedicationReminderViewModel) {
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
-    var currentMonth by remember { mutableStateOf(YearMonth.from(selectedDate)) }
     var selectedIntake by remember { mutableStateOf<MedicationIntake?>(null) }
+
+    // Calculate initial page: 600 represents current month (allowing 50 years in both directions)
+    val initialPage = 600
+    val baseYearMonth = YearMonth.now()
+    val pagerState = rememberPagerState(
+        initialPage = initialPage,
+        pageCount = { 1200 } // 100 years worth of months
+    )
+    val coroutineScope = rememberCoroutineScope()
+
+    // Calculate current month based on pager position
+    val currentMonth = remember(pagerState.currentPage) {
+        baseYearMonth.plusMonths((pagerState.currentPage - initialPage).toLong())
+    }
 
     val activeReminders by viewModel.getActiveReminders(selectedDate)
         .collectAsState(initial = emptyList())
     val allReminders by viewModel.allReminders.collectAsState(initial = emptyList())
-    val intakes by viewModel.getIntakesForMonth(currentMonth).collectAsState(initial = emptyList())
     val selectedDateIntakes by viewModel.getIntakesForDate(selectedDate)
         .collectAsState(initial = emptyList())
-    val refills by viewModel.getRefillsForMonth(currentMonth).collectAsState(initial = emptyList())
     val allRefills by viewModel.getAllRefills().collectAsState(initial = emptyList())
 
     // Calculate estimated refill due dates (based on custom refill period from last pickup)
@@ -1171,14 +1186,22 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = { currentMonth = currentMonth.minusMonths(1) }) {
+            IconButton(onClick = {
+                coroutineScope.launch {
+                    pagerState.animateScrollToPage(pagerState.currentPage - 1)
+                }
+            }) {
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Previous month")
             }
             Text(
                 text = currentMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy")),
                 style = MaterialTheme.typography.titleLarge
             )
-            IconButton(onClick = { currentMonth = currentMonth.plusMonths(1) }) {
+            IconButton(onClick = {
+                coroutineScope.launch {
+                    pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                }
+            }) {
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next month")
             }
         }
@@ -1249,14 +1272,26 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        CalendarView(
-            currentMonth = currentMonth,
-            onDateSelected = { selectedDate = it },
-            selectedDate = selectedDate,
-            intakes = intakes,
-            refills = refills,
-            estimatedRefillDates = estimatedRefillDates
-        )
+        // Swipeable calendar with HorizontalPager
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxWidth()
+        ) { page ->
+            val monthForPage = baseYearMonth.plusMonths((page - initialPage).toLong())
+            val intakesForPage by viewModel.getIntakesForMonth(monthForPage)
+                .collectAsState(initial = emptyList())
+            val refillsForPage by viewModel.getRefillsForMonth(monthForPage)
+                .collectAsState(initial = emptyList())
+
+            CalendarView(
+                currentMonth = monthForPage,
+                onDateSelected = { selectedDate = it },
+                selectedDate = selectedDate,
+                intakes = intakesForPage,
+                refills = refillsForPage,
+                estimatedRefillDates = estimatedRefillDates
+            )
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
