@@ -1554,35 +1554,60 @@ fun CalendarDialog(
     onDateSelected: (LocalDate) -> Unit,
     initialDate: LocalDate
 ) {
-    var currentMonth by remember { mutableStateOf(YearMonth.from(initialDate)) }
     var selectedDate by remember { mutableStateOf(initialDate) }
 
-    AlertDialog(onDismissRequest = onDismissRequest,
-        title = { Text(currentMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy"))) },
-        text = {
-            Column {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    androidx.compose.material3.OutlinedButton(
-                        onClick = { currentMonth = currentMonth.minusMonths(1) },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Previous")
+    // Calculate initial page: 600 represents current month (allowing 50 years in both directions)
+    val initialPage = 600
+    val baseYearMonth = YearMonth.from(initialDate)
+    val pagerState = rememberPagerState(
+        initialPage = initialPage,
+        pageCount = { 1200 } // 100 years worth of months
+    )
+    val coroutineScope = rememberCoroutineScope()
+
+    // Calculate current month based on pager position
+    val currentMonth = remember(pagerState.currentPage) {
+        baseYearMonth.plusMonths((pagerState.currentPage - initialPage).toLong())
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        title = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = {
+                    coroutineScope.launch {
+                        pagerState.animateScrollToPage(pagerState.currentPage - 1)
                     }
-                    androidx.compose.material3.OutlinedButton(
-                        onClick = { currentMonth = currentMonth.plusMonths(1) },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Next")
-                    }
+                }) {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Previous month")
                 }
-                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = currentMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy")),
+                    style = MaterialTheme.typography.titleLarge
+                )
+                IconButton(onClick = {
+                    coroutineScope.launch {
+                        pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                    }
+                }) {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next month")
+                }
+            }
+        },
+        text = {
+            // Swipeable calendar with HorizontalPager
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxWidth()
+            ) { page ->
+                val monthForPage = baseYearMonth.plusMonths((page - initialPage).toLong())
+
                 CalendarView(
-                    currentMonth = currentMonth,
+                    currentMonth = monthForPage,
                     onDateSelected = {
                         selectedDate = it
                         onDateSelected(it)
@@ -1602,7 +1627,8 @@ fun CalendarDialog(
             ) {
                 Text("Cancel")
             }
-        })
+        }
+    )
 }
 
 @Composable
