@@ -2,7 +2,6 @@ package com.example.calendarapp
 
 import android.Manifest
 import android.app.AlarmManager
-import android.app.TimePickerDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -46,16 +45,21 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.TimePickerDefaults
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -73,6 +77,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
@@ -296,7 +301,7 @@ fun ReminderItem(
                 })
                 Spacer(modifier = Modifier.height(8.dp))
                 editedTimes.forEachIndexed { index, time ->
-                    AndroidTimePicker(initialTime = time, onTimeSelected = { newTime ->
+                    Material3TimePicker(initialTime = time, onTimeSelected = { newTime ->
                         editedTimes = editedTimes.toMutableList().also { it[index] = newTime }
                     })
                     Spacer(modifier = Modifier.height(8.dp))
@@ -546,7 +551,7 @@ fun ReminderItem(
                         else -> Color(0xFF2E7D32) // Dark green text for good stock
                     }
 
-                    androidx.compose.material3.Surface(
+                    Surface(
                         shape = RoundedCornerShape(12.dp),
                         color = inventoryContainerColor,
                         modifier = Modifier.fillMaxWidth()
@@ -591,7 +596,7 @@ fun ReminderItem(
                     // Warning messages based on days remaining
                     if (daysRemaining <= 3 && reminder.currentInventory > 0) {
                         Spacer(modifier = Modifier.height(8.dp))
-                        androidx.compose.material3.Surface(
+                        Surface(
                             shape = RoundedCornerShape(8.dp),
                             color = Color(0xFFFFEBEE), // Light red
                             modifier = Modifier.fillMaxWidth()
@@ -616,7 +621,7 @@ fun ReminderItem(
                         }
                     } else if (daysRemaining < 7 && reminder.currentInventory > 0) {
                         Spacer(modifier = Modifier.height(8.dp))
-                        androidx.compose.material3.Surface(
+                        Surface(
                             shape = RoundedCornerShape(8.dp),
                             color = Color(0xFFFFF3E0), // Light orange
                             modifier = Modifier.fillMaxWidth()
@@ -641,7 +646,7 @@ fun ReminderItem(
                         }
                     } else if (reminder.currentInventory == 0) {
                         Spacer(modifier = Modifier.height(8.dp))
-                        androidx.compose.material3.Surface(
+                        Surface(
                             shape = RoundedCornerShape(8.dp),
                             color = Color(0xFFFFCDD2), // Darker red
                             modifier = Modifier.fillMaxWidth()
@@ -678,7 +683,7 @@ fun ReminderItem(
                             Text("Record Refill Pickup")
                         }
                     } else if (latestRefill?.refillsRemaining == 0) {
-                        androidx.compose.material3.Surface(
+                        Surface(
                             shape = RoundedCornerShape(8.dp),
                             color = Color(0xFFFFCDD2), // Darker red
                             modifier = Modifier.fillMaxWidth()
@@ -828,7 +833,7 @@ fun AddReminderForm(
         Spacer(modifier = Modifier.height(8.dp))
 
         reminderTimes.forEachIndexed { index, time ->
-            AndroidTimePicker(initialTime = time, onTimeSelected = { newTime ->
+            Material3TimePicker(initialTime = time, onTimeSelected = { newTime ->
                 reminderTimes = reminderTimes.toMutableList().also { it[index] = newTime }
             })
             Spacer(modifier = Modifier.height(8.dp))
@@ -1097,34 +1102,96 @@ fun WeekdayButton(day: String, isSelected: Boolean, onClick: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AndroidTimePicker(
+fun Material3TimePicker(
     initialTime: LocalTime,
     onTimeSelected: (LocalTime) -> Unit
 ) {
     val context = LocalContext.current
     var selectedTime by remember { mutableStateOf(initialTime) }
+    var showTimePicker by remember { mutableStateOf(false) }
     val is24HourFormat = remember { DateFormat.is24HourFormat(context) }
+
+    // Force 12-hour mode for testing - AM/PM selector should appear
+    val timePickerState = rememberTimePickerState(
+        initialHour = selectedTime.hour,
+        initialMinute = selectedTime.minute,
+        is24Hour = false  // Temporarily force 12-hour mode
+    )
 
     val timeFormat = if (is24HourFormat) "HH:mm" else "hh:mm a"
 
     androidx.compose.material3.OutlinedButton(
-        onClick = {
-            TimePickerDialog(
-                context,
-                { _, hour, minute ->
-                    selectedTime = LocalTime.of(hour, minute)
-                    onTimeSelected(selectedTime)
-                },
-                selectedTime.hour,
-                selectedTime.minute,
-                is24HourFormat // Use the system setting for 24-hour format
-            ).show()
-        },
+        onClick = { showTimePicker = true },
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp)
     ) {
         Text("Time: ${selectedTime.format(DateTimeFormatter.ofPattern(timeFormat))}")
+    }
+
+    if (showTimePicker) {
+        Dialog(onDismissRequest = { showTimePicker = false }) {
+            Surface(
+                shape = RoundedCornerShape(28.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 6.dp
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Select Time",
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 20.dp)
+                    )
+
+                    TimePicker(
+                        state = timePickerState,
+                        colors = TimePickerDefaults.colors(
+                            clockDialColor = Color.Black.copy(alpha = 0.2f),
+                            selectorColor = MaterialTheme.colorScheme.primary,
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            periodSelectorBorderColor = MaterialTheme.colorScheme.outline,
+                            periodSelectorSelectedContainerColor = MaterialTheme.colorScheme.primary,
+                            periodSelectorUnselectedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                            periodSelectorSelectedContentColor = MaterialTheme.colorScheme.onPrimary,
+                            periodSelectorUnselectedContentColor = MaterialTheme.colorScheme.onSurface,
+                            timeSelectorSelectedContainerColor = MaterialTheme.colorScheme.primary,
+                            timeSelectorUnselectedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            timeSelectorSelectedContentColor = MaterialTheme.colorScheme.onPrimary,
+                            timeSelectorUnselectedContentColor = MaterialTheme.colorScheme.onSurface
+                        )
+                    )
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(onClick = { showTimePicker = false }) {
+                            Text("Cancel")
+                        }
+                        TextButton(
+                            onClick = {
+                                selectedTime = LocalTime.of(
+                                    timePickerState.hour,
+                                    timePickerState.minute
+                                )
+                                onTimeSelected(selectedTime)
+                                showTimePicker = false
+                            }
+                        ) {
+                            Text("OK")
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -1209,7 +1276,7 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
         Spacer(modifier = Modifier.height(8.dp))
 
         // Legend
-        androidx.compose.material3.Surface(
+        Surface(
             shape = RoundedCornerShape(12.dp),
             color = MaterialTheme.colorScheme.surfaceVariant,
             modifier = Modifier.fillMaxWidth()
@@ -1554,7 +1621,7 @@ fun MedicationEventItem(
     }
     val statusIcon = if (intake.taken) "✓" else "✗"
 
-    androidx.compose.material3.Surface(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
