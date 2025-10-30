@@ -13,6 +13,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import com.example.calendarapp.ui.theme.CalendarAppTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -115,7 +116,7 @@ class MainActivity : ComponentActivity() {
         )[MedicationReminderViewModel::class.java]
 
         setContent {
-            MaterialTheme {
+            CalendarAppTheme {
                 MedicationReminderApp(viewModel)
             }
         }
@@ -1152,7 +1153,7 @@ fun Material3TimePicker(
                     TimePicker(
                         state = timePickerState,
                         colors = TimePickerDefaults.colors(
-                            clockDialColor = Color.Black.copy(alpha = 0.2f),
+                            clockDialColor = Color.Black.copy(alpha = 0.1f),
                             selectorColor = MaterialTheme.colorScheme.primary,
                             containerColor = MaterialTheme.colorScheme.surface,
                             periodSelectorBorderColor = MaterialTheme.colorScheme.outline,
@@ -1248,28 +1249,37 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
         Spacer(modifier = Modifier.height(16.dp))
 
         // Month navigation
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            tonalElevation = 1.dp,
+            modifier = Modifier.fillMaxWidth()
         ) {
-            IconButton(onClick = {
-                coroutineScope.launch {
-                    pagerState.animateScrollToPage(pagerState.currentPage - 1)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = {
+                    coroutineScope.launch {
+                        pagerState.animateScrollToPage(pagerState.currentPage - 1)
+                    }
+                }) {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Previous month")
                 }
-            }) {
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Previous month")
-            }
-            Text(
-                text = currentMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy")),
-                style = MaterialTheme.typography.titleLarge
-            )
-            IconButton(onClick = {
-                coroutineScope.launch {
-                    pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                Text(
+                    text = currentMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy")),
+                    style = MaterialTheme.typography.titleLarge
+                )
+                IconButton(onClick = {
+                    coroutineScope.launch {
+                        pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                    }
+                }) {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next month")
                 }
-            }) {
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next month")
             }
         }
 
@@ -1340,42 +1350,60 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
         Spacer(modifier = Modifier.height(12.dp))
 
         // Swipeable calendar with HorizontalPager
-        HorizontalPager(
-            state = pagerState,
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            tonalElevation = 3.dp,
             modifier = Modifier.fillMaxWidth()
-        ) { page ->
-            val monthForPage = baseYearMonth.plusMonths((page - initialPage).toLong())
-            val intakesForPage by viewModel.getIntakesForMonth(monthForPage)
-                .collectAsState(initial = emptyList())
-            val refillsForPage by viewModel.getRefillsForMonth(monthForPage)
-                .collectAsState(initial = emptyList())
+        ) {
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp)
+            ) { page ->
+                val monthForPage = baseYearMonth.plusMonths((page - initialPage).toLong())
+                val intakesForPage by viewModel.getIntakesForMonth(monthForPage)
+                    .collectAsState(initial = emptyList())
+                val refillsForPage by viewModel.getRefillsForMonth(monthForPage)
+                    .collectAsState(initial = emptyList())
 
-            CalendarView(
-                currentMonth = monthForPage,
-                onDateSelected = { selectedDate = it },
-                selectedDate = selectedDate,
-                intakes = intakesForPage,
-                refills = refillsForPage,
-                estimatedRefillDates = estimatedRefillDates
-            )
+                CalendarView(
+                    currentMonth = monthForPage,
+                    onDateSelected = { selectedDate = it },
+                    selectedDate = selectedDate,
+                    intakes = intakesForPage,
+                    refills = refillsForPage,
+                    estimatedRefillDates = estimatedRefillDates
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         // Show selected date's intakes
-        Text(
-            text = selectedDate.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")),
-            style = MaterialTheme.typography.titleMedium
-        )
-        Spacer(modifier = Modifier.height(8.dp))
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            tonalElevation = 1.dp,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = selectedDate.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")),
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Spacer(modifier = Modifier.height(8.dp))
 
-        if (selectedDateIntakes.isEmpty()) {
-            Text("No medications scheduled for this day")
-        } else {
-            LazyColumn {
-                items(selectedDateIntakes.groupBy { it.medicationName }.values.toList()) { medicationIntakes ->
-                    medicationIntakes.forEachIndexed { _, intake ->
-                        MedicationEventItem(intake = intake, onClick = { selectedIntake = intake })
+                if (selectedDateIntakes.isEmpty()) {
+                    Text("No medications scheduled for this day")
+                } else {
+                    LazyColumn {
+                        items(selectedDateIntakes.groupBy { it.medicationName }.values.toList()) { medicationIntakes ->
+                            medicationIntakes.forEachIndexed { _, intake ->
+                                MedicationEventItem(intake = intake, onClick = { selectedIntake = intake })
+                            }
+                        }
                     }
                 }
             }
