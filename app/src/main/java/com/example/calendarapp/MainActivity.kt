@@ -1114,11 +1114,10 @@ fun Material3TimePicker(
     var showTimePicker by remember { mutableStateOf(false) }
     val is24HourFormat = remember { DateFormat.is24HourFormat(context) }
 
-    // Force 12-hour mode for testing - AM/PM selector should appear
     val timePickerState = rememberTimePickerState(
         initialHour = selectedTime.hour,
         initialMinute = selectedTime.minute,
-        is24Hour = false  // Temporarily force 12-hour mode
+        is24Hour = is24HourFormat
     )
 
     val timeFormat = if (is24HourFormat) "HH:mm" else "hh:mm a"
@@ -1153,18 +1152,7 @@ fun Material3TimePicker(
                     TimePicker(
                         state = timePickerState,
                         colors = TimePickerDefaults.colors(
-                            clockDialColor = Color.Black.copy(alpha = 0.1f),
-                            selectorColor = MaterialTheme.colorScheme.primary,
-                            containerColor = MaterialTheme.colorScheme.surface,
-                            periodSelectorBorderColor = MaterialTheme.colorScheme.outline,
-                            periodSelectorSelectedContainerColor = MaterialTheme.colorScheme.primary,
-                            periodSelectorUnselectedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                            periodSelectorSelectedContentColor = MaterialTheme.colorScheme.onPrimary,
-                            periodSelectorUnselectedContentColor = MaterialTheme.colorScheme.onSurface,
-                            timeSelectorSelectedContainerColor = MaterialTheme.colorScheme.primary,
-                            timeSelectorUnselectedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            timeSelectorSelectedContentColor = MaterialTheme.colorScheme.onPrimary,
-                            timeSelectorUnselectedContentColor = MaterialTheme.colorScheme.onSurface
+                            clockDialColor = MaterialTheme.colorScheme.surfaceContainerHighest
                         )
                     )
 
@@ -1229,7 +1217,7 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
                 // Find the latest refill for this reminder
                 val latestRefillForReminder = allRefills
                     .filter { it.reminderId == reminder.id }
-                    .maxByOrNull { it.pickupDate }
+                    .maxWithOrNull(compareBy({ it.pickupDate }, { it.id }))
 
                 // Generate estimated refill dates for all remaining refills from the last pickup
                 if (latestRefillForReminder != null && latestRefillForReminder.refillsRemaining > 0) {
