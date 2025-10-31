@@ -86,6 +86,7 @@ import com.example.calendarapp.data.model.MedicationIntake
 import com.example.calendarapp.data.model.MedicationReminder
 import com.example.calendarapp.data.model.PrescriptionRefill
 import com.example.calendarapp.data.notification.MedicationReminderWorker
+import com.example.calendarapp.ui.theme.medicalColors
 import com.example.calendarapp.viewmodel.MedicationReminderViewModel
 import com.example.calendarapp.viewmodel.MedicationReminderViewModelFactory
 import java.time.LocalDate
@@ -418,10 +419,15 @@ fun ReminderItem(
 
                     // Show refills info if available
                     latestRefill?.let {
+                        val medicalColors = MaterialTheme.medicalColors
                         Text(
                             "Refills remaining: ${it.refillsRemaining} / ${it.totalRefillsAuthorized}",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = if (it.refillsRemaining == 0) Color.Red else Color.Black
+                            color = if (it.refillsRemaining == 0) {
+                                medicalColors.inventoryEmptyContent
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            }
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                     }
@@ -539,17 +545,18 @@ fun ReminderItem(
                     } else 0
 
                     // Inventory count with 3-tier color coding based on days remaining
+                    val medicalColors = MaterialTheme.medicalColors
                     val inventoryContainerColor = when {
-                        reminder.currentInventory == 0 -> Color(0xFFFFCDD2) // Darker red for empty
-                        daysRemaining <= 3 -> Color(0xFFFFEBEE) // Light red for urgent (≤3 days)
-                        daysRemaining < 7 -> Color(0xFFFFF3E0) // Light orange for warning (<7 days)
-                        else -> Color(0xFFE8F5E9) // Light green for good stock (>7 days)
+                        reminder.currentInventory == 0 -> medicalColors.inventoryEmptyContainer
+                        daysRemaining <= 3 -> medicalColors.inventoryUrgentContainer
+                        daysRemaining < 7 -> medicalColors.inventoryWarningContainer
+                        else -> medicalColors.inventoryGoodContainer
                     }
                     val inventoryContentColor = when {
-                        reminder.currentInventory == 0 -> Color(0xFFB71C1C) // Dark red text for empty
-                        daysRemaining <= 3 -> Color(0xFFC62828) // Dark red text for urgent
-                        daysRemaining < 7 -> Color(0xFFE65100) // Dark orange text for warning
-                        else -> Color(0xFF2E7D32) // Dark green text for good stock
+                        reminder.currentInventory == 0 -> medicalColors.inventoryEmptyContent
+                        daysRemaining <= 3 -> medicalColors.inventoryUrgentContent
+                        daysRemaining < 7 -> medicalColors.inventoryWarningContent
+                        else -> medicalColors.inventoryGoodContent
                     }
 
                     Surface(
@@ -589,7 +596,11 @@ fun ReminderItem(
                         Text(
                             "Refills remaining: ${it.refillsRemaining} / ${it.totalRefillsAuthorized}",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = if (it.refillsRemaining == 0) Color.Red else Color.Black,
+                            color = if (it.refillsRemaining == 0) {
+                                medicalColors.inventoryEmptyContent
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            },
                             fontWeight = if (it.refillsRemaining == 0) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal
                         )
                     }
@@ -599,7 +610,7 @@ fun ReminderItem(
                         Spacer(modifier = Modifier.height(8.dp))
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = Color(0xFFFFEBEE), // Light red
+                            color = medicalColors.inventoryUrgentContainer,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
@@ -610,13 +621,13 @@ fun ReminderItem(
                                     "⚠",
                                     style = MaterialTheme.typography.titleMedium,
                                     modifier = Modifier.padding(end = 8.dp),
-                                    color = Color(0xFFC62828) // Dark red
+                                    color = medicalColors.inventoryUrgentContent
                                 )
                                 Text(
                                     "Only $daysRemaining days left! Refill urgently needed.",
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                    color = Color(0xFFC62828) // Dark red
+                                    color = medicalColors.inventoryUrgentContent
                                 )
                             }
                         }
@@ -624,7 +635,7 @@ fun ReminderItem(
                         Spacer(modifier = Modifier.height(8.dp))
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = Color(0xFFFFF3E0), // Light orange
+                            color = medicalColors.inventoryWarningContainer,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
@@ -635,13 +646,13 @@ fun ReminderItem(
                                     "⚠",
                                     style = MaterialTheme.typography.titleMedium,
                                     modifier = Modifier.padding(end = 8.dp),
-                                    color = Color(0xFFE65100) // Dark orange
+                                    color = medicalColors.inventoryWarningContent
                                 )
                                 Text(
                                     "$daysRemaining days remaining. Time to pick up refill.",
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
-                                    color = Color(0xFFE65100) // Dark orange
+                                    color = medicalColors.inventoryWarningContent
                                 )
                             }
                         }
@@ -649,7 +660,7 @@ fun ReminderItem(
                         Spacer(modifier = Modifier.height(8.dp))
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = Color(0xFFFFCDD2), // Darker red
+                            color = medicalColors.inventoryEmptyContainer,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
@@ -660,13 +671,13 @@ fun ReminderItem(
                                     "⚠",
                                     style = MaterialTheme.typography.titleMedium,
                                     modifier = Modifier.padding(end = 8.dp),
-                                    color = Color(0xFFB71C1C) // Dark red
+                                    color = medicalColors.inventoryEmptyContent
                                 )
                                 Text(
                                     "No medication remaining!",
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                    color = Color(0xFFB71C1C) // Dark red
+                                    color = medicalColors.inventoryEmptyContent
                                 )
                             }
                         }
@@ -686,7 +697,7 @@ fun ReminderItem(
                     } else if (latestRefill?.refillsRemaining == 0) {
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = Color(0xFFFFCDD2), // Darker red
+                            color = medicalColors.inventoryEmptyContainer,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
@@ -695,13 +706,13 @@ fun ReminderItem(
                                         "⚠",
                                         style = MaterialTheme.typography.titleMedium,
                                         modifier = Modifier.padding(end = 8.dp),
-                                        color = Color(0xFFB71C1C) // Dark red
+                                        color = medicalColors.inventoryEmptyContent
                                     )
                                     Text(
                                         "No refills left. Get new prescription from doctor.",
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                        color = Color(0xFFB71C1C) // Dark red
+                                        color = medicalColors.inventoryEmptyContent
                                     )
                                 }
                             }
@@ -1289,7 +1300,7 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
                     Box(
                         modifier = Modifier
                             .size(8.dp)
-                            .background(Color.Blue, CircleShape)
+                            .background(MaterialTheme.colorScheme.primary, CircleShape)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
@@ -1303,7 +1314,10 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
                     Box(
                         modifier = Modifier
                             .size(8.dp)
-                            .background(Color(0xFFFFA500), CircleShape)
+                            .background(
+                                MaterialTheme.medicalColors.estimatedRefillIndicator,
+                                CircleShape
+                            )
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
@@ -1317,13 +1331,19 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
                     Box(
                         modifier = Modifier
                             .size(8.dp)
-                            .background(Color(0xFF4CAF50), CircleShape)
+                            .background(
+                                MaterialTheme.medicalColors.doseTakenIndicator,
+                                CircleShape
+                            )
                     )
                     Spacer(modifier = Modifier.width(2.dp))
                     Box(
                         modifier = Modifier
                             .size(8.dp)
-                            .background(Color(0xFFF44336), CircleShape)
+                            .background(
+                                MaterialTheme.medicalColors.doseMissedIndicator,
+                                CircleShape
+                            )
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
@@ -1389,7 +1409,10 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
                     LazyColumn {
                         items(selectedDateIntakes.groupBy { it.medicationName }.values.toList()) { medicationIntakes ->
                             medicationIntakes.forEachIndexed { _, intake ->
-                                MedicationEventItem(intake = intake, onClick = { selectedIntake = intake })
+                                MedicationEventItem(
+                                    intake = intake,
+                                    onClick = { selectedIntake = intake }
+                                )
                             }
                         }
                     }
@@ -1425,13 +1448,6 @@ fun CalendarView(
     val daysInMonth = currentMonth.lengthOfMonth()
     val firstDayOfMonth = currentMonth.atDay(1).dayOfWeek.value
     val totalDays = daysInMonth + firstDayOfMonth - 1
-
-    // Generate a map of medication names to color offsets
-    val medicationColorOffsets = remember(intakes) {
-        intakes.map { it.medicationName }.distinct().mapIndexed { index, name ->
-            name to generateColorOffset(index, intakes.map { it.medicationName }.distinct().size)
-        }.toMap()
-    }
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(7),
@@ -1486,7 +1502,7 @@ fun CalendarView(
                                 Box(
                                     modifier = Modifier
                                         .size(4.dp)
-                                        .background(Color.Blue, CircleShape)
+                                        .background(MaterialTheme.colorScheme.primary, CircleShape)
                                 )
                             }
                             if (hasEstimatedRefill) {
@@ -1494,14 +1510,16 @@ fun CalendarView(
                                 Box(
                                     modifier = Modifier
                                         .size(4.dp)
-                                        .background(Color(0xFFFFA500), CircleShape) // Orange color
+                                        .background(
+                                            MaterialTheme.medicalColors.estimatedRefillIndicator,
+                                            CircleShape
+                                        )
                                 )
                             }
                         }
                         Spacer(modifier = Modifier.height(2.dp))
                         FlexibleDotRow(
                             intakes = dayIntakes,
-                            medicationColorOffsets = medicationColorOffsets,
                             maxDots = 8
                         )
                     }
@@ -1516,9 +1534,9 @@ fun CalendarView(
 @Composable
 fun FlexibleDotRow(
     intakes: List<MedicationIntake>,
-    medicationColorOffsets: Map<String, Float>,
     maxDots: Int
 ) {
+    val medicalColors = MaterialTheme.medicalColors
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1527,11 +1545,10 @@ fun FlexibleDotRow(
     ) {
         val displayedIntakes = intakes.take(maxDots)
         displayedIntakes.forEach { intake ->
-            val colorOffset = medicationColorOffsets[intake.medicationName] ?: 0f
             val dotColor = if (intake.taken) {
-                generateGreenHue(colorOffset)
+                medicalColors.doseTakenIndicator
             } else {
-                generateRedHue(colorOffset)
+                medicalColors.doseMissedIndicator
             }
             Box(
                 modifier = Modifier
@@ -1552,17 +1569,6 @@ fun FlexibleDotRow(
     }
 }
 
-fun generateColorOffset(index: Int, total: Int): Float {
-    return (index.toFloat() / total) * 30f // Generate offsets within a 30-degree range
-}
-
-fun generateGreenHue(offset: Float): Color {
-    return Color.hsl((120f + offset) % 360, 0.7f, 0.5f)
-}
-
-fun generateRedHue(offset: Float): Color {
-    return Color.hsl((0f + offset) % 360, 0.7f, 0.5f)
-}
 
 @Composable
 fun CalendarDialog(
@@ -1649,17 +1655,19 @@ fun CalendarDialog(
 
 @Composable
 fun MedicationEventItem(
-    intake: MedicationIntake, onClick: () -> Unit
+    intake: MedicationIntake,
+    onClick: () -> Unit
 ) {
+    val medicalColors = MaterialTheme.medicalColors
     val containerColor = if (intake.taken) {
-        Color(0xFFE8F5E9) // Light green
+        medicalColors.medicationTakenContainer
     } else {
-        Color(0xFFFFEBEE) // Light red
+        medicalColors.medicationMissedContainer
     }
     val contentColor = if (intake.taken) {
-        Color(0xFF2E7D32) // Dark green text
+        medicalColors.medicationTakenContent
     } else {
-        Color(0xFFC62828) // Dark red text
+        medicalColors.medicationMissedContent
     }
     val statusIcon = if (intake.taken) "✓" else "✗"
 
@@ -1707,26 +1715,12 @@ fun EventDetailsDialog(
             Text("Time: ${intake.intakeDateTime.format(DateTimeFormatter.ofPattern("HH:mm"))}")
             Text("Status: ${if (intake.taken) "Taken" else "Not Taken"}")
             Spacer(modifier = Modifier.height(16.dp))
-            Row(
+            Button(
+                onClick = { onStatusChange(!intake.taken) },
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                shape = RoundedCornerShape(12.dp)
             ) {
-                Button(
-                    onClick = { onStatusChange(true) },
-                    enabled = !intake.taken,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("✓ Taken")
-                }
-                androidx.compose.material3.OutlinedButton(
-                    onClick = { onStatusChange(false) },
-                    enabled = intake.taken,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("✗ Not Taken")
-                }
+                Text(if (intake.taken) "✗ Mark as Not Taken" else "✓ Mark as Taken")
             }
         }
     }, confirmButton = {

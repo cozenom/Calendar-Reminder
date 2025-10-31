@@ -8,8 +8,17 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+
+/**
+ * Extension property to access medical colors from MaterialTheme.
+ * Usage: MaterialTheme.medicalColors.doseTakenIndicator
+ */
+val MaterialTheme.medicalColors: MedicalColors
+    @Composable
+    get() = LocalMedicalColors.current
 
 private val DarkColorScheme = darkColorScheme(
     primary = Color(0xFF2196F3),
@@ -22,17 +31,6 @@ private val LightColorScheme = lightColorScheme(
     secondary = Color(0xFF03A9F4),
     tertiary = Color(0xFF00BCD4)
 )
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
-
 
 @Composable
 fun CalendarAppTheme(
@@ -51,9 +49,13 @@ fun CalendarAppTheme(
         else -> LightColorScheme
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
+    val medicalColors = if (darkTheme) DarkMedicalColors else LightMedicalColors
+
+    CompositionLocalProvider(LocalMedicalColors provides medicalColors) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            content = content
+        )
+    }
 }
