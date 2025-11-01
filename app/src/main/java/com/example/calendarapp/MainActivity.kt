@@ -86,7 +86,9 @@ import com.example.calendarapp.data.model.MedicationIntake
 import com.example.calendarapp.data.model.MedicationReminder
 import com.example.calendarapp.data.model.PrescriptionRefill
 import com.example.calendarapp.data.notification.MedicationReminderWorker
+import com.example.calendarapp.ui.theme.dimensions
 import com.example.calendarapp.ui.theme.medicalColors
+import com.example.calendarapp.ui.theme.shapes
 import com.example.calendarapp.viewmodel.MedicationReminderViewModel
 import com.example.calendarapp.viewmodel.MedicationReminderViewModelFactory
 import java.time.LocalDate
@@ -201,7 +203,7 @@ fun MedicationsTab(viewModel: MedicationReminderViewModel) {
 
     Column(modifier = Modifier.padding(16.dp)) {
         Text("Your Medications", style = MaterialTheme.typography.headlineMedium)
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
         ReminderList(
             reminders = reminders,
             onDeleteReminder = { viewModel.delete(it) },
@@ -277,7 +279,7 @@ fun ReminderItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp),
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.large,
         elevation = androidx.compose.material3.CardDefaults.cardElevation(
             defaultElevation = 4.dp
         )
@@ -294,28 +296,28 @@ fun ReminderItem(
                     label = { Text("Medication Name") },
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
                 FrequencySelector(frequency = editedFrequency, onFrequencyChange = {
                     editedFrequency = it
                     editedTimes = List(it) { index ->
                         if (index < editedTimes.size) editedTimes[index] else LocalTime.now()
                     }
                 })
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
                 editedTimes.forEachIndexed { index, time ->
                     Material3TimePicker(initialTime = time, onTimeSelected = { newTime ->
                         editedTimes = editedTimes.toMutableList().also { it[index] = newTime }
                     })
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
                 }
                 androidx.compose.material3.OutlinedButton(
                     onClick = { showStartDatePicker = true },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = MaterialTheme.shapes.medium
                 ) {
                     Text("Start Date: ${editedStartDate.format(DateTimeFormatter.ofPattern("MMM dd, yyyy"))}")
                 }
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -323,7 +325,7 @@ fun ReminderItem(
                     androidx.compose.material3.OutlinedButton(
                         onClick = { showEndDatePicker = true },
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = MaterialTheme.shapes.medium
                     ) {
                         Text(
                             if (editedEndDate != null) "End: ${editedEndDate?.format(DateTimeFormatter.ofPattern("MMM dd"))}"
@@ -334,16 +336,16 @@ fun ReminderItem(
                     if (editedEndDate != null) {
                         TextButton(
                             onClick = { editedEndDate = null },
-                            shape = RoundedCornerShape(12.dp)
+                            shape = MaterialTheme.shapes.medium
                         ) {
                             Text("Clear")
                         }
                     }
                 }
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
                 WeekdaySelector(
                     selectedDays = editedReminderDays, onDaysChanged = { editedReminderDays = it })
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
 
                 // Prescription tracking section - editable
                 androidx.compose.material3.HorizontalDivider(
@@ -365,7 +367,7 @@ fun ReminderItem(
                 }
 
                 if (editedInventoryTrackingEnabled) {
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
                     OutlinedTextField(
                         value = editedDosagePerIntake,
@@ -375,7 +377,7 @@ fun ReminderItem(
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
                     OutlinedTextField(
                         value = editedCurrentInventory,
@@ -385,7 +387,7 @@ fun ReminderItem(
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
                     OutlinedTextField(
                         value = editedPillsPerRefill,
@@ -395,7 +397,7 @@ fun ReminderItem(
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
                     OutlinedTextField(
                         value = editedTotalRefills,
@@ -405,7 +407,7 @@ fun ReminderItem(
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
                     OutlinedTextField(
                         value = editedRefillPeriodDays,
@@ -415,7 +417,7 @@ fun ReminderItem(
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
                     // Show refills info if available
                     latestRefill?.let {
@@ -429,7 +431,7 @@ fun ReminderItem(
                                 MaterialTheme.colorScheme.onSurface
                             }
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
                     }
 
                     // Refill management buttons
@@ -437,14 +439,14 @@ fun ReminderItem(
                         Button(
                             onClick = { showRecordRefillDialog = true },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = MaterialTheme.shapes.medium
                         ) {
                             Text("Record Refill Pickup")
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
 
                 // Validation
                 val isEditFormValid = editedName.isNotBlank() &&
@@ -485,14 +487,14 @@ fun ReminderItem(
                         },
                         enabled = isEditFormValid,
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = MaterialTheme.shapes.medium
                     ) {
                         Text("Save")
                     }
                     androidx.compose.material3.OutlinedButton(
                         onClick = { isEditing = false },
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = MaterialTheme.shapes.medium
                     ) {
                         Text("Cancel")
                     }
@@ -560,7 +562,7 @@ fun ReminderItem(
                     }
 
                     Surface(
-                        shape = RoundedCornerShape(12.dp),
+                        shape = MaterialTheme.shapes.medium,
                         color = inventoryContainerColor,
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -589,7 +591,7 @@ fun ReminderItem(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
                     // Show refills info if available
                     latestRefill?.let {
@@ -607,9 +609,9 @@ fun ReminderItem(
 
                     // Warning messages based on days remaining
                     if (daysRemaining <= 3 && reminder.currentInventory > 0) {
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
                         Surface(
-                            shape = RoundedCornerShape(8.dp),
+                            shape = MaterialTheme.shapes.small,
                             color = medicalColors.inventoryUrgentContainer,
                             modifier = Modifier.fillMaxWidth()
                         ) {
@@ -632,9 +634,9 @@ fun ReminderItem(
                             }
                         }
                     } else if (daysRemaining < 7 && reminder.currentInventory > 0) {
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
                         Surface(
-                            shape = RoundedCornerShape(8.dp),
+                            shape = MaterialTheme.shapes.small,
                             color = medicalColors.inventoryWarningContainer,
                             modifier = Modifier.fillMaxWidth()
                         ) {
@@ -657,9 +659,9 @@ fun ReminderItem(
                             }
                         }
                     } else if (reminder.currentInventory == 0) {
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
                         Surface(
-                            shape = RoundedCornerShape(8.dp),
+                            shape = MaterialTheme.shapes.small,
                             color = medicalColors.inventoryEmptyContainer,
                             modifier = Modifier.fillMaxWidth()
                         ) {
@@ -684,19 +686,19 @@ fun ReminderItem(
                     }
 
                     // Refill management buttons
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
                     if ((latestRefill?.refillsRemaining ?: 0) > 0) {
                         Button(
                             onClick = { showRecordRefillDialog = true },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = MaterialTheme.shapes.medium
                         ) {
                             Text("Record Refill Pickup")
                         }
                     } else if (latestRefill?.refillsRemaining == 0) {
                         Surface(
-                            shape = RoundedCornerShape(8.dp),
+                            shape = MaterialTheme.shapes.small,
                             color = medicalColors.inventoryEmptyContainer,
                             modifier = Modifier.fillMaxWidth()
                         ) {
@@ -717,17 +719,17 @@ fun ReminderItem(
                                 }
                             }
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
                         Button(
                             onClick = { showNewPrescriptionDialog = true },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = MaterialTheme.shapes.medium
                         ) {
                             Text("Add New Prescription")
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
                 }
 
                 Row(
@@ -737,14 +739,14 @@ fun ReminderItem(
                     Button(
                         onClick = { isEditing = true },
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = MaterialTheme.shapes.medium
                     ) {
                         Text("Edit")
                     }
                     androidx.compose.material3.OutlinedButton(
                         onClick = onDelete,
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = MaterialTheme.shapes.medium
                     ) {
                         Text("Delete")
                     }
@@ -834,7 +836,7 @@ fun AddReminderForm(
             label = { Text("Medication Name") },
             modifier = Modifier.fillMaxWidth()
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
         FrequencySelector(frequency = frequency, onFrequencyChange = {
             frequency = it
@@ -842,23 +844,23 @@ fun AddReminderForm(
                 if (index < reminderTimes.size) reminderTimes[index] else LocalTime.now()
             }
         })
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
         reminderTimes.forEachIndexed { index, time ->
             Material3TimePicker(initialTime = time, onTimeSelected = { newTime ->
                 reminderTimes = reminderTimes.toMutableList().also { it[index] = newTime }
             })
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
         }
 
         androidx.compose.material3.OutlinedButton(
             onClick = { showStartDatePicker = true },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
+            shape = MaterialTheme.shapes.medium
         ) {
             Text("Start Date: ${startDate.format(DateTimeFormatter.ofPattern("MMM dd, yyyy"))}")
         }
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -867,7 +869,7 @@ fun AddReminderForm(
             androidx.compose.material3.OutlinedButton(
                 onClick = { showEndDatePicker = true },
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
+                shape = MaterialTheme.shapes.medium
             ) {
                 Text(
                     if (endDate != null) "End: ${endDate?.format(DateTimeFormatter.ofPattern("MMM dd"))}"
@@ -878,13 +880,13 @@ fun AddReminderForm(
             if (endDate != null) {
                 TextButton(
                     onClick = { endDate = null },
-                    shape = RoundedCornerShape(12.dp)
+                    shape = MaterialTheme.shapes.medium
                 ) {
                     Text("Clear")
                 }
             }
         }
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
         if (showStartDatePicker) {
             CalendarDialog(onDismissRequest = { showStartDatePicker = false }, onDateSelected = {
@@ -903,7 +905,7 @@ fun AddReminderForm(
         }
 
         WeekdaySelector(selectedDays = reminderDays, onDaysChanged = { reminderDays = it })
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
 
         // Prescription tracking section
         Row(
@@ -919,7 +921,7 @@ fun AddReminderForm(
         }
 
         if (inventoryTrackingEnabled) {
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
             OutlinedTextField(
                 value = dosagePerIntake,
@@ -929,7 +931,7 @@ fun AddReminderForm(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
             OutlinedTextField(
                 value = currentInventory,
@@ -939,7 +941,7 @@ fun AddReminderForm(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
             OutlinedTextField(
                 value = pillsPerRefill,
@@ -949,7 +951,7 @@ fun AddReminderForm(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
             OutlinedTextField(
                 value = totalRefills,
@@ -959,7 +961,7 @@ fun AddReminderForm(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
             OutlinedTextField(
                 value = refillPeriodDays,
@@ -970,7 +972,7 @@ fun AddReminderForm(
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
 
         // Validation
         val isFormValid = medicationName.isNotBlank() &&
@@ -1017,7 +1019,7 @@ fun AddReminderForm(
             },
             enabled = isFormValid,
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
+            shape = MaterialTheme.shapes.medium
         ) {
             Text("Add Reminder", style = MaterialTheme.typography.labelLarge)
         }
@@ -1034,13 +1036,12 @@ fun FrequencySelector(frequency: Int, onFrequencyChange: (Int) -> Unit) {
         Spacer(modifier = Modifier.width(8.dp))
         Button(
             onClick = { if (frequency > 1) onFrequencyChange(frequency - 1) },
-            modifier = Modifier.width(48.dp),
+            modifier = Modifier.width(MaterialTheme.dimensions.frequencyButtonWidth),
             contentPadding = PaddingValues(0.dp)
         ) {
             Text(
                 text = "-",
-                fontSize = 20.sp,
-                color = Color.White
+                fontSize = 20.sp
             )
         }
         Text(
@@ -1049,13 +1050,12 @@ fun FrequencySelector(frequency: Int, onFrequencyChange: (Int) -> Unit) {
         )
         Button(
             onClick = { onFrequencyChange(frequency + 1) },
-            modifier = Modifier.width(48.dp),
+            modifier = Modifier.width(MaterialTheme.dimensions.frequencyButtonWidth),
             contentPadding = PaddingValues(0.dp)
         ) {
             Text(
                 text = "+",
-                fontSize = 20.sp,
-                color = Color.White
+                fontSize = 20.sp
             )
         }
     }
@@ -1100,7 +1100,7 @@ fun WeekdayButton(day: String, isSelected: Boolean, onClick: () -> Unit) {
 
     Box(
         modifier = Modifier
-            .size(40.dp)
+            .size(MaterialTheme.dimensions.weekdayButtonSize)
             .clip(CircleShape)
             .background(backgroundColor)
             .clickable(onClick = onClick)
@@ -1136,7 +1136,7 @@ fun Material3TimePicker(
     androidx.compose.material3.OutlinedButton(
         onClick = { showTimePicker = true },
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp)
+        shape = MaterialTheme.shapes.medium
     ) {
         Text("Time: ${selectedTime.format(DateTimeFormatter.ofPattern(timeFormat))}")
     }
@@ -1144,7 +1144,7 @@ fun Material3TimePicker(
     if (showTimePicker) {
         Dialog(onDismissRequest = { showTimePicker = false }) {
             Surface(
-                shape = RoundedCornerShape(28.dp),
+                shape = MaterialTheme.shapes.extraLarge,
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 6.dp
             ) {
@@ -1245,11 +1245,11 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
 
     Column(modifier = Modifier.padding(16.dp)) {
         Text("Medication Calendar", style = MaterialTheme.typography.headlineMedium)
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
 
         // Month navigation
         Surface(
-            shape = RoundedCornerShape(12.dp),
+            shape = MaterialTheme.shapes.medium,
             color = MaterialTheme.colorScheme.surfaceVariant,
             tonalElevation = 1.dp,
             modifier = Modifier.fillMaxWidth()
@@ -1282,11 +1282,11 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
         // Legend
         Surface(
-            shape = RoundedCornerShape(12.dp),
+            shape = MaterialTheme.shapes.medium,
             color = MaterialTheme.colorScheme.surfaceVariant,
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -1299,7 +1299,7 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
-                            .size(8.dp)
+                            .size(MaterialTheme.dimensions.indicatorDotLarge)
                             .background(MaterialTheme.colorScheme.primary, CircleShape)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
@@ -1313,7 +1313,7 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
-                            .size(8.dp)
+                            .size(MaterialTheme.dimensions.indicatorDotLarge)
                             .background(
                                 MaterialTheme.medicalColors.estimatedRefillIndicator,
                                 CircleShape
@@ -1330,7 +1330,7 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
-                            .size(8.dp)
+                            .size(MaterialTheme.dimensions.indicatorDotLarge)
                             .background(
                                 MaterialTheme.medicalColors.doseTakenIndicator,
                                 CircleShape
@@ -1339,7 +1339,7 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
                     Spacer(modifier = Modifier.width(2.dp))
                     Box(
                         modifier = Modifier
-                            .size(8.dp)
+                            .size(MaterialTheme.dimensions.indicatorDotLarge)
                             .background(
                                 MaterialTheme.medicalColors.doseMissedIndicator,
                                 CircleShape
@@ -1359,7 +1359,7 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
 
         // Swipeable calendar with HorizontalPager
         Surface(
-            shape = RoundedCornerShape(12.dp),
+            shape = MaterialTheme.shapes.medium,
             color = MaterialTheme.colorScheme.surfaceVariant,
             tonalElevation = 3.dp,
             modifier = Modifier.fillMaxWidth()
@@ -1387,11 +1387,11 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
 
         // Show selected date's intakes
         Surface(
-            shape = RoundedCornerShape(12.dp),
+            shape = MaterialTheme.shapes.medium,
             color = MaterialTheme.colorScheme.surfaceVariant,
             tonalElevation = 1.dp,
             modifier = Modifier.fillMaxWidth()
@@ -1401,7 +1401,7 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
                     text = selectedDate.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")),
                     style = MaterialTheme.typography.titleMedium
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
                 if (selectedDateIntakes.isEmpty()) {
                     Text("No medications scheduled for this day")
@@ -1475,12 +1475,12 @@ fun CalendarView(
                     Column(
                         modifier = Modifier
                             .padding(2.dp)
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(MaterialTheme.shapes.small)
                             .clickable { onDateSelected(date) }
                             .background(
                                 if (isSelected) MaterialTheme.colorScheme.primaryContainer
                                 else Color.Transparent,
-                                shape = RoundedCornerShape(8.dp)
+                                shape = MaterialTheme.shapes.small
                             )
                             .padding(6.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -1501,7 +1501,7 @@ fun CalendarView(
                                 Spacer(modifier = Modifier.width(2.dp))
                                 Box(
                                     modifier = Modifier
-                                        .size(4.dp)
+                                        .size(MaterialTheme.dimensions.indicatorDotSmall)
                                         .background(MaterialTheme.colorScheme.primary, CircleShape)
                                 )
                             }
@@ -1509,7 +1509,7 @@ fun CalendarView(
                                 Spacer(modifier = Modifier.width(2.dp))
                                 Box(
                                     modifier = Modifier
-                                        .size(4.dp)
+                                        .size(MaterialTheme.dimensions.indicatorDotSmall)
                                         .background(
                                             MaterialTheme.medicalColors.estimatedRefillIndicator,
                                             CircleShape
@@ -1645,7 +1645,7 @@ fun CalendarDialog(
         dismissButton = {
             TextButton(
                 onClick = onDismissRequest,
-                shape = RoundedCornerShape(12.dp)
+                shape = MaterialTheme.shapes.medium
             ) {
                 Text("Cancel")
             }
@@ -1675,7 +1675,7 @@ fun MedicationEventItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.medium,
         color = containerColor,
         onClick = onClick
     ) {
@@ -1714,11 +1714,11 @@ fun EventDetailsDialog(
         Column {
             Text("Time: ${intake.intakeDateTime.format(DateTimeFormatter.ofPattern("HH:mm"))}")
             Text("Status: ${if (intake.taken) "Taken" else "Not Taken"}")
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
             Button(
                 onClick = { onStatusChange(!intake.taken) },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = MaterialTheme.shapes.medium
             ) {
                 Text(if (intake.taken) "✗ Mark as Not Taken" else "✓ Mark as Taken")
             }
@@ -1726,7 +1726,7 @@ fun EventDetailsDialog(
     }, confirmButton = {
         TextButton(
             onClick = onDismiss,
-            shape = RoundedCornerShape(12.dp)
+            shape = MaterialTheme.shapes.medium
         ) {
             Text("Close")
         }
@@ -1752,17 +1752,17 @@ fun RecordRefillDialog(
                     "Medication: ${reminder.medicationName}",
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
                 Text("Medication count will increase by: ${latestRefill.pillsPerRefill}")
                 Text("Refills: ${latestRefill.refillsRemaining} → ${latestRefill.refillsRemaining - 1}")
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
 
                 androidx.compose.material3.OutlinedButton(
                     onClick = { showDatePicker = true },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = MaterialTheme.shapes.medium
                 ) {
                     Text("Pickup Date: ${pickupDate.format(DateTimeFormatter.ofPattern("MMM dd, yyyy"))}")
                 }
@@ -1771,7 +1771,7 @@ fun RecordRefillDialog(
         confirmButton = {
             Button(
                 onClick = { onRecordRefill(pickupDate) },
-                shape = RoundedCornerShape(12.dp)
+                shape = MaterialTheme.shapes.medium
             ) {
                 Text("Record Pickup")
             }
@@ -1779,7 +1779,7 @@ fun RecordRefillDialog(
         dismissButton = {
             TextButton(
                 onClick = onDismiss,
-                shape = RoundedCornerShape(12.dp)
+                shape = MaterialTheme.shapes.medium
             ) {
                 Text("Cancel")
             }
@@ -1816,7 +1816,7 @@ fun NewPrescriptionDialog(
                     "Medication: ${reminder.medicationName}",
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
 
                 OutlinedTextField(
                     value = pillsPerRefill,
@@ -1825,7 +1825,7 @@ fun NewPrescriptionDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
                 OutlinedTextField(
                     value = totalRefills,
@@ -1842,7 +1842,7 @@ fun NewPrescriptionDialog(
                     val refills = totalRefills.toIntOrNull() ?: 5
                     onAddPrescription(pills, refills)
                 },
-                shape = RoundedCornerShape(12.dp)
+                shape = MaterialTheme.shapes.medium
             ) {
                 Text("Add Prescription")
             }
@@ -1850,7 +1850,7 @@ fun NewPrescriptionDialog(
         dismissButton = {
             TextButton(
                 onClick = onDismiss,
-                shape = RoundedCornerShape(12.dp)
+                shape = MaterialTheme.shapes.medium
             ) {
                 Text("Cancel")
             }
