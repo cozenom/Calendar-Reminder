@@ -25,51 +25,44 @@ class ReminderWorker(
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val database = AppDatabase.getDatabase(applicationContext)
+        val reminderDao = database.reminderDao()
         val reminderLogDao = database.reminderLogDao()
 
         val now = LocalDateTime.now()
-        val futureLogs = reminderLogDao.getFutureLogs(now)
+        val reminders = reminderDao.getAllRemindersList()
 
-        cancelAllAlarms()
-        scheduleNotificationsForLogs(futureLogs)
+        // Cancel existing alarm for each reminder, then schedule the next one
+        reminders.forEach { reminder ->
+            cancelAlarm(applicationContext, reminder.id)
+            val nextLog = reminderLogDao.getNextLogForReminder(reminder.id, now)
+            if (nextLog != null) {
+                scheduleAlarm(applicationContext, nextLog)
+            }
+        }
 
         Result.success()
     }
 
-    private fun cancelAllAlarms() {
-        val alarmManager = applicationContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val intent = Intent(applicationContext, NotificationActionReceiver::class.java)
-        intent.action = ACTION_SHOW_NOTIFICATION
+    companion object {
+        const val ACTION_SHOW_NOTIFICATION = "com.example.calendarapp.ACTION_SHOW_NOTIFICATION"
+        const val ACTION_COMPLETED = "com.example.calendarapp.ACTION_COMPLETED"
+        const val EXTRA_LOG_ID = "log_id"
+        const val EXTRA_REMINDER_ID = "reminder_id"
+        private const val WORKER_NAME = "ReminderWorker"
 
-        for (i in 0 until 1000) {
-            val pendingIntent = PendingIntent.getBroadcast(
-                applicationContext,
-                i,
-                intent,
-                PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
-            )
-            pendingIntent?.let {
-                alarmManager.cancel(it)
-                it.cancel()
-            }
-        }
-    }
-
-    private fun scheduleNotificationsForLogs(logs: List<ReminderLog>) {
-        val alarmManager = applicationContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-
-        logs.forEach { log ->
-            val notificationIntent = Intent(applicationContext, NotificationActionReceiver::class.java).apply {
+        fun scheduleAlarm(context: Context, log: ReminderLog) {
+            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            val intent = Intent(context, NotificationActionReceiver::class.java).apply {
                 action = ACTION_SHOW_NOTIFICATION
                 putExtra(EXTRA_LOG_ID, log.id)
+                putExtra(EXTRA_REMINDER_ID, log.reminderId)
             }
             val pendingIntent = PendingIntent.getBroadcast(
-                applicationContext,
-                log.id,
-                notificationIntent,
+                context,
+                log.reminderId, // keyed by reminderId so there's only ever one alarm per reminder
+                intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
-
             val triggerTime = log.logDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -82,13 +75,20 @@ class ReminderWorker(
                 alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
             }
         }
-    }
 
-    companion object {
-        const val ACTION_SHOW_NOTIFICATION = "com.example.calendarapp.ACTION_SHOW_NOTIFICATION"
-        const val ACTION_COMPLETED = "com.example.calendarapp.ACTION_COMPLETED"
-        const val EXTRA_LOG_ID = "log_id"
-        private const val WORKER_NAME = "ReminderWorker"
+        fun cancelAlarm(context: Context, reminderId: Int) {
+            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            val intent = Intent(context, NotificationActionReceiver::class.java).apply {
+                action = ACTION_SHOW_NOTIFICATION
+            }
+            val pendingIntent = PendingIntent.getBroadcast(
+                context,
+                reminderId,
+                intent,
+                PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+            )
+            pendingIntent?.let { alarmManager.cancel(it) }
+        }
 
         fun schedule(context: Context) {
             val workRequest = OneTimeWorkRequestBuilder<ReminderWorker>()

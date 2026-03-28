@@ -67,7 +67,6 @@ class NotificationActionReceiver : BroadcastReceiver() {
             .setAutoCancel(false)
             .addAction(R.drawable.ic_check, "Done", completedPendingIntent)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setFullScreenIntent(pendingIntent, true)
             .setSound(soundUri)
             .setVibrate(longArrayOf(0, 250))
             .setOnlyAlertOnce(true)
@@ -77,6 +76,16 @@ class NotificationActionReceiver : BroadcastReceiver() {
             Log.d("NotificationActionReceiver", "Notification shown for log $logId")
         } catch (e: Exception) {
             Log.e("NotificationActionReceiver", "Error showing notification: ${e.message}", e)
+        }
+
+        // Chain: schedule the next occurrence for this reminder
+        CoroutineScope(Dispatchers.IO).launch {
+            val database = AppDatabase.getDatabase(context)
+            val log = database.reminderLogDao().getLogById(logId) ?: return@launch
+            val nextLog = database.reminderLogDao().getNextLogForReminder(log.reminderId, log.logDateTime)
+            if (nextLog != null) {
+                ReminderWorker.scheduleAlarm(context, nextLog)
+            }
         }
     }
 
