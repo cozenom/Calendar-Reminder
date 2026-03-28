@@ -7,19 +7,19 @@ import androidx.room.PrimaryKey
 import java.time.LocalDateTime
 
 @Entity(
-    tableName = "medication_intake",
+    tableName = "reminder_logs",
     foreignKeys = [ForeignKey(
-        entity = MedicationReminder::class,
+        entity = Reminder::class,
         parentColumns = ["id"],
         childColumns = ["reminderId"],
         onDelete = ForeignKey.CASCADE
     )],
     indices = [Index("reminderId")]
 )
-data class MedicationIntake(
+data class ReminderLog(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val reminderId: Int,
-    val medicationName: String,
-    val intakeDateTime: LocalDateTime,
-    val taken: Boolean = false
+    val title: String,
+    val logDateTime: LocalDateTime,
+    val completed: Boolean = false
 )

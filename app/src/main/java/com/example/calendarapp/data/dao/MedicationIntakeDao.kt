@@ -5,46 +5,42 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
-import com.example.calendarapp.data.model.MedicationIntake
+import com.example.calendarapp.data.model.ReminderLog
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDateTime
 
 @Dao
-interface MedicationIntakeDao {
+interface ReminderLogDao {
     @Insert
-    suspend fun insert(intake: MedicationIntake)
+    suspend fun insert(log: ReminderLog)
 
     @Update
-    suspend fun update(intake: MedicationIntake)
+    suspend fun update(log: ReminderLog)
 
     @Delete
-    suspend fun delete(intake: MedicationIntake)
+    suspend fun delete(log: ReminderLog)
 
-    @Query("SELECT * FROM medication_intake WHERE reminderId = :reminderId")
-    fun getIntakesForReminder(reminderId: Int): Flow<List<MedicationIntake>>
+    @Query("SELECT * FROM reminder_logs WHERE reminderId = :reminderId")
+    fun getLogsForReminder(reminderId: Int): Flow<List<ReminderLog>>
 
-    @Query("SELECT * FROM medication_intake WHERE intakeDateTime BETWEEN :start AND :end")
-    fun getIntakesForDateRange(
-        start: LocalDateTime,
-        end: LocalDateTime
-    ): Flow<List<MedicationIntake>>
+    @Query("SELECT * FROM reminder_logs WHERE logDateTime BETWEEN :start AND :end")
+    fun getLogsForDateRange(start: LocalDateTime, end: LocalDateTime): Flow<List<ReminderLog>>
 
-    @Query("SELECT * FROM medication_intake WHERE intakeDateTime <= :dateTime AND taken = 0")
-    fun getMissedIntakes(dateTime: LocalDateTime): Flow<List<MedicationIntake>>
+    @Query("SELECT * FROM reminder_logs WHERE logDateTime <= :dateTime AND completed = 0")
+    fun getMissedLogs(dateTime: LocalDateTime): Flow<List<ReminderLog>>
 
-    @Query("SELECT * FROM medication_intake WHERE intakeDateTime BETWEEN :start AND :end")
-    fun getUpcomingIntakes(start: LocalDateTime, end: LocalDateTime): List<MedicationIntake>
+    @Query("SELECT * FROM reminder_logs WHERE logDateTime BETWEEN :start AND :end")
+    fun getUpcomingLogs(start: LocalDateTime, end: LocalDateTime): List<ReminderLog>
 
+    @Query("UPDATE reminder_logs SET completed = :completed WHERE id = :logId")
+    suspend fun updateCompletedStatus(logId: Int, completed: Boolean)
 
-    @Query("UPDATE medication_intake SET taken = :taken WHERE id = :intakeId")
-    suspend fun updateTakenStatus(intakeId: Int, taken: Boolean)
+    @Query("SELECT * FROM reminder_logs WHERE id = :logId")
+    suspend fun getLogById(logId: Int): ReminderLog?
 
-    @Query("SELECT * FROM medication_intake WHERE id = :intakeId")
-    suspend fun getIntakeById(intakeId: Int): MedicationIntake?
+    @Query("SELECT * FROM reminder_logs WHERE logDateTime > :now ORDER BY logDateTime ASC")
+    suspend fun getFutureLogs(now: LocalDateTime): List<ReminderLog>
 
-    @Query("SELECT * FROM medication_intake WHERE intakeDateTime > :now ORDER BY intakeDateTime ASC")
-    suspend fun getFutureIntakes(now: LocalDateTime): List<MedicationIntake>
-
-    @Query("DELETE FROM medication_intake WHERE reminderId = :reminderId AND intakeDateTime > :fromDateTime")
-    suspend fun deleteFutureIntakesForReminder(reminderId: Int, fromDateTime: LocalDateTime)
+    @Query("DELETE FROM reminder_logs WHERE reminderId = :reminderId AND logDateTime > :fromDateTime")
+    suspend fun deleteFutureLogsForReminder(reminderId: Int, fromDateTime: LocalDateTime)
 }

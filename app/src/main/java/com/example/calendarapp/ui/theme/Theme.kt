@@ -45,7 +45,7 @@ object AppDimensions {
 /**
  * Extension properties to access custom theme values from MaterialTheme.
  * Usage:
- *   MaterialTheme.medicalColors.doseTakenIndicator
+ *   MaterialTheme.reminderColors.completedIndicator
  *   MaterialTheme.shapes.medium
  *   MaterialTheme.dimensions.spacingSmall
  */
@@ -59,10 +59,10 @@ val MaterialTheme.dimensions: AppDimensions
     @ReadOnlyComposable
     get() = AppDimensions
 
-val MaterialTheme.medicalColors: MedicalColors
+val MaterialTheme.reminderColors: ReminderColors
     @Composable
     @ReadOnlyComposable
-    get() = LocalMedicalColors.current
+    get() = LocalReminderColors.current
 
 private val DarkColorScheme = darkColorScheme(
     primary = Color(0xFF2196F3),
@@ -93,9 +93,9 @@ fun CalendarAppTheme(
         else -> LightColorScheme
     }
 
-    val medicalColors = if (darkTheme) DarkMedicalColors else LightMedicalColors
+    val reminderColors = if (darkTheme) DarkReminderColors else LightReminderColors
 
-    CompositionLocalProvider(LocalMedicalColors provides medicalColors) {
+    CompositionLocalProvider(LocalReminderColors provides reminderColors) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = Typography,

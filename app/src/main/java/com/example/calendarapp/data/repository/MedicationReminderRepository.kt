@@ -1,47 +1,44 @@
 package com.example.calendarapp.data.repository
 
 import android.content.Context
-import com.example.calendarapp.data.dao.MedicationIntakeDao
-import com.example.calendarapp.data.dao.MedicationReminderDao
-import com.example.calendarapp.data.dao.PrescriptionRefillDao
-import com.example.calendarapp.data.model.MedicationIntake
-import com.example.calendarapp.data.model.MedicationReminder
-import com.example.calendarapp.data.notification.InventoryNotificationHelper
+import com.example.calendarapp.data.dao.ReminderDao
+import com.example.calendarapp.data.dao.ReminderLogDao
+import com.example.calendarapp.data.model.Reminder
+import com.example.calendarapp.data.model.ReminderLog
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 import java.time.LocalDateTime
 
-class MedicationReminderRepository(
-    private val medicationReminderDao: MedicationReminderDao,
-    private val medicationIntakeDao: MedicationIntakeDao,
-    private val refillDao: PrescriptionRefillDao,
+class ReminderRepository(
+    private val reminderDao: ReminderDao,
+    private val reminderLogDao: ReminderLogDao,
     private val context: Context
 ) {
-    val allReminders: Flow<List<MedicationReminder>> = medicationReminderDao.getAllReminders()
+    val allReminders: Flow<List<Reminder>> = reminderDao.getAllReminders()
 
-    suspend fun insert(reminder: MedicationReminder): Long {
-        val id = medicationReminderDao.insertReminder(reminder)
-        generateIntakesForReminder(reminder.copy(id = id.toInt()))
+    suspend fun insert(reminder: Reminder): Long {
+        val id = reminderDao.insertReminder(reminder)
+        generateLogsForReminder(reminder.copy(id = id.toInt()))
         return id
     }
 
-    suspend fun update(reminder: MedicationReminder) {
-        medicationReminderDao.updateReminder(reminder)
-        // Delete all intakes from today onwards to avoid duplicates when regenerating
-        medicationIntakeDao.deleteFutureIntakesForReminder(reminder.id, LocalDate.now().atStartOfDay())
-        // Regenerate intakes with updated schedule
-        generateIntakesForReminder(reminder)
+    suspend fun update(reminder: Reminder) {
+        reminderDao.updateReminder(reminder)
+        // Delete all logs from today onwards to avoid duplicates when regenerating
+        reminderLogDao.deleteFutureLogsForReminder(reminder.id, LocalDate.now().atStartOfDay())
+        // Regenerate logs with updated schedule
+        generateLogsForReminder(reminder)
     }
 
-    suspend fun delete(reminder: MedicationReminder) {
-        medicationReminderDao.deleteReminder(reminder)
+    suspend fun delete(reminder: Reminder) {
+        reminderDao.deleteReminder(reminder)
     }
 
-    fun getActiveReminders(date: LocalDate): Flow<List<MedicationReminder>> {
-        return medicationReminderDao.getActiveReminders(date)
+    fun getActiveReminders(date: LocalDate): Flow<List<Reminder>> {
+        return reminderDao.getActiveReminders(date)
     }
 
-    private suspend fun generateIntakesForReminder(reminder: MedicationReminder) {
+    private suspend fun generateLogsForReminder(reminder: Reminder) {
         val currentDate = LocalDate.now()
         val endDate = reminder.endDate ?: currentDate.plusYears(1)
 
@@ -49,52 +46,20 @@ class MedicationReminderRepository(
         while (date <= endDate) {
             if (reminder.reminderDays.contains(date.dayOfWeek.value)) {
                 for (time in reminder.reminderTimes) {
-                    val intakeDateTime = LocalDateTime.of(date, time)
-                    val intake = MedicationIntake(
+                    val logDateTime = LocalDateTime.of(date, time)
+                    val log = ReminderLog(
                         reminderId = reminder.id,
-                        medicationName = reminder.medicationName,
-                        intakeDateTime = intakeDateTime
+                        title = reminder.title,
+                        logDateTime = logDateTime
                     )
-                    medicationIntakeDao.insert(intake)
+                    reminderLogDao.insert(log)
                 }
             }
             date = date.plusDays(1)
         }
     }
 
-    /**
-     * Update intake taken status and adjust inventory if prescription tracking is enabled.
-     * Also triggers inventory alerts when needed.
-     *
-     * Note: Inventory only decrements when marking as taken.
-     * Marking as not taken does NOT increment inventory back.
-     */
-    suspend fun updateIntakeTakenStatus(
-        intakeId: Int,
-        taken: Boolean,
-        reminder: MedicationReminder
-    ) {
-        val intake = medicationIntakeDao.getIntakeById(intakeId)
-
-        if (intake != null && reminder.inventoryTrackingEnabled) {
-            // Only decrement inventory when marking as taken
-            if (taken && !intake.taken) {
-                // Decrement inventory (don't go negative)
-                val newInventory = maxOf(0, reminder.currentInventory - reminder.dosagePerIntake)
-                medicationReminderDao.updateInventory(reminder.id, newInventory)
-
-                // Check and send inventory alerts after decrementing
-                val latestRefill = refillDao.getLatestRefill(reminder.id)
-                InventoryNotificationHelper.checkAndSendInventoryAlerts(
-                    context,
-                    reminder.copy(currentInventory = newInventory),
-                    latestRefill
-                )
-            }
-            // When marking as not taken, we don't change inventory
-        }
-
-        // Update the intake status
-        medicationIntakeDao.updateTakenStatus(intakeId, taken)
+    suspend fun updateLogCompletedStatus(logId: Int, completed: Boolean) {
+        reminderLogDao.updateCompletedStatus(logId, completed)
     }
 }

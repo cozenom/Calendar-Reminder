@@ -1,43 +1,24 @@
 package com.example.calendarapp.data.repository
 
-import com.example.calendarapp.data.dao.MedicationIntakeDao
-import com.example.calendarapp.data.model.MedicationIntake
+import com.example.calendarapp.data.dao.ReminderLogDao
+import com.example.calendarapp.data.model.ReminderLog
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDateTime
 
-class MedicationIntakeRepository(private val medicationIntakeDao: MedicationIntakeDao) {
-    suspend fun insert(intake: MedicationIntake) {
-        medicationIntakeDao.insert(intake)
-    }
+class ReminderLogRepository(private val reminderLogDao: ReminderLogDao) {
+    suspend fun insert(log: ReminderLog) = reminderLogDao.insert(log)
+    suspend fun update(log: ReminderLog) = reminderLogDao.update(log)
+    suspend fun delete(log: ReminderLog) = reminderLogDao.delete(log)
 
-    suspend fun update(intake: MedicationIntake) {
-        medicationIntakeDao.update(intake)
-    }
+    fun getLogsForReminder(reminderId: Int): Flow<List<ReminderLog>> =
+        reminderLogDao.getLogsForReminder(reminderId)
 
-    suspend fun delete(intake: MedicationIntake) {
-        medicationIntakeDao.delete(intake)
-    }
+    fun getLogsForDateRange(start: LocalDateTime, end: LocalDateTime): Flow<List<ReminderLog>> =
+        reminderLogDao.getLogsForDateRange(start, end)
 
-    fun getIntakesForReminder(reminderId: Int): Flow<List<MedicationIntake>> {
-        return medicationIntakeDao.getIntakesForReminder(reminderId)
-    }
+    fun getMissedLogs(dateTime: LocalDateTime): Flow<List<ReminderLog>> =
+        reminderLogDao.getMissedLogs(dateTime)
 
-    fun getIntakesForDateRange(
-        start: LocalDateTime,
-        end: LocalDateTime
-    ): Flow<List<MedicationIntake>> {
-        return medicationIntakeDao.getIntakesForDateRange(start, end)
-    }
-
-    suspend fun updateTakenStatus(intakeId: Int, taken: Boolean) {
-        medicationIntakeDao.updateTakenStatus(intakeId, taken)
-    }
-
-    fun getMissedIntakes(dateTime: LocalDateTime): Flow<List<MedicationIntake>> {
-        return medicationIntakeDao.getMissedIntakes(dateTime)
-    }
-
-    suspend fun getFutureIntakes(now: LocalDateTime): List<MedicationIntake> {
-        return medicationIntakeDao.getFutureIntakes(now)
-    }
+    suspend fun getFutureLogs(now: LocalDateTime): List<ReminderLog> =
+        reminderLogDao.getFutureLogs(now)
 }

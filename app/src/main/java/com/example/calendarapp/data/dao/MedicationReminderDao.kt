@@ -6,34 +6,27 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
-import com.example.calendarapp.data.model.MedicationReminder
+import com.example.calendarapp.data.model.Reminder
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 
 @Dao
-interface MedicationReminderDao {
-    @Query("SELECT * FROM medication_reminders")
-    fun getAllReminders(): Flow<List<MedicationReminder>>
+interface ReminderDao {
+    @Query("SELECT * FROM reminders")
+    fun getAllReminders(): Flow<List<Reminder>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertReminder(reminder: MedicationReminder): Long
+    suspend fun insertReminder(reminder: Reminder): Long
 
     @Update
-    suspend fun updateReminder(reminder: MedicationReminder)
+    suspend fun updateReminder(reminder: Reminder)
 
     @Delete
-    suspend fun deleteReminder(reminder: MedicationReminder)
+    suspend fun deleteReminder(reminder: Reminder)
 
-    @Query("SELECT * FROM medication_reminders WHERE startDate <= :date AND (endDate IS NULL OR endDate >= :date)")
-    fun getActiveReminders(date: LocalDate): Flow<List<MedicationReminder>>
+    @Query("SELECT * FROM reminders WHERE startDate <= :date AND (endDate IS NULL OR endDate >= :date)")
+    fun getActiveReminders(date: LocalDate): Flow<List<Reminder>>
 
-    @Query("SELECT * FROM medication_reminders WHERE id = :id")
-    fun getReminderById(id: Int): Flow<MedicationReminder>
-
-    // Prescription tracking queries
-    @Query("UPDATE medication_reminders SET currentInventory = :inventory WHERE id = :id")
-    suspend fun updateInventory(id: Int, inventory: Int)
-
-    @Query("SELECT currentInventory FROM medication_reminders WHERE id = :id")
-    suspend fun getCurrentInventory(id: Int): Int?
+    @Query("SELECT * FROM reminders WHERE id = :id")
+    fun getReminderById(id: Int): Flow<Reminder>
 }

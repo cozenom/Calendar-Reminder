@@ -11,41 +11,36 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.example.calendarapp.data.database.AppDatabase
-import com.example.calendarapp.data.model.MedicationIntake
+import com.example.calendarapp.data.model.ReminderLog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.concurrent.TimeUnit
 
-class MedicationReminderWorker(
+class ReminderWorker(
     context: Context,
     params: WorkerParameters
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val database = AppDatabase.getDatabase(applicationContext)
-        val intakeDao = database.medicationIntakeDao()
+        val reminderLogDao = database.reminderLogDao()
 
         val now = LocalDateTime.now()
-        val futureIntakes = intakeDao.getFutureIntakes(now)
+        val futureLogs = reminderLogDao.getFutureLogs(now)
 
         cancelAllAlarms()
-        scheduleNotificationsForIntakes(futureIntakes)
-
-        // Note: Inventory alerts are now triggered when medication is marked taken/not taken
-        // No need for periodic checks
+        scheduleNotificationsForLogs(futureLogs)
 
         Result.success()
     }
 
     private fun cancelAllAlarms() {
-        val alarmManager =
-            applicationContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val alarmManager = applicationContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = Intent(applicationContext, NotificationActionReceiver::class.java)
         intent.action = ACTION_SHOW_NOTIFICATION
 
-        // Cancel all potential pending intents (up to a reasonable maximum, e.g., 1000)
         for (i in 0 until 1000) {
             val pendingIntent = PendingIntent.getBroadcast(
                 applicationContext,
@@ -60,60 +55,44 @@ class MedicationReminderWorker(
         }
     }
 
-    private fun scheduleNotificationsForIntakes(intakes: List<MedicationIntake>) {
-        val alarmManager =
-            applicationContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+    private fun scheduleNotificationsForLogs(logs: List<ReminderLog>) {
+        val alarmManager = applicationContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
-        intakes.forEach { intake ->
-            val notificationIntent =
-                Intent(applicationContext, NotificationActionReceiver::class.java).apply {
-                    action = ACTION_SHOW_NOTIFICATION
-                    putExtra(EXTRA_INTAKE_ID, intake.id)
-                }
+        logs.forEach { log ->
+            val notificationIntent = Intent(applicationContext, NotificationActionReceiver::class.java).apply {
+                action = ACTION_SHOW_NOTIFICATION
+                putExtra(EXTRA_LOG_ID, log.id)
+            }
             val pendingIntent = PendingIntent.getBroadcast(
                 applicationContext,
-                intake.id,
+                log.id,
                 notificationIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
-            val triggerTime =
-                intake.intakeDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            val triggerTime = log.logDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 if (alarmManager.canScheduleExactAlarms()) {
-                    alarmManager.setExactAndAllowWhileIdle(
-                        AlarmManager.RTC_WAKEUP,
-                        triggerTime,
-                        pendingIntent
-                    )
+                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
                 } else {
-                    alarmManager.setAndAllowWhileIdle(
-                        AlarmManager.RTC_WAKEUP,
-                        triggerTime,
-                        pendingIntent
-                    )
+                    alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
                 }
             } else {
-                alarmManager.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    triggerTime,
-                    pendingIntent
-                )
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
             }
         }
     }
 
-
     companion object {
         const val ACTION_SHOW_NOTIFICATION = "com.example.calendarapp.ACTION_SHOW_NOTIFICATION"
-        const val ACTION_TAKEN = "com.example.calendarapp.ACTION_TAKEN"
-        const val EXTRA_INTAKE_ID = "intake_id"
-        private const val WORKER_NAME = "MedicationReminderWorker"
+        const val ACTION_COMPLETED = "com.example.calendarapp.ACTION_COMPLETED"
+        const val EXTRA_LOG_ID = "log_id"
+        private const val WORKER_NAME = "ReminderWorker"
 
         fun schedule(context: Context) {
-            val workRequest = OneTimeWorkRequestBuilder<MedicationReminderWorker>()
-                .setInitialDelay(0, TimeUnit.SECONDS) // Run immediately
+            val workRequest = OneTimeWorkRequestBuilder<ReminderWorker>()
+                .setInitialDelay(0, TimeUnit.SECONDS)
                 .build()
 
             WorkManager.getInstance(context)

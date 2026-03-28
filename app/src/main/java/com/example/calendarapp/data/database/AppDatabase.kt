@@ -5,23 +5,20 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
-import com.example.calendarapp.data.dao.MedicationIntakeDao
-import com.example.calendarapp.data.dao.MedicationReminderDao
-import com.example.calendarapp.data.dao.PrescriptionRefillDao
-import com.example.calendarapp.data.model.MedicationIntake
-import com.example.calendarapp.data.model.MedicationReminder
-import com.example.calendarapp.data.model.PrescriptionRefill
+import com.example.calendarapp.data.dao.ReminderDao
+import com.example.calendarapp.data.dao.ReminderLogDao
+import com.example.calendarapp.data.model.Reminder
+import com.example.calendarapp.data.model.ReminderLog
 
 @Database(
-    entities = [MedicationReminder::class, MedicationIntake::class, PrescriptionRefill::class],
-    version = 10,
+    entities = [Reminder::class, ReminderLog::class],
+    version = 11,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
-    abstract fun medicationReminderDao(): MedicationReminderDao
-    abstract fun medicationIntakeDao(): MedicationIntakeDao
-    abstract fun prescriptionRefillDao(): PrescriptionRefillDao
+    abstract fun reminderDao(): ReminderDao
+    abstract fun reminderLogDao(): ReminderLogDao
 
     companion object {
         @Volatile
@@ -38,9 +35,10 @@ abstract class AppDatabase : RoomDatabase() {
                         DatabaseMigrations.MIGRATION_5_6,
                         DatabaseMigrations.MIGRATION_6_7,
                         DatabaseMigrations.MIGRATION_8_9,
-                        DatabaseMigrations.MIGRATION_9_10
+                        DatabaseMigrations.MIGRATION_9_10,
+                        DatabaseMigrations.MIGRATION_10_11
                     )
-                    .fallbackToDestructiveMigration() // Temporary: allows app to launch by recreating DB
+                    .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
                 instance

@@ -74,7 +74,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -82,15 +81,15 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
-import com.example.calendarapp.data.model.MedicationIntake
-import com.example.calendarapp.data.model.MedicationReminder
-import com.example.calendarapp.data.model.PrescriptionRefill
-import com.example.calendarapp.data.notification.MedicationReminderWorker
+import com.example.calendarapp.data.model.Reminder
+import com.example.calendarapp.data.model.ReminderIcon
+import com.example.calendarapp.data.model.ReminderLog
+import com.example.calendarapp.data.notification.ReminderWorker
 import com.example.calendarapp.ui.theme.dimensions
-import com.example.calendarapp.ui.theme.medicalColors
+import com.example.calendarapp.ui.theme.reminderColors
 import com.example.calendarapp.ui.theme.shapes
-import com.example.calendarapp.viewmodel.MedicationReminderViewModel
-import com.example.calendarapp.viewmodel.MedicationReminderViewModelFactory
+import com.example.calendarapp.viewmodel.ReminderViewModel
+import com.example.calendarapp.viewmodel.ReminderViewModelFactory
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
@@ -98,7 +97,7 @@ import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
-    private lateinit var viewModel: MedicationReminderViewModel
+    private lateinit var viewModel: ReminderViewModel
     private lateinit var alarmManager: AlarmManager
     private lateinit var requestPermissionLauncher: ActivityResultLauncher<String>
 
@@ -107,20 +106,18 @@ class MainActivity : ComponentActivity() {
         alarmManager = getSystemService(ALARM_SERVICE) as AlarmManager
 
         requestPermissionLauncher =
-            registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
-                // Permission request result is handled here if needed
-            }
+            registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ -> }
 
         requestRequiredPermissions()
-        MedicationReminderWorker.schedule(this)
+        ReminderWorker.schedule(this)
 
         viewModel = ViewModelProvider(
-            this, MedicationReminderViewModelFactory(application)
-        )[MedicationReminderViewModel::class.java]
+            this, ReminderViewModelFactory(application)
+        )[ReminderViewModel::class.java]
 
         setContent {
             CalendarAppTheme {
-                MedicationReminderApp(viewModel)
+                ReminderApp(viewModel)
             }
         }
     }
@@ -131,13 +128,9 @@ class MainActivity : ComponentActivity() {
                 ContextCompat.checkSelfPermission(
                     this,
                     Manifest.permission.POST_NOTIFICATIONS
-                ) == PackageManager.PERMISSION_GRANTED -> {
-                    // You can use the API that requires the permission.
-                }
+                ) == PackageManager.PERMISSION_GRANTED -> {}
 
-                shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) -> {
-                    // Show an explanation to the user *asynchronously*
-                }
+                shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) -> {}
 
                 else -> {
                     requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -157,10 +150,10 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MedicationReminderApp(viewModel: MedicationReminderViewModel) {
+fun ReminderApp(viewModel: ReminderViewModel) {
     var selectedTab by remember { mutableStateOf(0) }
-    val tabs = listOf("Medications", "Calendar")
-    var showAddMedicationDialog by remember { mutableStateOf(false) }
+    val tabs = listOf("Reminders", "Calendar")
+    var showAddReminderDialog by remember { mutableStateOf(false) }
 
     Scaffold(topBar = {
         TabRow(selectedTabIndex = selectedTab) {
@@ -172,37 +165,36 @@ fun MedicationReminderApp(viewModel: MedicationReminderViewModel) {
         }
     }, floatingActionButton = {
         if (selectedTab == 0) {
-            FloatingActionButton(onClick = { showAddMedicationDialog = true }) {
-                Icon(Icons.Filled.Add, contentDescription = "Add Medication")
+            FloatingActionButton(onClick = { showAddReminderDialog = true }) {
+                Icon(Icons.Filled.Add, contentDescription = "Add Reminder")
             }
         }
     }) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues)) {
             when (selectedTab) {
-                0 -> MedicationsTab(viewModel)
+                0 -> RemindersTab(viewModel)
                 1 -> CalendarTab(viewModel)
             }
         }
     }
 
-    if (showAddMedicationDialog) {
-        AddMedicationDialog(
-            onDismiss = { showAddMedicationDialog = false },
-            onAddReminder = { reminder, pillsPerRefill, totalRefills ->
-                viewModel.insertWithPrescription(reminder, pillsPerRefill, totalRefills)
-                showAddMedicationDialog = false
+    if (showAddReminderDialog) {
+        AddReminderDialog(
+            onDismiss = { showAddReminderDialog = false },
+            onAddReminder = { reminder ->
+                viewModel.insert(reminder)
+                showAddReminderDialog = false
             }
         )
     }
 }
 
-
 @Composable
-fun MedicationsTab(viewModel: MedicationReminderViewModel) {
+fun RemindersTab(viewModel: ReminderViewModel) {
     val reminders by viewModel.allReminders.collectAsState(initial = emptyList())
 
     Column(modifier = Modifier.padding(16.dp)) {
-        Text("Your Medications", style = MaterialTheme.typography.headlineMedium)
+        Text("Your Reminders", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
         ReminderList(
             reminders = reminders,
@@ -213,14 +205,12 @@ fun MedicationsTab(viewModel: MedicationReminderViewModel) {
 }
 
 @Composable
-fun AddMedicationDialog(
+fun AddReminderDialog(
     onDismiss: () -> Unit,
-    onAddReminder: (reminder: MedicationReminder, pillsPerRefill: Int, totalRefills: Int) -> Unit
+    onAddReminder: (reminder: Reminder) -> Unit
 ) {
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Add New Medication") }, text = {
-        AddReminderForm(
-            onAddReminder = onAddReminder
-        )
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("Add New Reminder") }, text = {
+        AddReminderForm(onAddReminder = onAddReminder)
     }, confirmButton = {}, dismissButton = {
         TextButton(onClick = onDismiss) {
             Text("Cancel")
@@ -230,9 +220,9 @@ fun AddMedicationDialog(
 
 @Composable
 fun ReminderList(
-    reminders: List<MedicationReminder>,
-    onDeleteReminder: (MedicationReminder) -> Unit,
-    viewModel: MedicationReminderViewModel
+    reminders: List<Reminder>,
+    onDeleteReminder: (Reminder) -> Unit,
+    viewModel: ReminderViewModel
 ) {
     LazyColumn {
         items(reminders) { reminder ->
@@ -247,12 +237,12 @@ fun ReminderList(
 
 @Composable
 fun ReminderItem(
-    reminder: MedicationReminder,
+    reminder: Reminder,
     onDelete: () -> Unit,
-    viewModel: MedicationReminderViewModel
+    viewModel: ReminderViewModel
 ) {
     var isEditing by remember { mutableStateOf(false) }
-    var editedName by remember { mutableStateOf(reminder.medicationName) }
+    var editedTitle by remember { mutableStateOf(reminder.title) }
     var editedTimes by remember { mutableStateOf(reminder.reminderTimes) }
     var editedFrequency by remember { mutableIntStateOf(reminder.frequency) }
     var editedStartDate by remember { mutableStateOf(reminder.startDate) }
@@ -260,40 +250,22 @@ fun ReminderItem(
     var showStartDatePicker by remember { mutableStateOf(false) }
     var showEndDatePicker by remember { mutableStateOf(false) }
     var editedReminderDays by remember { mutableStateOf(reminder.reminderDays) }
-    var showRecordRefillDialog by remember { mutableStateOf(false) }
-    var showNewPrescriptionDialog by remember { mutableStateOf(false) }
-    var editedDosagePerIntake by remember { mutableStateOf(reminder.dosagePerIntake.toString()) }
-    var editedCurrentInventory by remember { mutableStateOf(reminder.currentInventory.toString()) }
-    var editedInventoryTrackingEnabled by remember { mutableStateOf(reminder.inventoryTrackingEnabled) }
-    var editedRefillPeriodDays by remember { mutableStateOf(reminder.refillPeriodDays.toString()) }
-
-    // Get latest refill info
-    val latestRefill by viewModel.getLatestRefillFlow(reminder.id)
-        .collectAsState(initial = null)
-
-    // Initialize prescription fields with actual values from reminder
-    var editedPillsPerRefill by remember { mutableStateOf(reminder.prescriptionPillsPerRefill.toString()) }
-    var editedTotalRefills by remember { mutableStateOf(reminder.prescriptionTotalRefills.toString()) }
+    var editedNotes by remember { mutableStateOf(reminder.notes ?: "") }
+    var editedIcon by remember { mutableStateOf(reminder.icon ?: ReminderIcon.default.key) }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp),
         shape = MaterialTheme.shapes.large,
-        elevation = androidx.compose.material3.CardDefaults.cardElevation(
-            defaultElevation = 4.dp
-        )
+        elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .padding(20.dp)
-        ) {
+        Column(modifier = Modifier.padding(20.dp)) {
             if (isEditing) {
-                // Editing mode UI
                 OutlinedTextField(
-                    value = editedName,
-                    onValueChange = { editedName = it },
-                    label = { Text("Medication Name") },
+                    value = editedTitle,
+                    onValueChange = { editedTitle = it },
+                    label = { Text("Title") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
@@ -334,129 +306,26 @@ fun ReminderItem(
                         )
                     }
                     if (editedEndDate != null) {
-                        TextButton(
-                            onClick = { editedEndDate = null },
-                            shape = MaterialTheme.shapes.medium
-                        ) {
+                        TextButton(onClick = { editedEndDate = null }, shape = MaterialTheme.shapes.medium) {
                             Text("Clear")
                         }
                     }
                 }
                 Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-                WeekdaySelector(
-                    selectedDays = editedReminderDays, onDaysChanged = { editedReminderDays = it })
-                Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
-
-                // Prescription tracking section - editable
-                androidx.compose.material3.HorizontalDivider(
-                    modifier = Modifier.padding(vertical = 12.dp),
-                    thickness = 1.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant
+                WeekdaySelector(selectedDays = editedReminderDays, onDaysChanged = { editedReminderDays = it })
+                Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
+                OutlinedTextField(
+                    value = editedNotes,
+                    onValueChange = { editedNotes = it },
+                    label = { Text("Notes (optional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 2
                 )
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Enable Prescription Tracking")
-                    Spacer(modifier = Modifier.weight(1f))
-                    androidx.compose.material3.Switch(
-                        checked = editedInventoryTrackingEnabled,
-                        onCheckedChange = { editedInventoryTrackingEnabled = it }
-                    )
-                }
-
-                if (editedInventoryTrackingEnabled) {
-                    Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-
-                    OutlinedTextField(
-                        value = editedDosagePerIntake,
-                        onValueChange = { editedDosagePerIntake = it },
-                        label = { Text("Medication per dose") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-
-                    OutlinedTextField(
-                        value = editedCurrentInventory,
-                        onValueChange = { editedCurrentInventory = it },
-                        label = { Text("Current medication count") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-
-                    OutlinedTextField(
-                        value = editedPillsPerRefill,
-                        onValueChange = { editedPillsPerRefill = it },
-                        label = { Text("Medication count per refill") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-
-                    OutlinedTextField(
-                        value = editedTotalRefills,
-                        onValueChange = { editedTotalRefills = it },
-                        label = { Text("Total refills authorized") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-
-                    OutlinedTextField(
-                        value = editedRefillPeriodDays,
-                        onValueChange = { editedRefillPeriodDays = it },
-                        label = { Text("Refill period (days)") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-
-                    // Show refills info if available
-                    latestRefill?.let {
-                        val medicalColors = MaterialTheme.medicalColors
-                        Text(
-                            "Refills remaining: ${it.refillsRemaining} / ${it.totalRefillsAuthorized}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (it.refillsRemaining == 0) {
-                                medicalColors.inventoryEmptyContent
-                            } else {
-                                MaterialTheme.colorScheme.onSurface
-                            }
-                        )
-                        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-                    }
-
-                    // Refill management buttons
-                    if ((latestRefill?.refillsRemaining ?: 0) > 0) {
-                        Button(
-                            onClick = { showRecordRefillDialog = true },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = MaterialTheme.shapes.medium
-                        ) {
-                            Text("Record Refill Pickup")
-                        }
-                    }
-                }
-
+                Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
+                Text("Icon", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(modifier = Modifier.height(4.dp))
+                IconPicker(selectedKey = editedIcon, onIconSelected = { editedIcon = it })
                 Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
-
-                // Validation
-                val isEditFormValid = editedName.isNotBlank() &&
-                    (!editedInventoryTrackingEnabled || (
-                        editedDosagePerIntake.isNotEmpty() && editedDosagePerIntake.toIntOrNull() != null &&
-                        editedCurrentInventory.isNotEmpty() && editedCurrentInventory.toIntOrNull() != null &&
-                        editedPillsPerRefill.isNotEmpty() && editedPillsPerRefill.toIntOrNull() != null &&
-                        editedTotalRefills.isNotEmpty() && editedTotalRefills.toIntOrNull() != null &&
-                        editedRefillPeriodDays.isNotEmpty() && editedRefillPeriodDays.toIntOrNull() != null
-                    ))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -464,28 +333,21 @@ fun ReminderItem(
                 ) {
                     Button(
                         onClick = {
-                            val updatedReminder = reminder.copy(
-                                medicationName = editedName,
-                                reminderTimes = editedTimes,
-                                frequency = editedFrequency,
-                                startDate = editedStartDate,
-                                endDate = editedEndDate,
-                                reminderDays = editedReminderDays,
-                                dosagePerIntake = editedDosagePerIntake.toIntOrNull() ?: 1,
-                                currentInventory = editedCurrentInventory.toIntOrNull() ?: 0,
-                                inventoryTrackingEnabled = editedInventoryTrackingEnabled,
-                                refillPeriodDays = editedRefillPeriodDays.toIntOrNull() ?: 30,
-                                prescriptionPillsPerRefill = editedPillsPerRefill.toIntOrNull() ?: 60,
-                                prescriptionTotalRefills = editedTotalRefills.toIntOrNull() ?: 5
-                            )
-                            viewModel.updateWithPrescription(
-                                updatedReminder,
-                                editedPillsPerRefill.toIntOrNull() ?: 60,
-                                editedTotalRefills.toIntOrNull() ?: 5
+                            viewModel.update(
+                                reminder.copy(
+                                    title = editedTitle,
+                                    reminderTimes = editedTimes,
+                                    frequency = editedFrequency,
+                                    startDate = editedStartDate,
+                                    endDate = editedEndDate,
+                                    reminderDays = editedReminderDays,
+                                    notes = editedNotes.ifBlank { null },
+                                    icon = editedIcon
+                                )
                             )
                             isEditing = false
                         },
-                        enabled = isEditFormValid,
+                        enabled = editedTitle.isNotBlank(),
                         modifier = Modifier.weight(1f),
                         shape = MaterialTheme.shapes.medium
                     ) {
@@ -500,16 +362,15 @@ fun ReminderItem(
                     }
                 }
             } else {
-                // Display mode UI
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        reminder.medicationName,
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.weight(1f)
+                // Display mode
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = ReminderIcon.fromKey(reminder.icon).icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp).padding(end = 4.dp)
                     )
+                    Text(reminder.title, style = MaterialTheme.typography.headlineSmall)
                 }
                 reminder.reminderTimes.forEachIndexed { index, time ->
                     Text("Time ${index + 1}: ${time.format(DateTimeFormatter.ofPattern("HH:mm"))}")
@@ -517,220 +378,13 @@ fun ReminderItem(
                 Text("Frequency: ${reminder.frequency} times daily")
                 Text("Start Date: ${reminder.startDate}")
                 reminder.endDate?.let { Text("End Date: $it") }
-                Text("Days: ${
-                    reminder.reminderDays.sorted().joinToString(", ") { getDayName(it) }
-                }")
+                Text("Days: ${reminder.reminderDays.sorted().joinToString(", ") { getDayName(it) }}")
+                reminder.notes?.let {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
 
                 Spacer(modifier = Modifier.height(12.dp))
-
-                // Inventory status display
-                if (reminder.inventoryTrackingEnabled) {
-                    androidx.compose.material3.HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 12.dp),
-                        thickness = 1.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant
-                    )
-
-                    Text(
-                        "Prescription Tracking",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Calculate days of supply remaining
-                    val dailyConsumption = reminder.frequency * reminder.dosagePerIntake
-                    val daysRemaining = if (dailyConsumption > 0) {
-                        reminder.currentInventory / dailyConsumption
-                    } else 0
-
-                    // Inventory count with 3-tier color coding based on days remaining
-                    val medicalColors = MaterialTheme.medicalColors
-                    val inventoryContainerColor = when {
-                        reminder.currentInventory == 0 -> medicalColors.inventoryEmptyContainer
-                        daysRemaining <= 3 -> medicalColors.inventoryUrgentContainer
-                        daysRemaining < 7 -> medicalColors.inventoryWarningContainer
-                        else -> medicalColors.inventoryGoodContainer
-                    }
-                    val inventoryContentColor = when {
-                        reminder.currentInventory == 0 -> medicalColors.inventoryEmptyContent
-                        daysRemaining <= 3 -> medicalColors.inventoryUrgentContent
-                        daysRemaining < 7 -> medicalColors.inventoryWarningContent
-                        else -> medicalColors.inventoryGoodContent
-                    }
-
-                    Surface(
-                        shape = MaterialTheme.shapes.medium,
-                        color = inventoryContainerColor,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    "Medication Remaining",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = inventoryContentColor
-                                )
-                                Text(
-                                    "${reminder.currentInventory}",
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                    color = inventoryContentColor
-                                )
-                            }
-                            Text(
-                                "${reminder.dosagePerIntake} per dose",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = inventoryContentColor
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-
-                    // Show refills info if available
-                    latestRefill?.let {
-                        Text(
-                            "Refills remaining: ${it.refillsRemaining} / ${it.totalRefillsAuthorized}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (it.refillsRemaining == 0) {
-                                medicalColors.inventoryEmptyContent
-                            } else {
-                                MaterialTheme.colorScheme.onSurface
-                            },
-                            fontWeight = if (it.refillsRemaining == 0) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal
-                        )
-                    }
-
-                    // Warning messages based on days remaining
-                    if (daysRemaining <= 3 && reminder.currentInventory > 0) {
-                        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-                        Surface(
-                            shape = MaterialTheme.shapes.small,
-                            color = medicalColors.inventoryUrgentContainer,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    "⚠",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    modifier = Modifier.padding(end = 8.dp),
-                                    color = medicalColors.inventoryUrgentContent
-                                )
-                                Text(
-                                    "Only $daysRemaining days left! Refill urgently needed.",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                    color = medicalColors.inventoryUrgentContent
-                                )
-                            }
-                        }
-                    } else if (daysRemaining < 7 && reminder.currentInventory > 0) {
-                        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-                        Surface(
-                            shape = MaterialTheme.shapes.small,
-                            color = medicalColors.inventoryWarningContainer,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    "⚠",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    modifier = Modifier.padding(end = 8.dp),
-                                    color = medicalColors.inventoryWarningContent
-                                )
-                                Text(
-                                    "$daysRemaining days remaining. Time to pick up refill.",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
-                                    color = medicalColors.inventoryWarningContent
-                                )
-                            }
-                        }
-                    } else if (reminder.currentInventory == 0) {
-                        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-                        Surface(
-                            shape = MaterialTheme.shapes.small,
-                            color = medicalColors.inventoryEmptyContainer,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    "⚠",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    modifier = Modifier.padding(end = 8.dp),
-                                    color = medicalColors.inventoryEmptyContent
-                                )
-                                Text(
-                                    "No medication remaining!",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                    color = medicalColors.inventoryEmptyContent
-                                )
-                            }
-                        }
-                    }
-
-                    // Refill management buttons
-                    Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-
-                    if ((latestRefill?.refillsRemaining ?: 0) > 0) {
-                        Button(
-                            onClick = { showRecordRefillDialog = true },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = MaterialTheme.shapes.medium
-                        ) {
-                            Text("Record Refill Pickup")
-                        }
-                    } else if (latestRefill?.refillsRemaining == 0) {
-                        Surface(
-                            shape = MaterialTheme.shapes.small,
-                            color = medicalColors.inventoryEmptyContainer,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        "⚠",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        modifier = Modifier.padding(end = 8.dp),
-                                        color = medicalColors.inventoryEmptyContent
-                                    )
-                                    Text(
-                                        "No refills left. Get new prescription from doctor.",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                        color = medicalColors.inventoryEmptyContent
-                                    )
-                                }
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-                        Button(
-                            onClick = { showNewPrescriptionDialog = true },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = MaterialTheme.shapes.medium
-                        ) {
-                            Text("Add New Prescription")
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-                }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -758,72 +412,31 @@ fun ReminderItem(
     if (showStartDatePicker) {
         CalendarDialog(
             onDismissRequest = { showStartDatePicker = false },
-            onDateSelected = {
-                editedStartDate = it
-                showStartDatePicker = false
-            },
+            onDateSelected = { editedStartDate = it; showStartDatePicker = false },
             initialDate = editedStartDate
         )
     }
     if (showEndDatePicker) {
         CalendarDialog(
             onDismissRequest = { showEndDatePicker = false },
-            onDateSelected = {
-                editedEndDate = it
-                showEndDatePicker = false
-            },
+            onDateSelected = { editedEndDate = it; showEndDatePicker = false },
             initialDate = editedEndDate ?: LocalDate.now()
-        )
-    }
-
-    // Record Refill Dialog
-    if (showRecordRefillDialog) {
-        latestRefill?.let { refill ->
-            RecordRefillDialog(
-                reminder = reminder,
-                latestRefill = refill,
-                onDismiss = { showRecordRefillDialog = false },
-                onRecordRefill = { pickupDate ->
-                    viewModel.recordRefillPickup(reminder.id, reminder, refill, pickupDate)
-                    showRecordRefillDialog = false
-                }
-            )
-        }
-    }
-
-    // New Prescription Dialog
-    if (showNewPrescriptionDialog) {
-        NewPrescriptionDialog(
-            reminder = reminder,
-            onDismiss = { showNewPrescriptionDialog = false },
-            onAddPrescription = { pillsPerRefill, totalRefills ->
-                viewModel.recordNewPrescription(reminder.id, pillsPerRefill, totalRefills)
-                showNewPrescriptionDialog = false
-            }
         )
     }
 }
 
 @Composable
-fun AddReminderForm(
-    onAddReminder: (reminder: MedicationReminder, pillsPerRefill: Int, totalRefills: Int) -> Unit
-) {
-    var medicationName by remember { mutableStateOf("Medication") }
+fun AddReminderForm(onAddReminder: (reminder: Reminder) -> Unit) {
+    var title by remember { mutableStateOf("Reminder") }
     var frequency by remember { mutableStateOf(1) }
-    var reminderTimes by remember { mutableStateOf(listOf(LocalTime.now())) }
+    var reminderTimes by remember { mutableStateOf(listOf(LocalTime.now().plusMinutes(2))) }
     var startDate by remember { mutableStateOf(LocalDate.now()) }
     var endDate by remember { mutableStateOf<LocalDate?>(null) }
     var showStartDatePicker by remember { mutableStateOf(false) }
     var showEndDatePicker by remember { mutableStateOf(false) }
     var reminderDays by remember { mutableStateOf(setOf(1, 2, 3, 4, 5, 6, 7)) }
-
-    // Prescription tracking fields
-    var inventoryTrackingEnabled by remember { mutableStateOf(false) }
-    var dosagePerIntake by remember { mutableStateOf("1") }
-    var currentInventory by remember { mutableStateOf("") }
-    var pillsPerRefill by remember { mutableStateOf("60") }
-    var totalRefills by remember { mutableStateOf("5") }
-    var refillPeriodDays by remember { mutableStateOf("30") }
+    var notes by remember { mutableStateOf("") }
+    var selectedIcon by remember { mutableStateOf(ReminderIcon.default.key) }
 
     Column(
         modifier = Modifier
@@ -831,9 +444,9 @@ fun AddReminderForm(
             .verticalScroll(rememberScrollState())
     ) {
         OutlinedTextField(
-            value = medicationName,
-            onValueChange = { medicationName = it },
-            label = { Text("Medication Name") },
+            value = title,
+            onValueChange = { title = it },
+            label = { Text("Title") },
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
@@ -841,7 +454,7 @@ fun AddReminderForm(
         FrequencySelector(frequency = frequency, onFrequencyChange = {
             frequency = it
             reminderTimes = List(it) { index ->
-                if (index < reminderTimes.size) reminderTimes[index] else LocalTime.now()
+                if (index < reminderTimes.size) reminderTimes[index] else LocalTime.now().plusMinutes(2)
             }
         })
         Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
@@ -878,10 +491,7 @@ fun AddReminderForm(
                 )
             }
             if (endDate != null) {
-                TextButton(
-                    onClick = { endDate = null },
-                    shape = MaterialTheme.shapes.medium
-                ) {
+                TextButton(onClick = { endDate = null }, shape = MaterialTheme.shapes.medium) {
                     Text("Clear")
                 }
             }
@@ -889,135 +499,62 @@ fun AddReminderForm(
         Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
         if (showStartDatePicker) {
-            CalendarDialog(onDismissRequest = { showStartDatePicker = false }, onDateSelected = {
-                startDate = it
-                showStartDatePicker = false
-            }, initialDate = startDate
+            CalendarDialog(
+                onDismissRequest = { showStartDatePicker = false },
+                onDateSelected = { startDate = it; showStartDatePicker = false },
+                initialDate = startDate
             )
         }
-
         if (showEndDatePicker) {
-            CalendarDialog(onDismissRequest = { showEndDatePicker = false }, onDateSelected = {
-                endDate = it
-                showEndDatePicker = false
-            }, initialDate = endDate ?: LocalDate.now()
+            CalendarDialog(
+                onDismissRequest = { showEndDatePicker = false },
+                onDateSelected = { endDate = it; showEndDatePicker = false },
+                initialDate = endDate ?: LocalDate.now()
             )
         }
 
         WeekdaySelector(selectedDays = reminderDays, onDaysChanged = { reminderDays = it })
+        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
+
+        OutlinedTextField(
+            value = notes,
+            onValueChange = { notes = it },
+            label = { Text("Notes (optional)") },
+            modifier = Modifier.fillMaxWidth(),
+            minLines = 2
+        )
+        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
+
+        Text("Icon", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(modifier = Modifier.height(4.dp))
+        IconPicker(selectedKey = selectedIcon, onIconSelected = { selectedIcon = it })
         Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
-
-        // Prescription tracking section
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Enable Prescription Tracking")
-            Spacer(modifier = Modifier.weight(1f))
-            androidx.compose.material3.Switch(
-                checked = inventoryTrackingEnabled,
-                onCheckedChange = { inventoryTrackingEnabled = it }
-            )
-        }
-
-        if (inventoryTrackingEnabled) {
-            Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-
-            OutlinedTextField(
-                value = dosagePerIntake,
-                onValueChange = { dosagePerIntake = it },
-                label = { Text("Medication per dose") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-
-            OutlinedTextField(
-                value = currentInventory,
-                onValueChange = { currentInventory = it },
-                label = { Text("Current medication count") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-
-            OutlinedTextField(
-                value = pillsPerRefill,
-                onValueChange = { pillsPerRefill = it },
-                label = { Text("Medication count per refill") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-
-            OutlinedTextField(
-                value = totalRefills,
-                onValueChange = { totalRefills = it },
-                label = { Text("Total refills authorized") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-
-            OutlinedTextField(
-                value = refillPeriodDays,
-                onValueChange = { refillPeriodDays = it },
-                label = { Text("Refill period (days)") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-
-        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
-
-        // Validation
-        val isFormValid = medicationName.isNotBlank() &&
-            (!inventoryTrackingEnabled || (
-                dosagePerIntake.isNotEmpty() && dosagePerIntake.toIntOrNull() != null &&
-                currentInventory.isNotEmpty() && currentInventory.toIntOrNull() != null &&
-                pillsPerRefill.isNotEmpty() && pillsPerRefill.toIntOrNull() != null &&
-                totalRefills.isNotEmpty() && totalRefills.toIntOrNull() != null &&
-                refillPeriodDays.isNotEmpty() && refillPeriodDays.toIntOrNull() != null
-            ))
 
         Button(
             onClick = {
-                if (medicationName.isNotBlank()) {
-                    val reminder = MedicationReminder(
-                        medicationName = medicationName,
+                if (title.isNotBlank()) {
+                    val reminder = Reminder(
+                        title = title,
                         reminderTimes = reminderTimes,
                         frequency = frequency,
                         startDate = startDate,
                         endDate = endDate,
                         reminderDays = reminderDays,
-                        dosagePerIntake = dosagePerIntake.toIntOrNull() ?: 1,
-                        currentInventory = currentInventory.toIntOrNull() ?: 0,
-                        inventoryTrackingEnabled = inventoryTrackingEnabled,
-                        refillPeriodDays = refillPeriodDays.toIntOrNull() ?: 30,
-                        prescriptionPillsPerRefill = pillsPerRefill.toIntOrNull() ?: 60,
-                        prescriptionTotalRefills = totalRefills.toIntOrNull() ?: 5
+                        notes = notes.ifBlank { null },
+                        icon = selectedIcon
                     )
-                    onAddReminder(reminder, pillsPerRefill.toIntOrNull() ?: 60, totalRefills.toIntOrNull() ?: 5)
-                    // Reset form fields
-                    medicationName = ""
+                    onAddReminder(reminder)
+                    title = "Reminder"
                     frequency = 1
-                    reminderTimes = listOf(LocalTime.now())
+                    reminderTimes = listOf(LocalTime.now().plusMinutes(2))
                     startDate = LocalDate.now()
                     endDate = null
                     reminderDays = setOf(1, 2, 3, 4, 5, 6, 7)
-                    inventoryTrackingEnabled = false
-                    dosagePerIntake = "1"
-                    currentInventory = ""
-                    pillsPerRefill = "60"
-                    totalRefills = "5"
-                    refillPeriodDays = "30"
+                    notes = ""
+                    selectedIcon = ReminderIcon.default.key
                 }
             },
-            enabled = isFormValid,
+            enabled = title.isNotBlank(),
             modifier = Modifier.fillMaxWidth(),
             shape = MaterialTheme.shapes.medium
         ) {
@@ -1039,24 +576,15 @@ fun FrequencySelector(frequency: Int, onFrequencyChange: (Int) -> Unit) {
             modifier = Modifier.width(MaterialTheme.dimensions.frequencyButtonWidth),
             contentPadding = PaddingValues(0.dp)
         ) {
-            Text(
-                text = "-",
-                fontSize = 20.sp
-            )
+            Text(text = "-", fontSize = 20.sp)
         }
-        Text(
-            text = frequency.toString(),
-            modifier = Modifier.padding(horizontal = 8.dp)
-        )
+        Text(text = frequency.toString(), modifier = Modifier.padding(horizontal = 8.dp))
         Button(
             onClick = { onFrequencyChange(frequency + 1) },
             modifier = Modifier.width(MaterialTheme.dimensions.frequencyButtonWidth),
             contentPadding = PaddingValues(0.dp)
         ) {
-            Text(
-                text = "+",
-                fontSize = 20.sp
-            )
+            Text(text = "+", fontSize = 20.sp)
         }
     }
 }
@@ -1074,11 +602,7 @@ fun WeekdaySelector(selectedDays: Set<Int>, onDaysChanged: (Set<Int>) -> Unit) {
         weekdays.forEachIndexed { index, day ->
             val isSelected = selectedDays.contains(index + 1)
             WeekdayButton(day = day, isSelected = isSelected, onClick = {
-                val newSet = if (isSelected) {
-                    selectedDays - (index + 1)
-                } else {
-                    selectedDays + (index + 1)
-                }
+                val newSet = if (isSelected) selectedDays - (index + 1) else selectedDays + (index + 1)
                 onDaysChanged(newSet)
             })
         }
@@ -1087,16 +611,8 @@ fun WeekdaySelector(selectedDays: Set<Int>, onDaysChanged: (Set<Int>) -> Unit) {
 
 @Composable
 fun WeekdayButton(day: String, isSelected: Boolean, onClick: () -> Unit) {
-    val backgroundColor = if (isSelected) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.surface
-    }
-    val contentColor = if (isSelected) {
-        MaterialTheme.colorScheme.onPrimary
-    } else {
-        MaterialTheme.colorScheme.onSurface
-    }
+    val backgroundColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
+    val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
 
     Box(
         modifier = Modifier
@@ -1104,22 +620,16 @@ fun WeekdayButton(day: String, isSelected: Boolean, onClick: () -> Unit) {
             .clip(CircleShape)
             .background(backgroundColor)
             .clickable(onClick = onClick)
-            .border(
-                width = 1.dp, color = MaterialTheme.colorScheme.primary, shape = CircleShape
-            ), contentAlignment = Alignment.Center
+            .border(width = 1.dp, color = MaterialTheme.colorScheme.primary, shape = CircleShape),
+        contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = day, color = contentColor, style = MaterialTheme.typography.bodyMedium
-        )
+        Text(text = day, color = contentColor, style = MaterialTheme.typography.bodyMedium)
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Material3TimePicker(
-    initialTime: LocalTime,
-    onTimeSelected: (LocalTime) -> Unit
-) {
+fun Material3TimePicker(initialTime: LocalTime, onTimeSelected: (LocalTime) -> Unit) {
     val context = LocalContext.current
     var selectedTime by remember { mutableStateOf(initialTime) }
     var showTimePicker by remember { mutableStateOf(false) }
@@ -1155,39 +665,24 @@ fun Material3TimePicker(
                     Text(
                         text = "Select Time",
                         style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 20.dp)
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp)
                     )
-
                     TimePicker(
                         state = timePickerState,
                         colors = TimePickerDefaults.colors(
                             clockDialColor = MaterialTheme.colorScheme.surfaceContainerHighest
                         )
                     )
-
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 12.dp),
+                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
                         horizontalArrangement = Arrangement.End
                     ) {
-                        TextButton(onClick = { showTimePicker = false }) {
-                            Text("Cancel")
-                        }
-                        TextButton(
-                            onClick = {
-                                selectedTime = LocalTime.of(
-                                    timePickerState.hour,
-                                    timePickerState.minute
-                                )
-                                onTimeSelected(selectedTime)
-                                showTimePicker = false
-                            }
-                        ) {
-                            Text("OK")
-                        }
+                        TextButton(onClick = { showTimePicker = false }) { Text("Cancel") }
+                        TextButton(onClick = {
+                            selectedTime = LocalTime.of(timePickerState.hour, timePickerState.minute)
+                            onTimeSelected(selectedTime)
+                            showTimePicker = false
+                        }) { Text("OK") }
                     }
                 }
             }
@@ -1196,55 +691,24 @@ fun Material3TimePicker(
 }
 
 @Composable
-fun CalendarTab(viewModel: MedicationReminderViewModel) {
+fun CalendarTab(viewModel: ReminderViewModel) {
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
-    var selectedIntake by remember { mutableStateOf<MedicationIntake?>(null) }
+    var selectedLog by remember { mutableStateOf<ReminderLog?>(null) }
 
-    // Calculate initial page: 600 represents current month (allowing 50 years in both directions)
     val initialPage = 600
     val baseYearMonth = YearMonth.now()
-    val pagerState = rememberPagerState(
-        initialPage = initialPage,
-        pageCount = { 1200 } // 100 years worth of months
-    )
+    val pagerState = rememberPagerState(initialPage = initialPage, pageCount = { 1200 })
     val coroutineScope = rememberCoroutineScope()
 
-    // Calculate current month based on pager position
     val currentMonth = remember(pagerState.currentPage) {
         baseYearMonth.plusMonths((pagerState.currentPage - initialPage).toLong())
     }
 
-    val activeReminders by viewModel.getActiveReminders(selectedDate)
-        .collectAsState(initial = emptyList())
-    val allReminders by viewModel.allReminders.collectAsState(initial = emptyList())
-    val selectedDateIntakes by viewModel.getIntakesForDate(selectedDate)
-        .collectAsState(initial = emptyList())
-    val allRefills by viewModel.getAllRefills().collectAsState(initial = emptyList())
-
-    // Calculate estimated refill due dates (based on custom refill period from last pickup)
-    val estimatedRefillDates = remember(allReminders, allRefills) {
-        allReminders.filter { it.inventoryTrackingEnabled }
-            .flatMap { reminder ->
-                // Find the latest refill for this reminder
-                val latestRefillForReminder = allRefills
-                    .filter { it.reminderId == reminder.id }
-                    .maxWithOrNull(compareBy({ it.pickupDate }, { it.id }))
-
-                // Generate estimated refill dates for all remaining refills from the last pickup
-                if (latestRefillForReminder != null && latestRefillForReminder.refillsRemaining > 0) {
-                    (1..latestRefillForReminder.refillsRemaining).map { multiplier ->
-                        latestRefillForReminder.pickupDate.plusDays(
-                            (reminder.refillPeriodDays * multiplier).toLong()
-                        )
-                    }
-                } else {
-                    emptyList()
-                }
-            }
-    }
+    val activeReminders by viewModel.getActiveReminders(selectedDate).collectAsState(initial = emptyList())
+    val selectedDateLogs by viewModel.getLogsForDate(selectedDate).collectAsState(initial = emptyList())
 
     Column(modifier = Modifier.padding(16.dp)) {
-        Text("Medication Calendar", style = MaterialTheme.typography.headlineMedium)
+        Text("Calendar", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
 
         // Month navigation
@@ -1255,16 +719,12 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp),
+                modifier = Modifier.fillMaxWidth().padding(8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = {
-                    coroutineScope.launch {
-                        pagerState.animateScrollToPage(pagerState.currentPage - 1)
-                    }
+                    coroutineScope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
                 }) {
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Previous month")
                 }
@@ -1273,9 +733,7 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
                     style = MaterialTheme.typography.titleLarge
                 )
                 IconButton(onClick = {
-                    coroutineScope.launch {
-                        pagerState.animateScrollToPage(pagerState.currentPage + 1)
-                    }
+                    coroutineScope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
                 }) {
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next month")
                 }
@@ -1295,69 +753,23 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Blue dot - Actual refills
+                val reminderColors = MaterialTheme.reminderColors
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(MaterialTheme.dimensions.indicatorDotLarge)
-                            .background(MaterialTheme.colorScheme.primary, CircleShape)
-                    )
+                    Box(modifier = Modifier.size(MaterialTheme.dimensions.indicatorDotLarge).background(reminderColors.completedIndicator, CircleShape))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        "Pickup",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Text("Done", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                // Orange dot - Estimated refills
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(MaterialTheme.dimensions.indicatorDotLarge)
-                            .background(
-                                MaterialTheme.medicalColors.estimatedRefillIndicator,
-                                CircleShape
-                            )
-                    )
+                    Box(modifier = Modifier.size(MaterialTheme.dimensions.indicatorDotLarge).background(reminderColors.pendingIndicator, CircleShape))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        "Est. Refill",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                // Green/Red dots - Intakes
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(MaterialTheme.dimensions.indicatorDotLarge)
-                            .background(
-                                MaterialTheme.medicalColors.doseTakenIndicator,
-                                CircleShape
-                            )
-                    )
-                    Spacer(modifier = Modifier.width(2.dp))
-                    Box(
-                        modifier = Modifier
-                            .size(MaterialTheme.dimensions.indicatorDotLarge)
-                            .background(
-                                MaterialTheme.medicalColors.doseMissedIndicator,
-                                CircleShape
-                            )
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        "Doses",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Text("Pending", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Swipeable calendar with HorizontalPager
+        // Swipeable calendar
         Surface(
             shape = MaterialTheme.shapes.medium,
             color = MaterialTheme.colorScheme.surfaceVariant,
@@ -1366,30 +778,23 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
         ) {
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp)
+                modifier = Modifier.fillMaxWidth().padding(8.dp)
             ) { page ->
                 val monthForPage = baseYearMonth.plusMonths((page - initialPage).toLong())
-                val intakesForPage by viewModel.getIntakesForMonth(monthForPage)
-                    .collectAsState(initial = emptyList())
-                val refillsForPage by viewModel.getRefillsForMonth(monthForPage)
-                    .collectAsState(initial = emptyList())
+                val logsForPage by viewModel.getLogsForMonth(monthForPage).collectAsState(initial = emptyList())
 
                 CalendarView(
                     currentMonth = monthForPage,
                     onDateSelected = { selectedDate = it },
                     selectedDate = selectedDate,
-                    intakes = intakesForPage,
-                    refills = refillsForPage,
-                    estimatedRefillDates = estimatedRefillDates
+                    logs = logsForPage
                 )
             }
         }
 
         Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
 
-        // Show selected date's intakes
+        // Selected date's reminders
         Surface(
             shape = MaterialTheme.shapes.medium,
             color = MaterialTheme.colorScheme.surfaceVariant,
@@ -1403,16 +808,13 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
                 )
                 Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
-                if (selectedDateIntakes.isEmpty()) {
-                    Text("No medications scheduled for this day")
+                if (selectedDateLogs.isEmpty()) {
+                    Text("No reminders scheduled for this day")
                 } else {
                     LazyColumn {
-                        items(selectedDateIntakes.groupBy { it.medicationName }.values.toList()) { medicationIntakes ->
-                            medicationIntakes.forEachIndexed { _, intake ->
-                                MedicationEventItem(
-                                    intake = intake,
-                                    onClick = { selectedIntake = intake }
-                                )
+                        items(selectedDateLogs.groupBy { it.title }.values.toList()) { titleLogs ->
+                            titleLogs.forEachIndexed { _, log ->
+                                ReminderEventItem(log = log, onClick = { selectedLog = log })
                             }
                         }
                     }
@@ -1421,18 +823,16 @@ fun CalendarTab(viewModel: MedicationReminderViewModel) {
         }
     }
 
-    selectedIntake?.let { intake ->
-        // Find the reminder for this intake
-        val reminder = activeReminders.find { it.id == intake.reminderId }
-
-        EventDetailsDialog(intake = intake,
-            onDismiss = { selectedIntake = null },
+    selectedLog?.let { log ->
+        val reminder = activeReminders.find { it.id == log.reminderId }
+        EventDetailsDialog(
+            log = log,
+            onDismiss = { selectedLog = null },
             onStatusChange = { newStatus ->
-                reminder?.let {
-                    viewModel.updateIntakeTakenStatus(intake.id, newStatus, it)
-                }
-                selectedIntake = null
-            })
+                viewModel.updateLogCompletedStatus(log.id, newStatus)
+                selectedLog = null
+            }
+        )
     }
 }
 
@@ -1441,9 +841,7 @@ fun CalendarView(
     currentMonth: YearMonth,
     onDateSelected: (LocalDate) -> Unit,
     selectedDate: LocalDate?,
-    intakes: List<MedicationIntake>,
-    refills: List<PrescriptionRefill>,
-    estimatedRefillDates: List<LocalDate>
+    logs: List<ReminderLog>
 ) {
     val daysInMonth = currentMonth.lengthOfMonth()
     val firstDayOfMonth = currentMonth.atDay(1).dayOfWeek.value
@@ -1467,10 +865,7 @@ fun CalendarView(
                     val day = index - firstDayOfMonth + 2
                     val date = currentMonth.atDay(day)
                     val isSelected = date == selectedDate
-                    val dayIntakes = intakes.filter { it.intakeDateTime.toLocalDate() == date }
-                    val dayRefills = refills.filter { it.pickupDate == date }
-                    val hasRefill = dayRefills.isNotEmpty()
-                    val hasEstimatedRefill = estimatedRefillDates.contains(date)
+                    val dayLogs = logs.filter { it.logDateTime.toLocalDate() == date }
 
                     Column(
                         modifier = Modifier
@@ -1478,50 +873,21 @@ fun CalendarView(
                             .clip(MaterialTheme.shapes.small)
                             .clickable { onDateSelected(date) }
                             .background(
-                                if (isSelected) MaterialTheme.colorScheme.primaryContainer
-                                else Color.Transparent,
+                                if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
                                 shape = MaterialTheme.shapes.small
                             )
                             .padding(6.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = day.toString(),
-                                textAlign = TextAlign.Center,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = if (isSelected) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal,
-                                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
-                            )
-                            if (hasRefill) {
-                                Spacer(modifier = Modifier.width(2.dp))
-                                Box(
-                                    modifier = Modifier
-                                        .size(MaterialTheme.dimensions.indicatorDotSmall)
-                                        .background(MaterialTheme.colorScheme.primary, CircleShape)
-                                )
-                            }
-                            if (hasEstimatedRefill) {
-                                Spacer(modifier = Modifier.width(2.dp))
-                                Box(
-                                    modifier = Modifier
-                                        .size(MaterialTheme.dimensions.indicatorDotSmall)
-                                        .background(
-                                            MaterialTheme.medicalColors.estimatedRefillIndicator,
-                                            CircleShape
-                                        )
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(2.dp))
-                        FlexibleDotRow(
-                            intakes = dayIntakes,
-                            maxDots = 8
+                        Text(
+                            text = day.toString(),
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (isSelected) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal,
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
                         )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        FlexibleDotRow(logs = dayLogs, maxDots = 8)
                     }
                 } else {
                     Text("")
@@ -1532,24 +898,15 @@ fun CalendarView(
 }
 
 @Composable
-fun FlexibleDotRow(
-    intakes: List<MedicationIntake>,
-    maxDots: Int
-) {
-    val medicalColors = MaterialTheme.medicalColors
+fun FlexibleDotRow(logs: List<ReminderLog>, maxDots: Int) {
+    val reminderColors = MaterialTheme.reminderColors
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(6.dp),
+        modifier = Modifier.fillMaxWidth().height(6.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        val displayedIntakes = intakes.take(maxDots)
-        displayedIntakes.forEach { intake ->
-            val dotColor = if (intake.taken) {
-                medicalColors.doseTakenIndicator
-            } else {
-                medicalColors.doseMissedIndicator
-            }
+        val displayedLogs = logs.take(maxDots)
+        displayedLogs.forEach { log ->
+            val dotColor = if (log.completed) reminderColors.completedIndicator else reminderColors.pendingIndicator
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -1558,17 +915,11 @@ fun FlexibleDotRow(
                     .background(dotColor, CircleShape)
             )
         }
-        if (intakes.size > maxDots) {
-            Text(
-                "+",
-                color = MaterialTheme.colorScheme.primary,
-                style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier.weight(1f)
-            )
+        if (logs.size > maxDots) {
+            Text("+", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1f))
         }
     }
 }
-
 
 @Composable
 fun CalendarDialog(
@@ -1578,16 +929,11 @@ fun CalendarDialog(
 ) {
     var selectedDate by remember { mutableStateOf(initialDate) }
 
-    // Calculate initial page: 600 represents current month (allowing 50 years in both directions)
     val initialPage = 600
     val baseYearMonth = YearMonth.from(initialDate)
-    val pagerState = rememberPagerState(
-        initialPage = initialPage,
-        pageCount = { 1200 } // 100 years worth of months
-    )
+    val pagerState = rememberPagerState(initialPage = initialPage, pageCount = { 1200 })
     val coroutineScope = rememberCoroutineScope()
 
-    // Calculate current month based on pager position
     val currentMonth = remember(pagerState.currentPage) {
         baseYearMonth.plusMonths((pagerState.currentPage - initialPage).toLong())
     }
@@ -1601,52 +947,32 @@ fun CalendarDialog(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = {
-                    coroutineScope.launch {
-                        pagerState.animateScrollToPage(pagerState.currentPage - 1)
-                    }
+                    coroutineScope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
                 }) {
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Previous month")
                 }
-                Text(
-                    text = currentMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy")),
-                    style = MaterialTheme.typography.titleLarge
-                )
+                Text(text = currentMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy")), style = MaterialTheme.typography.titleLarge)
                 IconButton(onClick = {
-                    coroutineScope.launch {
-                        pagerState.animateScrollToPage(pagerState.currentPage + 1)
-                    }
+                    coroutineScope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
                 }) {
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next month")
                 }
             }
         },
         text = {
-            // Swipeable calendar with HorizontalPager
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.fillMaxWidth()
-            ) { page ->
+            HorizontalPager(state = pagerState, modifier = Modifier.fillMaxWidth()) { page ->
                 val monthForPage = baseYearMonth.plusMonths((page - initialPage).toLong())
-
                 CalendarView(
                     currentMonth = monthForPage,
-                    onDateSelected = {
-                        selectedDate = it
-                        onDateSelected(it)
-                    },
+                    onDateSelected = { selectedDate = it; onDateSelected(it) },
                     selectedDate = selectedDate,
-                    intakes = emptyList(),
-                    refills = emptyList(),
-                    estimatedRefillDates = emptyList()
+                    logs = emptyList()
                 )
             }
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(
-                onClick = onDismissRequest,
-                shape = MaterialTheme.shapes.medium
-            ) {
+            TextButton(onClick = onDismissRequest, shape = MaterialTheme.shapes.medium) {
                 Text("Cancel")
             }
         }
@@ -1654,208 +980,82 @@ fun CalendarDialog(
 }
 
 @Composable
-fun MedicationEventItem(
-    intake: MedicationIntake,
-    onClick: () -> Unit
-) {
-    val medicalColors = MaterialTheme.medicalColors
-    val containerColor = if (intake.taken) {
-        medicalColors.medicationTakenContainer
-    } else {
-        medicalColors.medicationMissedContainer
-    }
-    val contentColor = if (intake.taken) {
-        medicalColors.medicationTakenContent
-    } else {
-        medicalColors.medicationMissedContent
-    }
-    val statusIcon = if (intake.taken) "✓" else "✗"
+fun ReminderEventItem(log: ReminderLog, onClick: () -> Unit) {
+    val reminderColors = MaterialTheme.reminderColors
+    val containerColor = if (log.completed) reminderColors.completedContainer else reminderColors.pendingContainer
+    val contentColor = if (log.completed) reminderColors.completedContent else reminderColors.pendingContent
+    val statusIcon = if (log.completed) "✓" else "✗"
 
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         shape = MaterialTheme.shapes.medium,
         color = containerColor,
         onClick = onClick
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(text = statusIcon, style = MaterialTheme.typography.titleMedium, color = contentColor, modifier = Modifier.padding(end = 12.dp))
             Text(
-                text = statusIcon,
-                style = MaterialTheme.typography.titleMedium,
-                color = contentColor,
-                modifier = Modifier.padding(end = 12.dp)
-            )
-            Text(
-                text = intake.intakeDateTime.format(DateTimeFormatter.ofPattern("HH:mm")),
+                text = log.logDateTime.format(DateTimeFormatter.ofPattern("HH:mm")),
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
                 modifier = Modifier.width(60.dp),
                 color = contentColor
             )
             Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = intake.medicationName,
-                style = MaterialTheme.typography.bodyLarge,
-                color = contentColor
-            )
+            Text(text = log.title, style = MaterialTheme.typography.bodyLarge, color = contentColor, modifier = Modifier.weight(1f))
         }
     }
 }
 
 @Composable
-fun EventDetailsDialog(
-    intake: MedicationIntake, onDismiss: () -> Unit, onStatusChange: (Boolean) -> Unit
-) {
-    AlertDialog(onDismissRequest = onDismiss, title = { Text(intake.medicationName) }, text = {
-        Column {
-            Text("Time: ${intake.intakeDateTime.format(DateTimeFormatter.ofPattern("HH:mm"))}")
-            Text("Status: ${if (intake.taken) "Taken" else "Not Taken"}")
-            Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
-            Button(
-                onClick = { onStatusChange(!intake.taken) },
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.medium
-            ) {
-                Text(if (intake.taken) "✗ Mark as Not Taken" else "✓ Mark as Taken")
-            }
-        }
-    }, confirmButton = {
-        TextButton(
-            onClick = onDismiss,
-            shape = MaterialTheme.shapes.medium
-        ) {
-            Text("Close")
-        }
-    })
-}
-
-@Composable
-fun RecordRefillDialog(
-    reminder: MedicationReminder,
-    latestRefill: PrescriptionRefill,
-    onDismiss: () -> Unit,
-    onRecordRefill: (LocalDate) -> Unit
-) {
-    var pickupDate by remember { mutableStateOf(LocalDate.now()) }
-    var showDatePicker by remember { mutableStateOf(false) }
-
+fun EventDetailsDialog(log: ReminderLog, onDismiss: () -> Unit, onStatusChange: (Boolean) -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Record Refill Pickup") },
+        title = { Text(log.title) },
         text = {
             Column {
-                Text(
-                    "Medication: ${reminder.medicationName}",
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-
-                Text("Medication count will increase by: ${latestRefill.pillsPerRefill}")
-                Text("Refills: ${latestRefill.refillsRemaining} → ${latestRefill.refillsRemaining - 1}")
-
+                Text("Time: ${log.logDateTime.format(DateTimeFormatter.ofPattern("HH:mm"))}")
+                Text("Status: ${if (log.completed) "Completed" else "Pending"}")
                 Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
-
-                androidx.compose.material3.OutlinedButton(
-                    onClick = { showDatePicker = true },
+                Button(
+                    onClick = { onStatusChange(!log.completed) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.medium
                 ) {
-                    Text("Pickup Date: ${pickupDate.format(DateTimeFormatter.ofPattern("MMM dd, yyyy"))}")
+                    Text(if (log.completed) "✗ Mark as Pending" else "✓ Mark as Done")
                 }
             }
         },
-        confirmButton = {
-            Button(
-                onClick = { onRecordRefill(pickupDate) },
-                shape = MaterialTheme.shapes.medium
-            ) {
-                Text("Record Pickup")
-            }
-        },
+        confirmButton = {},
         dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-                shape = MaterialTheme.shapes.medium
-            ) {
-                Text("Cancel")
-            }
+            TextButton(onClick = onDismiss, shape = MaterialTheme.shapes.medium) { Text("Close") }
         }
     )
-
-    if (showDatePicker) {
-        CalendarDialog(
-            onDismissRequest = { showDatePicker = false },
-            onDateSelected = {
-                pickupDate = it
-                showDatePicker = false
-            },
-            initialDate = pickupDate
-        )
-    }
 }
 
 @Composable
-fun NewPrescriptionDialog(
-    reminder: MedicationReminder,
-    onDismiss: () -> Unit,
-    onAddPrescription: (pillsPerRefill: Int, totalRefills: Int) -> Unit
-) {
-    var pillsPerRefill by remember { mutableStateOf("60") }
-    var totalRefills by remember { mutableStateOf("5") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Add Prescription") },
-        text = {
-            Column {
-                Text(
-                    "Medication: ${reminder.medicationName}",
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
-
-                OutlinedTextField(
-                    value = pillsPerRefill,
-                    onValueChange = { pillsPerRefill = it },
-                    label = { Text("Medication count per refill") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-
-                OutlinedTextField(
-                    value = totalRefills,
-                    onValueChange = { totalRefills = it },
-                    label = { Text("Total refills authorized") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    val pills = pillsPerRefill.toIntOrNull() ?: 60
-                    val refills = totalRefills.toIntOrNull() ?: 5
-                    onAddPrescription(pills, refills)
-                },
-                shape = MaterialTheme.shapes.medium
+fun IconPicker(selectedKey: String?, onIconSelected: (String) -> Unit) {
+    val options = ReminderIcon.entries
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        options.forEach { option ->
+            val isSelected = (selectedKey ?: ReminderIcon.default.key) == option.key
+            val bgColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
+            val tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(bgColor)
+                    .clickable { onIconSelected(option.key) },
+                contentAlignment = Alignment.Center
             ) {
-                Text("Add Prescription")
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-                shape = MaterialTheme.shapes.medium
-            ) {
-                Text("Cancel")
+                Icon(imageVector = option.icon, contentDescription = option.label, tint = tint, modifier = Modifier.size(20.dp))
             }
         }
-    )
+    }
 }
 
 fun getDayName(day: Int): String {

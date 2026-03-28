@@ -4,12 +4,12 @@ import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 
-class MedicationReminderViewModelFactory(private val application: Application) :
+class ReminderViewModelFactory(private val application: Application) :
     ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(MedicationReminderViewModel::class.java)) {
+        if (modelClass.isAssignableFrom(ReminderViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return MedicationReminderViewModel(application) as T
+            return ReminderViewModel(application) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

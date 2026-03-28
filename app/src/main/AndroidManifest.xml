@@ -8,6 +8,8 @@
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
 
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
     <application
         android:allowBackup="true"
@@ -35,17 +37,7 @@
             android:exported="false">
             <intent-filter>
                 <action android:name="com.example.calendarapp.ACTION_SHOW_NOTIFICATION" />
-                <action android:name="com.example.calendarapp.ACTION_TAKEN" />
-            </intent-filter>
-        </receiver>
-
-        <receiver
-            android:name=".data.notification.InventoryNotificationReceiver"
-            android:enabled="true"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.example.calendarapp.ACTION_REFILLED" />
-                <action android:name="com.example.calendarapp.ACTION_DISMISS_INVENTORY" />
+                <action android:name="com.example.calendarapp.ACTION_COMPLETED" />
             </intent-filter>
         </receiver>
 
