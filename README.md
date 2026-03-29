@@ -1,22 +1,19 @@
-# Medication Reminder App
+# Calendar Reminder App
 
-A simple Android app to help you track and remember your medications.
+A simple Android app to help you set and track recurring reminders for anything — medications, plant watering, vitamins, habits, and more.
 
 ## What It Does
 
-- **Set Reminders**: Schedule daily medication reminders at specific times with customizable frequencies
-- **Track Intake**: Mark medications as taken or missed, view your history on an interactive calendar
-- **Manage Prescriptions**: Track pill inventory, record refill pickups, and see when you'll need refills
-- **Visual Calendar**: See your medication history at a glance with color-coded dots:
-  - 🔵 Blue: Prescription pickup dates
-  - 🟠 Orange: Estimated refill dates
-  - 🟢 Green: Medications taken
-  - 🔴 Red: Missed medications
-- **Low Inventory Alerts**: Get notified when you're running low on pills
+- **Set Reminders**: Schedule daily reminders at specific times with customizable frequencies
+- **Track Completion**: Mark reminders as done or missed, view your history on an interactive calendar
+- **Visual Calendar**: See your reminder history at a glance with color-coded dots:
+  - 🟢 Green: Reminders completed
+  - 🔴 Red: Missed reminders
+- **Missed Reminder Alerts**: Get notified when you've missed a reminder
 
 ## Privacy & Data
 
-**Your data stays on your device.** This app stores all medication information locally using Room database - no cloud sync, no external servers, no data collection. Your medical information is private and under your control.
+**Your data stays on your device.** This app stores all reminder information locally using Room database - no cloud sync, no external servers, no data collection. Your information is private and under your control.
 
 ## Built With
 
@@ -30,7 +27,7 @@ A simple Android app to help you track and remember your medications.
 This app uses the **MVVM (Model-View-ViewModel)** pattern to keep code organized and maintainable:
 
 - **Model** (`data/` folder): Handles all data operations
-  - `model/`: Database entities (MedicationReminder, MedicationIntake, PrescriptionRefill)
+  - `model/`: Database entities
   - `dao/`: Database queries (Data Access Objects)
   - `repository/`: Business logic layer
   - `database/`: Room database configuration
