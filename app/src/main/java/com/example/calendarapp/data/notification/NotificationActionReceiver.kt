@@ -7,13 +7,22 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffColorFilter
 import android.media.AudioAttributes
 import android.media.RingtoneManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.toBitmap
 import com.example.calendarapp.MainActivity
 import com.example.calendarapp.R
 import com.example.calendarapp.data.database.AppDatabase
+import com.example.calendarapp.data.model.iconDrawableRes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -36,52 +45,63 @@ class NotificationActionReceiver : BroadcastReceiver() {
 
         createNotificationChannel(notificationManager)
 
-        val intent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val completedIntent = Intent(context, NotificationActionReceiver::class.java).apply {
-            action = ReminderWorker.ACTION_COMPLETED
-            putExtra(ReminderWorker.EXTRA_LOG_ID, logId)
-        }
-        val completedPendingIntent = PendingIntent.getBroadcast(
-            context,
-            logId,
-            completedIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-
-        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_medication)
-            .setContentTitle("Reminder")
-            .setContentText("Time for your reminder")
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setCategory(NotificationCompat.CATEGORY_REMINDER)
-            .setContentIntent(pendingIntent)
-            .setOngoing(true)
-            .setAutoCancel(false)
-            .addAction(R.drawable.ic_check, "Done", completedPendingIntent)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setSound(soundUri)
-            .setVibrate(longArrayOf(0, 250))
-            .setOnlyAlertOnce(true)
-
-        try {
-            notificationManager.notify(logId, builder.build())
-            Log.d("NotificationActionReceiver", "Notification shown for log $logId")
-        } catch (e: Exception) {
-            Log.e("NotificationActionReceiver", "Error showing notification: ${e.message}", e)
-        }
-
-        // Chain: schedule the next occurrence for this reminder
         CoroutineScope(Dispatchers.IO).launch {
             val database = AppDatabase.getDatabase(context)
             val log = database.reminderLogDao().getLogById(logId) ?: return@launch
+            val reminder = database.reminderDao().getReminderByIdOnce(log.reminderId)
+
+            val intent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
+            val pendingIntent = PendingIntent.getActivity(
+                context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val completedIntent = Intent(context, NotificationActionReceiver::class.java).apply {
+                action = ReminderWorker.ACTION_COMPLETED
+                putExtra(ReminderWorker.EXTRA_LOG_ID, logId)
+            }
+            val completedPendingIntent = PendingIntent.getBroadcast(
+                context,
+                logId,
+                completedIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+
+            val largeIcon: Bitmap? = reminder?.icon
+                ?.let { iconDrawableRes(it) }
+                ?.let { resId -> buildIconBitmap(context, resId) }
+
+            val title = reminder?.title ?: log.title
+
+            val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_medication)
+                .setContentTitle(title)
+                .setContentText("Time for your reminder")
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_REMINDER)
+                .setContentIntent(pendingIntent)
+                .setOngoing(true)
+                .setAutoCancel(false)
+                .addAction(R.drawable.ic_check, "Done", completedPendingIntent)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setSound(soundUri)
+                .setVibrate(longArrayOf(0, 250))
+                .setOnlyAlertOnce(true)
+
+            if (largeIcon != null) {
+                builder.setLargeIcon(largeIcon)
+            }
+
+            try {
+                notificationManager.notify(logId, builder.build())
+                Log.d("NotificationActionReceiver", "Notification shown for log $logId")
+            } catch (e: Exception) {
+                Log.e("NotificationActionReceiver", "Error showing notification: ${e.message}", e)
+            }
+
             val nextLog = database.reminderLogDao().getNextLogForReminder(log.reminderId, log.logDateTime)
             if (nextLog != null) {
                 ReminderWorker.scheduleAlarm(context, nextLog)
@@ -123,6 +143,26 @@ class NotificationActionReceiver : BroadcastReceiver() {
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.cancel(logId)
         }
+    }
+
+    private fun buildIconBitmap(context: Context, resId: Int): Bitmap {
+        val size = 96
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+
+        // Draw colored circle background
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        paint.color = Color.parseColor("#6650A4") // Material primary purple
+        canvas.drawCircle(size / 2f, size / 2f, size / 2f, paint)
+
+        // Draw icon in white, inset so it fits inside the circle
+        val inset = size / 5
+        val drawable = ContextCompat.getDrawable(context, resId) ?: return bitmap
+        drawable.colorFilter = PorterDuffColorFilter(Color.WHITE, PorterDuff.Mode.SRC_IN)
+        drawable.setBounds(inset, inset, size - inset, size - inset)
+        drawable.draw(canvas)
+
+        return bitmap
     }
 
     companion object {

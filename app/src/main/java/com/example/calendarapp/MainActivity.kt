@@ -81,9 +81,10 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
+import com.example.calendarapp.data.model.DEFAULT_ICON_KEY
 import com.example.calendarapp.data.model.Reminder
-import com.example.calendarapp.data.model.ReminderIcon
 import com.example.calendarapp.data.model.ReminderLog
+import com.example.calendarapp.data.model.iconFromKey
 import com.example.calendarapp.data.notification.ReminderWorker
 import com.example.calendarapp.ui.theme.dimensions
 import com.example.calendarapp.ui.theme.reminderColors
@@ -251,7 +252,8 @@ fun ReminderItem(
     var showEndDatePicker by remember { mutableStateOf(false) }
     var editedReminderDays by remember { mutableStateOf(reminder.reminderDays) }
     var editedNotes by remember { mutableStateOf(reminder.notes ?: "") }
-    var editedIcon by remember { mutableStateOf(reminder.icon ?: ReminderIcon.default.key) }
+    var editedIcon by remember { mutableStateOf(reminder.icon ?: DEFAULT_ICON_KEY) }
+    var showEditIconPicker by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
@@ -322,9 +324,14 @@ fun ReminderItem(
                     minLines = 2
                 )
                 Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-                Text("Icon", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(modifier = Modifier.height(4.dp))
-                IconPicker(selectedKey = editedIcon, onIconSelected = { editedIcon = it })
+                IconPickerRow(selectedKey = editedIcon, onChangeTapped = { showEditIconPicker = true })
+                if (showEditIconPicker) {
+                    IconPickerDialog(
+                        currentKey = editedIcon,
+                        onIconSelected = { editedIcon = it },
+                        onDismiss = { showEditIconPicker = false }
+                    )
+                }
                 Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
 
                 Row(
@@ -365,7 +372,7 @@ fun ReminderItem(
                 // Display mode
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        imageVector = ReminderIcon.fromKey(reminder.icon).icon,
+                        imageVector = iconFromKey(reminder.icon).icon,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(24.dp).padding(end = 4.dp)
@@ -436,7 +443,7 @@ fun AddReminderForm(onAddReminder: (reminder: Reminder) -> Unit) {
     var showEndDatePicker by remember { mutableStateOf(false) }
     var reminderDays by remember { mutableStateOf(setOf(1, 2, 3, 4, 5, 6, 7)) }
     var notes by remember { mutableStateOf("") }
-    var selectedIcon by remember { mutableStateOf(ReminderIcon.default.key) }
+    var selectedIcon by remember { mutableStateOf(DEFAULT_ICON_KEY) }
 
     Column(
         modifier = Modifier
@@ -525,10 +532,18 @@ fun AddReminderForm(onAddReminder: (reminder: Reminder) -> Unit) {
         )
         Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
+        var showIconPicker by remember { mutableStateOf(false) }
         Text("Icon", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(modifier = Modifier.height(4.dp))
-        IconPicker(selectedKey = selectedIcon, onIconSelected = { selectedIcon = it })
+        IconPickerRow(selectedKey = selectedIcon, onChangeTapped = { showIconPicker = true })
         Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
+
+        if (showIconPicker) {
+            IconPickerDialog(
+                currentKey = selectedIcon,
+                onIconSelected = { selectedIcon = it },
+                onDismiss = { showIconPicker = false }
+            )
+        }
 
         Button(
             onClick = {
@@ -551,7 +566,7 @@ fun AddReminderForm(onAddReminder: (reminder: Reminder) -> Unit) {
                     endDate = null
                     reminderDays = setOf(1, 2, 3, 4, 5, 6, 7)
                     notes = ""
-                    selectedIcon = ReminderIcon.default.key
+                    selectedIcon = DEFAULT_ICON_KEY
                 }
             },
             enabled = title.isNotBlank(),
@@ -1034,27 +1049,24 @@ fun EventDetailsDialog(log: ReminderLog, onDismiss: () -> Unit, onStatusChange: 
 }
 
 @Composable
-fun IconPicker(selectedKey: String?, onIconSelected: (String) -> Unit) {
-    val options = ReminderIcon.entries
+fun IconPickerRow(selectedKey: String?, onChangeTapped: () -> Unit) {
+    val option = iconFromKey(selectedKey)
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
     ) {
-        options.forEach { option ->
-            val isSelected = (selectedKey ?: ReminderIcon.default.key) == option.key
-            val bgColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
-            val tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(bgColor)
-                    .clickable { onIconSelected(option.key) },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(imageVector = option.icon, contentDescription = option.label, tint = tint, modifier = Modifier.size(20.dp))
-            }
-        }
+        Icon(
+            imageVector = option.icon,
+            contentDescription = option.label,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(28.dp)
+        )
+        Text(
+            text = option.label,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(start = 8.dp).weight(1f)
+        )
+        TextButton(onClick = onChangeTapped) { Text("Change") }
     }
 }
 
