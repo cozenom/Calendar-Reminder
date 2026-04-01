@@ -25,8 +25,14 @@ class BootReceiver : BroadcastReceiver() {
 
     private fun showMissedNotification(context: Context) {
         CoroutineScope(Dispatchers.IO).launch {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val since = prefs.getString(KEY_LAST_DISMISSED, null)
+                ?.let { LocalDateTime.parse(it) }
+                ?: LocalDateTime.MIN
+
+            val now = LocalDateTime.now()
             val database = AppDatabase.getDatabase(context)
-            val missedLogs = database.reminderLogDao().getMissedLogsList(LocalDateTime.now())
+            val missedLogs = database.reminderLogDao().getMissedLogsList(since, now)
             if (missedLogs.isEmpty()) return@launch
 
             val notificationManager =
@@ -46,6 +52,16 @@ class BootReceiver : BroadcastReceiver() {
                 context, 0, tapIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
+            val dismissIntent = Intent(context, NotificationActionReceiver::class.java).apply {
+                action = ACTION_MISSED_DISMISSED
+            }
+            val dismissPendingIntent = PendingIntent.getBroadcast(
+                context,
+                MISSED_NOTIFICATION_ID,
+                dismissIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
             val count = missedLogs.size
             val notification = NotificationCompat.Builder(context, MISSED_CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_medication)
@@ -53,6 +69,7 @@ class BootReceiver : BroadcastReceiver() {
                 .setContentText("You missed $count reminder${if (count > 1) "s" else ""} while your phone was off")
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setContentIntent(pendingIntent)
+                .setDeleteIntent(dismissPendingIntent)
                 .setAutoCancel(true)
                 .build()
 
@@ -63,5 +80,8 @@ class BootReceiver : BroadcastReceiver() {
     companion object {
         private const val MISSED_CHANNEL_ID = "MissedRemindersChannel"
         private const val MISSED_NOTIFICATION_ID = 9999
+        const val PREFS_NAME = "missed_notification_prefs"
+        const val KEY_LAST_DISMISSED = "last_dismissed_at"
+        const val ACTION_MISSED_DISMISSED = "com.example.calendarapp.ACTION_MISSED_DISMISSED"
     }
 }

@@ -38,6 +38,7 @@
             <intent-filter>
                 <action android:name="com.example.calendarapp.ACTION_SHOW_NOTIFICATION" />
                 <action android:name="com.example.calendarapp.ACTION_COMPLETED" />
+                <action android:name="com.example.calendarapp.ACTION_MISSED_DISMISSED" />
             </intent-filter>
         </receiver>
 

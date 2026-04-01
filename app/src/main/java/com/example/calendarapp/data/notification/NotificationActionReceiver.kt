@@ -30,6 +30,11 @@ import androidx.core.graphics.toColorInt
 
 class NotificationActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == BootReceiver.ACTION_MISSED_DISMISSED) {
+            saveDismissedTimestamp(context)
+            return
+        }
+
         val logId = intent.getIntExtra(ReminderWorker.EXTRA_LOG_ID, -1)
         if (logId == -1) return
 
@@ -132,6 +137,13 @@ class NotificationActionReceiver : BroadcastReceiver() {
             )
         }
         notificationManager.createNotificationChannel(channel)
+    }
+
+    private fun saveDismissedTimestamp(context: Context) {
+        context.getSharedPreferences(BootReceiver.PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString(BootReceiver.KEY_LAST_DISMISSED, java.time.LocalDateTime.now().toString())
+            .apply()
     }
 
     private fun markAsCompleted(context: Context, logId: Int) {
