@@ -43,6 +43,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -278,6 +279,13 @@ fun ReminderItem(
                     value = editedTitle,
                     onValueChange = { editedTitle = it },
                     label = { Text("Title") },
+                    trailingIcon = {
+                        if (editedTitle.isNotEmpty()) {
+                            IconButton(onClick = { editedTitle = "" }) {
+                                Icon(Icons.Filled.Clear, contentDescription = "Clear")
+                            }
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
@@ -464,6 +472,13 @@ fun AddReminderForm(onAddReminder: (reminder: Reminder) -> Unit) {
             value = title,
             onValueChange = { title = it },
             label = { Text("Title") },
+            trailingIcon = {
+                if (title.isNotEmpty()) {
+                    IconButton(onClick = { title = "" }) {
+                        Icon(Icons.Filled.Clear, contentDescription = "Clear")
+                    }
+                }
+            },
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
