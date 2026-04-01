@@ -34,7 +34,6 @@ object AppDimensions {
     val spacingMedium = 16.dp
 
     // Indicator dots
-    val indicatorDotSmall = 4.dp
     val indicatorDotLarge = 8.dp
 
     // Button sizes
@@ -46,10 +45,10 @@ object AppDimensions {
  * Extension properties to access custom theme values from MaterialTheme.
  * Usage:
  *   MaterialTheme.reminderColors.completedIndicator
- *   MaterialTheme.shapes.medium
+ *   MaterialTheme.appShapes.medium
  *   MaterialTheme.dimensions.spacingSmall
  */
-val MaterialTheme.shapes: AppShapes
+val MaterialTheme.appShapes: AppShapes
     @Composable
     @ReadOnlyComposable
     get() = AppShapes

@@ -24,7 +24,7 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
         val database = AppDatabase.getDatabase(application)
         val reminderDao = database.reminderDao()
         val reminderLogDao = database.reminderLogDao()
-        repository = ReminderRepository(reminderDao, reminderLogDao, application)
+        repository = ReminderRepository(reminderDao, reminderLogDao)
         allReminders = repository.allReminders
         logRepository = ReminderLogRepository(reminderLogDao)
     }
@@ -50,10 +50,6 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
 
     fun updateLogCompletedStatus(logId: Int, completed: Boolean) = viewModelScope.launch {
         repository.updateLogCompletedStatus(logId, completed)
-    }
-
-    fun getMissedLogs(dateTime: LocalDateTime): Flow<List<ReminderLog>> {
-        return logRepository.getMissedLogs(dateTime)
     }
 
     fun getLogsForMonth(yearMonth: YearMonth): Flow<List<ReminderLog>> {

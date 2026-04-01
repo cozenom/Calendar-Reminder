@@ -35,7 +35,7 @@ import androidx.compose.ui.window.Dialog
 import com.example.calendarapp.data.model.IconCategory
 import com.example.calendarapp.data.model.ReminderIconCategories
 import com.example.calendarapp.data.model.ReminderIconOption
-import com.example.calendarapp.ui.theme.shapes
+import com.example.calendarapp.ui.theme.appShapes
 import kotlinx.coroutines.launch
 
 @Composable
@@ -49,7 +49,7 @@ fun IconPickerDialog(
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = MaterialTheme.shapes.large,
+            shape = MaterialTheme.appShapes.large,
             color = MaterialTheme.colorScheme.surface,
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -150,7 +150,7 @@ private fun IconCell(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .clip(MaterialTheme.shapes.small)
+            .clip(MaterialTheme.appShapes.small)
             .background(bgColor)
             .clickable(onClick = onClick)
             .padding(vertical = 8.dp, horizontal = 4.dp)

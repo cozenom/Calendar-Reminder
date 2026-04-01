@@ -1,6 +1,5 @@
 package com.example.calendarapp.data.repository
 
-import android.content.Context
 import com.example.calendarapp.data.dao.ReminderDao
 import com.example.calendarapp.data.dao.ReminderLogDao
 import com.example.calendarapp.data.model.Reminder
@@ -11,8 +10,7 @@ import java.time.LocalDateTime
 
 class ReminderRepository(
     private val reminderDao: ReminderDao,
-    private val reminderLogDao: ReminderLogDao,
-    private val context: Context
+    private val reminderLogDao: ReminderLogDao
 ) {
     val allReminders: Flow<List<Reminder>> = reminderDao.getAllReminders()
 

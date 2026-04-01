@@ -18,6 +18,7 @@ import android.media.RingtoneManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import com.example.calendarapp.MainActivity
 import com.example.calendarapp.R
 import com.example.calendarapp.data.database.AppDatabase
@@ -141,9 +142,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
 
     private fun saveDismissedTimestamp(context: Context) {
         context.getSharedPreferences(BootReceiver.PREFS_NAME, Context.MODE_PRIVATE)
-            .edit()
-            .putString(BootReceiver.KEY_LAST_DISMISSED, java.time.LocalDateTime.now().toString())
-            .apply()
+            .edit { putString(BootReceiver.KEY_LAST_DISMISSED, java.time.LocalDateTime.now().toString()) }
     }
 
     private fun markAsCompleted(context: Context, logId: Int) {
