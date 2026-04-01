@@ -18,6 +18,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -73,9 +74,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -244,7 +242,7 @@ fun ReminderItem(
     viewModel: ReminderViewModel
 ) {
     var isEditing by remember { mutableStateOf(false) }
-    var editedTitle by remember { mutableStateOf(TextFieldValue(reminder.title)) }
+    var editedTitle by remember { mutableStateOf(reminder.title) }
     var editedTimes by remember { mutableStateOf(reminder.reminderTimes) }
     var editedFrequency by remember { mutableIntStateOf(reminder.frequency) }
     var editedStartDate by remember { mutableStateOf(reminder.startDate) }
@@ -269,11 +267,7 @@ fun ReminderItem(
                     value = editedTitle,
                     onValueChange = { editedTitle = it },
                     label = { Text("Title") },
-                    modifier = Modifier.fillMaxWidth().onFocusChanged { focusState ->
-                        if (focusState.isFocused) {
-                            editedTitle = editedTitle.copy(selection = TextRange(0, editedTitle.text.length))
-                        }
-                    }
+                    modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
                 FrequencySelector(frequency = editedFrequency, onFrequencyChange = {
@@ -347,7 +341,7 @@ fun ReminderItem(
                         onClick = {
                             viewModel.update(
                                 reminder.copy(
-                                    title = editedTitle.text,
+                                    title = editedTitle.ifBlank { "Reminder" },
                                     reminderTimes = editedTimes,
                                     frequency = editedFrequency,
                                     startDate = editedStartDate,
@@ -359,7 +353,7 @@ fun ReminderItem(
                             )
                             isEditing = false
                         },
-                        enabled = editedTitle.text.isNotBlank(),
+                        enabled = true,
                         modifier = Modifier.weight(1f),
                         shape = MaterialTheme.appShapes.medium
                     ) {
@@ -439,7 +433,7 @@ fun ReminderItem(
 
 @Composable
 fun AddReminderForm(onAddReminder: (reminder: Reminder) -> Unit) {
-    var title by remember { mutableStateOf(TextFieldValue("Reminder")) }
+    var title by remember { mutableStateOf("Reminder") }
     var frequency by remember { mutableIntStateOf(1) }
     var reminderTimes by remember { mutableStateOf(listOf(LocalTime.now().plusMinutes(2))) }
     var startDate by remember { mutableStateOf(LocalDate.now()) }
@@ -459,11 +453,7 @@ fun AddReminderForm(onAddReminder: (reminder: Reminder) -> Unit) {
             value = title,
             onValueChange = { title = it },
             label = { Text("Title") },
-            modifier = Modifier.fillMaxWidth().onFocusChanged { focusState ->
-                if (focusState.isFocused) {
-                    title = title.copy(selection = TextRange(0, title.text.length))
-                }
-            }
+            modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
@@ -556,29 +546,27 @@ fun AddReminderForm(onAddReminder: (reminder: Reminder) -> Unit) {
 
         Button(
             onClick = {
-                if (title.text.isNotBlank()) {
-                    val reminder = Reminder(
-                        title = title.text,
-                        reminderTimes = reminderTimes,
-                        frequency = frequency,
-                        startDate = startDate,
-                        endDate = endDate,
-                        reminderDays = reminderDays,
-                        notes = notes.ifBlank { null },
-                        icon = selectedIcon
-                    )
-                    onAddReminder(reminder)
-                    title = "Reminder"
-                    frequency = 1
-                    reminderTimes = listOf(LocalTime.now().plusMinutes(2))
-                    startDate = LocalDate.now()
-                    endDate = null
-                    reminderDays = setOf(1, 2, 3, 4, 5, 6, 7)
-                    notes = ""
-                    selectedIcon = DEFAULT_ICON_KEY
-                }
+                val reminder = Reminder(
+                    title = title.ifBlank { "Reminder" },
+                    reminderTimes = reminderTimes,
+                    frequency = frequency,
+                    startDate = startDate,
+                    endDate = endDate,
+                    reminderDays = reminderDays,
+                    notes = notes.ifBlank { null },
+                    icon = selectedIcon
+                )
+                onAddReminder(reminder)
+                title = "Reminder"
+                frequency = 1
+                reminderTimes = listOf(LocalTime.now().plusMinutes(2))
+                startDate = LocalDate.now()
+                endDate = null
+                reminderDays = setOf(1, 2, 3, 4, 5, 6, 7)
+                notes = ""
+                selectedIcon = DEFAULT_ICON_KEY
             },
-            enabled = title.isNotBlank(),
+            enabled = true,
             modifier = Modifier.fillMaxWidth(),
             shape = MaterialTheme.appShapes.medium
         ) {
@@ -621,26 +609,30 @@ fun WeekdaySelector(selectedDays: Set<Int>, onDaysChanged: (Set<Int>) -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         weekdays.forEachIndexed { index, day ->
             val isSelected = selectedDays.contains(index + 1)
-            WeekdayButton(day = day, isSelected = isSelected, onClick = {
-                val newSet = if (isSelected) selectedDays - (index + 1) else selectedDays + (index + 1)
-                onDaysChanged(newSet)
-            })
+            WeekdayButton(
+                day = day,
+                isSelected = isSelected,
+                onClick = {
+                    val newSet = if (isSelected) selectedDays - (index + 1) else selectedDays + (index + 1)
+                    onDaysChanged(newSet)
+                },
+                modifier = Modifier.weight(1f).aspectRatio(1f)
+            )
         }
     }
 }
 
 @Composable
-fun WeekdayButton(day: String, isSelected: Boolean, onClick: () -> Unit) {
+fun WeekdayButton(day: String, isSelected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val backgroundColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
     val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
 
     Box(
-        modifier = Modifier
-            .size(MaterialTheme.dimensions.weekdayButtonSize)
+        modifier = modifier
             .clip(CircleShape)
             .background(backgroundColor)
             .clickable(onClick = onClick)
