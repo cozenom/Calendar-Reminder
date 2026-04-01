@@ -79,6 +79,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.activity.compose.BackHandler
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.ui.window.Dialog
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
@@ -251,6 +252,7 @@ fun ReminderItem(
     viewModel: ReminderViewModel
 ) {
     var isEditing by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
     BackHandler(enabled = isEditing) {
         isEditing = false
     }
@@ -423,7 +425,7 @@ fun ReminderItem(
                         Text("Edit")
                     }
                     androidx.compose.material3.OutlinedButton(
-                        onClick = onDelete,
+                        onClick = { showDeleteConfirm = true },
                         modifier = Modifier.weight(1f),
                         shape = MaterialTheme.appShapes.medium
                     ) {
@@ -432,6 +434,34 @@ fun ReminderItem(
                 }
             }
         }
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete Reminder") },
+            text = { Text("Are you sure you want to delete \"${reminder.title}\"?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteConfirm = false
+                        onDelete()
+                    },
+                    shape = MaterialTheme.appShapes.medium,
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDeleteConfirm = false },
+                    shape = MaterialTheme.appShapes.medium
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     if (showStartDatePicker) {
