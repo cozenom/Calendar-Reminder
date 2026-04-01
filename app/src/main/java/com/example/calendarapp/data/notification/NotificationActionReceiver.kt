@@ -18,7 +18,6 @@ import android.media.RingtoneManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.drawable.toBitmap
 import com.example.calendarapp.MainActivity
 import com.example.calendarapp.R
 import com.example.calendarapp.data.database.AppDatabase
@@ -26,6 +25,8 @@ import com.example.calendarapp.data.model.iconDrawableRes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.toColorInt
 
 class NotificationActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -147,12 +148,12 @@ class NotificationActionReceiver : BroadcastReceiver() {
 
     private fun buildIconBitmap(context: Context, resId: Int): Bitmap {
         val size = 96
-        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val bitmap = createBitmap(size, size)
         val canvas = Canvas(bitmap)
 
         // Draw colored circle background
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        paint.color = Color.parseColor("#6650A4") // Material primary purple
+        paint.color = "#6650A4".toColorInt() // Material primary purple
         canvas.drawCircle(size / 2f, size / 2f, size / 2f, paint)
 
         // Draw icon in white, inset so it fits inside the circle

@@ -37,7 +37,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
@@ -78,7 +77,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import com.example.calendarapp.data.model.DEFAULT_ICON_KEY
@@ -88,7 +86,6 @@ import com.example.calendarapp.data.model.iconFromKey
 import com.example.calendarapp.data.notification.ReminderWorker
 import com.example.calendarapp.ui.theme.dimensions
 import com.example.calendarapp.ui.theme.reminderColors
-import com.example.calendarapp.ui.theme.shapes
 import com.example.calendarapp.viewmodel.ReminderViewModel
 import com.example.calendarapp.viewmodel.ReminderViewModelFactory
 import java.time.LocalDate
@@ -829,7 +826,7 @@ fun CalendarTab(viewModel: ReminderViewModel) {
                     LazyColumn {
                         items(selectedDateLogs.groupBy { it.title }.values.toList()) { titleLogs ->
                             titleLogs.forEachIndexed { _, log ->
-                                ReminderEventItem(log = log, onClick = { selectedLog = log })
+                                ReminderEventItem(log = log, iconKey = activeReminders.find { it.id == log.reminderId }?.icon, onClick = { selectedLog = log })
                             }
                         }
                     }
@@ -902,7 +899,7 @@ fun CalendarView(
                             color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.height(2.dp))
-                        FlexibleDotRow(logs = dayLogs, maxDots = 8)
+                        FlexibleDotRow(logs = dayLogs, maxDots = 4)
                     }
                 } else {
                     Text("")
@@ -915,13 +912,15 @@ fun CalendarView(
 @Composable
 fun FlexibleDotRow(logs: List<ReminderLog>, maxDots: Int) {
     val reminderColors = MaterialTheme.reminderColors
+    // One dot per unique reminder: green if all occurrences done, red if any pending
+    val reminderDotColors = logs.groupBy { it.reminderId }.values.map { group ->
+        if (group.all { it.completed }) reminderColors.completedIndicator else reminderColors.pendingIndicator
+    }
     Row(
         modifier = Modifier.fillMaxWidth().height(6.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        val displayedLogs = logs.take(maxDots)
-        displayedLogs.forEach { log ->
-            val dotColor = if (log.completed) reminderColors.completedIndicator else reminderColors.pendingIndicator
+        reminderDotColors.take(maxDots).forEach { dotColor ->
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -930,8 +929,8 @@ fun FlexibleDotRow(logs: List<ReminderLog>, maxDots: Int) {
                     .background(dotColor, CircleShape)
             )
         }
-        if (logs.size > maxDots) {
-            Text("+", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1f))
+        if (reminderDotColors.size > maxDots) {
+            Text("+${reminderDotColors.size - maxDots}", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1f))
         }
     }
 }
@@ -995,7 +994,7 @@ fun CalendarDialog(
 }
 
 @Composable
-fun ReminderEventItem(log: ReminderLog, onClick: () -> Unit) {
+fun ReminderEventItem(log: ReminderLog, iconKey: String?, onClick: () -> Unit) {
     val reminderColors = MaterialTheme.reminderColors
     val containerColor = if (log.completed) reminderColors.completedContainer else reminderColors.pendingContainer
     val contentColor = if (log.completed) reminderColors.completedContent else reminderColors.pendingContent
@@ -1008,7 +1007,13 @@ fun ReminderEventItem(log: ReminderLog, onClick: () -> Unit) {
         onClick = onClick
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(text = statusIcon, style = MaterialTheme.typography.titleMedium, color = contentColor, modifier = Modifier.padding(end = 12.dp))
+            Icon(
+                imageVector = iconFromKey(iconKey).icon,
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier.size(20.dp).padding(end = 0.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
             Text(
                 text = log.logDateTime.format(DateTimeFormatter.ofPattern("HH:mm")),
                 style = MaterialTheme.typography.bodyLarge,
@@ -1018,6 +1023,7 @@ fun ReminderEventItem(log: ReminderLog, onClick: () -> Unit) {
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(text = log.title, style = MaterialTheme.typography.bodyLarge, color = contentColor, modifier = Modifier.weight(1f))
+            Text(text = statusIcon, style = MaterialTheme.typography.titleMedium, color = contentColor)
         }
     }
 }
