@@ -77,6 +77,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.activity.compose.BackHandler
 import androidx.compose.ui.window.Dialog
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
@@ -178,6 +179,13 @@ fun ReminderApp(viewModel: ReminderViewModel) {
         }
     }
 
+    BackHandler(enabled = selectedTab == 1) {
+        selectedTab = 0
+    }
+    BackHandler(enabled = selectedTab == 0) {
+        // Do nothing — prevent closing the app on the reminders list
+    }
+
     if (showAddReminderDialog) {
         AddReminderDialog(
             onDismiss = { showAddReminderDialog = false },
@@ -242,6 +250,9 @@ fun ReminderItem(
     viewModel: ReminderViewModel
 ) {
     var isEditing by remember { mutableStateOf(false) }
+    BackHandler(enabled = isEditing) {
+        isEditing = false
+    }
     var editedTitle by remember { mutableStateOf(reminder.title) }
     var editedTimes by remember { mutableStateOf(reminder.reminderTimes) }
     var editedFrequency by remember { mutableIntStateOf(reminder.frequency) }
