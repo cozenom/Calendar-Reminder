@@ -6,7 +6,6 @@
 /captures
 .externalNativeBuild
 .cxx
-local.properties
 
 # IDE (Android Studio / IntelliJ IDEA)
 .idea/*
