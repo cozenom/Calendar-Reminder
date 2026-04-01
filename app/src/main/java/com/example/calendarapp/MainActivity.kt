@@ -73,6 +73,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -84,6 +87,7 @@ import com.example.calendarapp.data.model.Reminder
 import com.example.calendarapp.data.model.ReminderLog
 import com.example.calendarapp.data.model.iconFromKey
 import com.example.calendarapp.data.notification.ReminderWorker
+import com.example.calendarapp.ui.theme.appShapes
 import com.example.calendarapp.ui.theme.dimensions
 import com.example.calendarapp.ui.theme.reminderColors
 import com.example.calendarapp.viewmodel.ReminderViewModel
@@ -149,7 +153,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun ReminderApp(viewModel: ReminderViewModel) {
-    var selectedTab by remember { mutableStateOf(0) }
+    var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Reminders", "Calendar")
     var showAddReminderDialog by remember { mutableStateOf(false) }
 
@@ -240,7 +244,7 @@ fun ReminderItem(
     viewModel: ReminderViewModel
 ) {
     var isEditing by remember { mutableStateOf(false) }
-    var editedTitle by remember { mutableStateOf(reminder.title) }
+    var editedTitle by remember { mutableStateOf(TextFieldValue(reminder.title)) }
     var editedTimes by remember { mutableStateOf(reminder.reminderTimes) }
     var editedFrequency by remember { mutableIntStateOf(reminder.frequency) }
     var editedStartDate by remember { mutableStateOf(reminder.startDate) }
@@ -256,7 +260,7 @@ fun ReminderItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp),
-        shape = MaterialTheme.shapes.large,
+        shape = MaterialTheme.appShapes.large,
         elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
@@ -265,7 +269,11 @@ fun ReminderItem(
                     value = editedTitle,
                     onValueChange = { editedTitle = it },
                     label = { Text("Title") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().onFocusChanged { focusState ->
+                        if (focusState.isFocused) {
+                            editedTitle = editedTitle.copy(selection = TextRange(0, editedTitle.text.length))
+                        }
+                    }
                 )
                 Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
                 FrequencySelector(frequency = editedFrequency, onFrequencyChange = {
@@ -284,7 +292,7 @@ fun ReminderItem(
                 androidx.compose.material3.OutlinedButton(
                     onClick = { showStartDatePicker = true },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium
+                    shape = MaterialTheme.appShapes.medium
                 ) {
                     Text("Start Date: ${editedStartDate.format(DateTimeFormatter.ofPattern("MMM dd, yyyy"))}")
                 }
@@ -296,7 +304,7 @@ fun ReminderItem(
                     androidx.compose.material3.OutlinedButton(
                         onClick = { showEndDatePicker = true },
                         modifier = Modifier.weight(1f),
-                        shape = MaterialTheme.shapes.medium
+                        shape = MaterialTheme.appShapes.medium
                     ) {
                         Text(
                             if (editedEndDate != null) "End: ${editedEndDate?.format(DateTimeFormatter.ofPattern("MMM dd"))}"
@@ -305,7 +313,7 @@ fun ReminderItem(
                         )
                     }
                     if (editedEndDate != null) {
-                        TextButton(onClick = { editedEndDate = null }, shape = MaterialTheme.shapes.medium) {
+                        TextButton(onClick = { editedEndDate = null }, shape = MaterialTheme.appShapes.medium) {
                             Text("Clear")
                         }
                     }
@@ -339,7 +347,7 @@ fun ReminderItem(
                         onClick = {
                             viewModel.update(
                                 reminder.copy(
-                                    title = editedTitle,
+                                    title = editedTitle.text,
                                     reminderTimes = editedTimes,
                                     frequency = editedFrequency,
                                     startDate = editedStartDate,
@@ -351,16 +359,16 @@ fun ReminderItem(
                             )
                             isEditing = false
                         },
-                        enabled = editedTitle.isNotBlank(),
+                        enabled = editedTitle.text.isNotBlank(),
                         modifier = Modifier.weight(1f),
-                        shape = MaterialTheme.shapes.medium
+                        shape = MaterialTheme.appShapes.medium
                     ) {
                         Text("Save")
                     }
                     androidx.compose.material3.OutlinedButton(
                         onClick = { isEditing = false },
                         modifier = Modifier.weight(1f),
-                        shape = MaterialTheme.shapes.medium
+                        shape = MaterialTheme.appShapes.medium
                     ) {
                         Text("Cancel")
                     }
@@ -397,14 +405,14 @@ fun ReminderItem(
                     Button(
                         onClick = { isEditing = true },
                         modifier = Modifier.weight(1f),
-                        shape = MaterialTheme.shapes.medium
+                        shape = MaterialTheme.appShapes.medium
                     ) {
                         Text("Edit")
                     }
                     androidx.compose.material3.OutlinedButton(
                         onClick = onDelete,
                         modifier = Modifier.weight(1f),
-                        shape = MaterialTheme.shapes.medium
+                        shape = MaterialTheme.appShapes.medium
                     ) {
                         Text("Delete")
                     }
@@ -431,8 +439,8 @@ fun ReminderItem(
 
 @Composable
 fun AddReminderForm(onAddReminder: (reminder: Reminder) -> Unit) {
-    var title by remember { mutableStateOf("Reminder") }
-    var frequency by remember { mutableStateOf(1) }
+    var title by remember { mutableStateOf(TextFieldValue("Reminder")) }
+    var frequency by remember { mutableIntStateOf(1) }
     var reminderTimes by remember { mutableStateOf(listOf(LocalTime.now().plusMinutes(2))) }
     var startDate by remember { mutableStateOf(LocalDate.now()) }
     var endDate by remember { mutableStateOf<LocalDate?>(null) }
@@ -451,7 +459,11 @@ fun AddReminderForm(onAddReminder: (reminder: Reminder) -> Unit) {
             value = title,
             onValueChange = { title = it },
             label = { Text("Title") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().onFocusChanged { focusState ->
+                if (focusState.isFocused) {
+                    title = title.copy(selection = TextRange(0, title.text.length))
+                }
+            }
         )
         Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
@@ -473,7 +485,7 @@ fun AddReminderForm(onAddReminder: (reminder: Reminder) -> Unit) {
         androidx.compose.material3.OutlinedButton(
             onClick = { showStartDatePicker = true },
             modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.medium
+            shape = MaterialTheme.appShapes.medium
         ) {
             Text("Start Date: ${startDate.format(DateTimeFormatter.ofPattern("MMM dd, yyyy"))}")
         }
@@ -486,7 +498,7 @@ fun AddReminderForm(onAddReminder: (reminder: Reminder) -> Unit) {
             androidx.compose.material3.OutlinedButton(
                 onClick = { showEndDatePicker = true },
                 modifier = Modifier.weight(1f),
-                shape = MaterialTheme.shapes.medium
+                shape = MaterialTheme.appShapes.medium
             ) {
                 Text(
                     if (endDate != null) "End: ${endDate?.format(DateTimeFormatter.ofPattern("MMM dd"))}"
@@ -495,7 +507,7 @@ fun AddReminderForm(onAddReminder: (reminder: Reminder) -> Unit) {
                 )
             }
             if (endDate != null) {
-                TextButton(onClick = { endDate = null }, shape = MaterialTheme.shapes.medium) {
+                TextButton(onClick = { endDate = null }, shape = MaterialTheme.appShapes.medium) {
                     Text("Clear")
                 }
             }
@@ -544,9 +556,9 @@ fun AddReminderForm(onAddReminder: (reminder: Reminder) -> Unit) {
 
         Button(
             onClick = {
-                if (title.isNotBlank()) {
+                if (title.text.isNotBlank()) {
                     val reminder = Reminder(
-                        title = title,
+                        title = title.text,
                         reminderTimes = reminderTimes,
                         frequency = frequency,
                         startDate = startDate,
@@ -568,7 +580,7 @@ fun AddReminderForm(onAddReminder: (reminder: Reminder) -> Unit) {
             },
             enabled = title.isNotBlank(),
             modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.medium
+            shape = MaterialTheme.appShapes.medium
         ) {
             Text("Add Reminder", style = MaterialTheme.typography.labelLarge)
         }
@@ -658,7 +670,7 @@ fun Material3TimePicker(initialTime: LocalTime, onTimeSelected: (LocalTime) -> U
     androidx.compose.material3.OutlinedButton(
         onClick = { showTimePicker = true },
         modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium
+        shape = MaterialTheme.appShapes.medium
     ) {
         Text("Time: ${selectedTime.format(DateTimeFormatter.ofPattern(timeFormat))}")
     }
@@ -666,7 +678,7 @@ fun Material3TimePicker(initialTime: LocalTime, onTimeSelected: (LocalTime) -> U
     if (showTimePicker) {
         Dialog(onDismissRequest = { showTimePicker = false }) {
             Surface(
-                shape = MaterialTheme.shapes.extraLarge,
+                shape = MaterialTheme.appShapes.extraLarge,
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 6.dp
             ) {
@@ -725,7 +737,7 @@ fun CalendarTab(viewModel: ReminderViewModel) {
 
         // Month navigation
         Surface(
-            shape = MaterialTheme.shapes.medium,
+            shape = MaterialTheme.appShapes.medium,
             color = MaterialTheme.colorScheme.surfaceVariant,
             tonalElevation = 1.dp,
             modifier = Modifier.fillMaxWidth()
@@ -756,7 +768,7 @@ fun CalendarTab(viewModel: ReminderViewModel) {
 
         // Legend
         Surface(
-            shape = MaterialTheme.shapes.medium,
+            shape = MaterialTheme.appShapes.medium,
             color = MaterialTheme.colorScheme.surfaceVariant,
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -783,7 +795,7 @@ fun CalendarTab(viewModel: ReminderViewModel) {
 
         // Swipeable calendar
         Surface(
-            shape = MaterialTheme.shapes.medium,
+            shape = MaterialTheme.appShapes.medium,
             color = MaterialTheme.colorScheme.surfaceVariant,
             tonalElevation = 3.dp,
             modifier = Modifier.fillMaxWidth()
@@ -808,7 +820,7 @@ fun CalendarTab(viewModel: ReminderViewModel) {
 
         // Selected date's reminders
         Surface(
-            shape = MaterialTheme.shapes.medium,
+            shape = MaterialTheme.appShapes.medium,
             color = MaterialTheme.colorScheme.surfaceVariant,
             tonalElevation = 1.dp,
             modifier = Modifier.fillMaxWidth()
@@ -836,7 +848,6 @@ fun CalendarTab(viewModel: ReminderViewModel) {
     }
 
     selectedLog?.let { log ->
-        val reminder = activeReminders.find { it.id == log.reminderId }
         EventDetailsDialog(
             log = log,
             onDismiss = { selectedLog = null },
@@ -882,11 +893,11 @@ fun CalendarView(
                     Column(
                         modifier = Modifier
                             .padding(2.dp)
-                            .clip(MaterialTheme.shapes.small)
+                            .clip(MaterialTheme.appShapes.small)
                             .clickable { onDateSelected(date) }
                             .background(
                                 if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-                                shape = MaterialTheme.shapes.small
+                                shape = MaterialTheme.appShapes.small
                             )
                             .padding(6.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -986,7 +997,7 @@ fun CalendarDialog(
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismissRequest, shape = MaterialTheme.shapes.medium) {
+            TextButton(onClick = onDismissRequest, shape = MaterialTheme.appShapes.medium) {
                 Text("Cancel")
             }
         }
@@ -1002,7 +1013,7 @@ fun ReminderEventItem(log: ReminderLog, iconKey: String?, onClick: () -> Unit) {
 
     Surface(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        shape = MaterialTheme.shapes.medium,
+        shape = MaterialTheme.appShapes.medium,
         color = containerColor,
         onClick = onClick
     ) {
@@ -1041,7 +1052,7 @@ fun EventDetailsDialog(log: ReminderLog, onDismiss: () -> Unit, onStatusChange: 
                 Button(
                     onClick = { onStatusChange(!log.completed) },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium
+                    shape = MaterialTheme.appShapes.medium
                 ) {
                     Text(if (log.completed) "✗ Mark as Pending" else "✓ Mark as Done")
                 }
@@ -1049,7 +1060,7 @@ fun EventDetailsDialog(log: ReminderLog, onDismiss: () -> Unit, onStatusChange: 
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss, shape = MaterialTheme.shapes.medium) { Text("Close") }
+            TextButton(onClick = onDismiss, shape = MaterialTheme.appShapes.medium) { Text("Close") }
         }
     )
 }
