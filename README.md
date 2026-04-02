@@ -5,9 +5,12 @@ Lightweight Android app for scheduling periodic reminders — medications, plant
 ## Features
 
 - **Custom Schedules**: Set reminders for specific times and days of the week with optional end dates
-- **Persistent Notifications**: Reliable notifications that don't auto-dismiss, with one-tap "Take" button
+- **Persistent Notifications**: Reliable notifications that don't auto-dismiss, with one-tap action button
 - **Visual Calendar**: Color-coded history showing completed (green) and missed (red) reminders
 - **Multiple Daily Reminders**: Schedule multiple times per day for the same item
+- **Custom Icons**: Choose from 100+ icons across 7 categories (Health, Nature, Food, Home, Work, Sport, and more)
+- **Custom Colors**: Personalize each reminder's active and completed colors
+- **Notes**: Add optional notes to any reminder
 - **Always Works**: Survives device reboots, requires no internet connection
 
 ## Privacy
