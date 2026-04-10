@@ -1,31 +1,39 @@
-# Calendar Reminder App
+# Calendar Reminder
 
-Lightweight Android app for scheduling periodic reminders — medications, plant watering, pet feeding, vitamins, habits, and more. Works completely offline with zero data collection.
+Lightweight Android app for offloading recurring tasks from your brain. Set up weekly reminders once — watering plants, taking vitamins, feeding pets, any habit — and let the app track whether they got done.
+
+## Screenshots
+
+<p float="left">
+  <img src="screenshots/Reminder_page.png" width="220" />
+  <img src="screenshots/Calendar.png" width="220" />
+</p>
 
 ## Features
 
-- **Custom Schedules**: Set reminders for specific times and days of the week with optional end dates
-- **Persistent Notifications**: Reliable notifications that don't auto-dismiss, with one-tap action button
-- **Visual Calendar**: Color-coded history showing completed (green) and missed (red) reminders
-- **Multiple Daily Reminders**: Schedule multiple times per day for the same item
-- **Custom Icons**: Choose from 100+ icons across 7 categories (Health, Nature, Food, Home, Work, Sport, and more)
-- **Custom Colors**: Personalize each reminder's active and completed colors
-- **Notes**: Add optional notes to any reminder
-- **Always Works**: Survives device reboots, requires no internet connection
+- **Weekly Scheduling** — Pick which days of the week and what times each reminder fires
+- **Completion Tracking** — Calendar view shows a color-coded history of completed vs. missed reminders
+- **Multiple Daily Times** — Schedule a reminder to fire more than once per day
+- **Optional End Date** — Set a reminder to expire after a certain date, or leave it open-ended
+- **100+ Custom Icons** — Choose from icons across 7 categories: General, Health, Nature, Food, Home, Work, and Sport
+- **Discrete Notifications** — Notifications show only the name you give the reminder, nothing else
+- **Always Works** — Survives device reboots, no internet connection required
 
 ## Privacy
 
-**100% offline. Zero data collection.** All data stored locally on your device using SQLite database. No cloud sync, no analytics, no external servers, no permissions beyond notifications. Your information never leaves your phone.
+**100% offline. Zero data collection.**
+
+All data is stored locally using SQLite. No cloud sync, no analytics, no external servers. The only permission required is notifications. Your data never leaves your device.
 
 ## Requirements
 
 - Android 8.0+ (API 26)
 - ~5 MB storage
-- Notification permissions (requested on first run)
+- Notification permission (prompted on first run)
 
-## Technical Stack
+## Tech Stack
 
-- Kotlin + Jetpack Compose with Material3
-- Room database (SQLite) for local storage
-- AlarmManager + WorkManager for reliable notifications
+- Kotlin + Jetpack Compose (Material 3)
+- Room (SQLite) for local storage with tracked schema migrations
+- AlarmManager + WorkManager for reliable scheduling
 - MVVM architecture
