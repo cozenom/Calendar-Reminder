@@ -17,13 +17,12 @@
 *.dex
 output.json
 
-# Ignore all text files (including changes.txt for local dev notes)
+# Local dev notes
 *.txt
 
-# Ignore all markdown files except README.md and schemas/README.md
+# Ignore markdown files except README and schema docs
 *.md
 !README.md
-!app/schemas/README.md
 
 # Room schema exports - commit these to track database schema changes
 # app/schemas/ JSON files should be committed
