@@ -13,9 +13,11 @@
 
 # Build outputs
 *.apk
+*.aab
 *.ap_
 *.dex
 output.json
+app/release/
 
 # Local dev notes
 *.txt
@@ -23,3 +25,4 @@ output.json
 # Ignore markdown files except README and schema docs
 *.md
 !README.md
+!privacy-policy.md
