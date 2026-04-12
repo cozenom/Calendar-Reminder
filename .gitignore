@@ -23,6 +23,3 @@ output.json
 # Ignore markdown files except README and schema docs
 *.md
 !README.md
-
-# Room schema exports - commit these to track database schema changes
-# app/schemas/ JSON files should be committed
