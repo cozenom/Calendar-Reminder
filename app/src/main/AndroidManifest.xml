@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.calendarapp">
+    package="com.davidp.simpleweeklyreminders">
 
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -17,12 +17,12 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.CalendarApp">
+        android:theme="@style/Theme.SimpleWeeklyReminders">
 
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.CalendarApp">
+            android:theme="@style/Theme.SimpleWeeklyReminders">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -35,9 +35,9 @@
             android:enabled="true"
             android:exported="false">
             <intent-filter>
-                <action android:name="com.example.calendarapp.ACTION_SHOW_NOTIFICATION" />
-                <action android:name="com.example.calendarapp.ACTION_COMPLETED" />
-                <action android:name="com.example.calendarapp.ACTION_MISSED_DISMISSED" />
+                <action android:name="com.davidp.simpleweeklyreminders.ACTION_SHOW_NOTIFICATION" />
+                <action android:name="com.davidp.simpleweeklyreminders.ACTION_COMPLETED" />
+                <action android:name="com.davidp.simpleweeklyreminders.ACTION_MISSED_DISMISSED" />
             </intent-filter>
         </receiver>
 

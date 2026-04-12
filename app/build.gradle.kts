@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.calendarapp"
+    namespace = "com.davidp.simpleweeklyreminders"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.calendarapp"
+        applicationId = "com.davidp.simpleweeklyreminders"
         minSdk = 26
         targetSdk = 34
         versionCode = 1
