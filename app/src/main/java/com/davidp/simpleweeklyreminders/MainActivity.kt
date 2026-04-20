@@ -79,6 +79,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.activity.compose.BackHandler
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.ui.window.Dialog
 import androidx.core.content.ContextCompat
@@ -106,6 +108,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         alarmManager = getSystemService(ALARM_SERVICE) as AlarmManager
 
         requestPermissionLauncher =
@@ -159,7 +162,7 @@ fun ReminderApp(viewModel: ReminderViewModel) {
     var showAddReminderDialog by remember { mutableStateOf(false) }
 
     Scaffold(topBar = {
-        TabRow(selectedTabIndex = selectedTab) {
+        TabRow(selectedTabIndex = selectedTab, modifier = Modifier.statusBarsPadding()) {
             tabs.forEachIndexed { index, title ->
                 Tab(text = { Text(title) },
                     selected = selectedTab == index,
