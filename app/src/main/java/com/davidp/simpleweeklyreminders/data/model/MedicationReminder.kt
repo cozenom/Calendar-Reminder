@@ -3,6 +3,7 @@ package com.davidp.simpleweeklyreminders.data.model
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 
 @Entity(tableName = "reminders")
@@ -15,7 +16,11 @@ data class Reminder(
     val endDate: LocalDate? = null,
     val reminderDays: Set<Int> = setOf(1, 2, 3, 4, 5, 6, 7), // 1 = Monday, 7 = Sunday
     val notes: String? = null,
-    val color: String? = null,           // Hex color for pending/active state
-    val completedColor: String? = null,  // Hex color for completed state
-    val icon: String? = null             // Icon identifier (e.g. "pill", "plant", "water")
+    val color: String? = null,
+    val completedColor: String? = null,
+    val icon: String? = null,
+    val weekInterval: Int = 1,           // 1 = every week, 2 = every 2 weeks, etc.
+    val isActive: Boolean = true,        // false = paused, skipped in scheduling
+    val createdAt: LocalDateTime = LocalDateTime.now(),
+    val sortOrder: Int = 0               // user-defined drag order, fallback = createdAt
 )
