@@ -45,6 +45,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -397,10 +398,19 @@ fun ReminderItem(
                     Icon(
                         imageVector = iconFromKey(reminder.icon).icon,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = if (reminder.isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(24.dp).padding(end = 4.dp)
                     )
-                    Text(reminder.title, style = MaterialTheme.typography.headlineSmall)
+                    Text(
+                        reminder.title,
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = if (reminder.isActive) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Switch(
+                        checked = reminder.isActive,
+                        onCheckedChange = { viewModel.update(reminder.copy(isActive = it)) }
+                    )
                 }
                 reminder.reminderTimes.forEachIndexed { index, time ->
                     Text("Time ${index + 1}: ${time.format(DateTimeFormatter.ofPattern("HH:mm"))}")

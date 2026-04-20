@@ -25,7 +25,7 @@ class ReminderRepository(
     suspend fun update(reminder: Reminder) {
         reminderDao.updateReminder(reminder)
         // Delete all logs from today onwards to avoid duplicates when regenerating
-        reminderLogDao.deleteFutureLogsForReminder(reminder.id, LocalDate.now().atStartOfDay())
+        reminderLogDao.deleteFutureLogsForReminder(reminder.id, LocalDateTime.now())
         // Regenerate logs with updated schedule
         generateLogsForReminder(reminder)
     }
@@ -41,23 +41,29 @@ class ReminderRepository(
     private suspend fun generateLogsForReminder(reminder: Reminder) {
         if (!reminder.isActive) return
 
+        val now = LocalDateTime.now()
         val currentDate = LocalDate.now()
         val endDate = reminder.endDate ?: currentDate.plusYears(1)
         val startOfStartWeek = reminder.startDate.with(DayOfWeek.MONDAY)
+        val loopStart = if (reminder.startDate > currentDate) reminder.startDate else currentDate
+        val existingDateTimes = reminderLogDao
+            .getExistingLogDateTimesForReminder(reminder.id, now)
+            .toHashSet()
 
-        var date = reminder.startDate
+        var date = loopStart
         while (date <= endDate) {
             val weeksSinceStart = ChronoUnit.WEEKS.between(startOfStartWeek, date.with(DayOfWeek.MONDAY))
             if (weeksSinceStart % reminder.weekInterval == 0L &&
                 reminder.reminderDays.contains(date.dayOfWeek.value)) {
                 for (time in reminder.reminderTimes) {
                     val logDateTime = LocalDateTime.of(date, time)
-                    val log = ReminderLog(
-                        reminderId = reminder.id,
-                        title = reminder.title,
-                        logDateTime = logDateTime
-                    )
-                    reminderLogDao.insert(log)
+                    if (logDateTime !in existingDateTimes) {
+                        reminderLogDao.insert(ReminderLog(
+                            reminderId = reminder.id,
+                            title = reminder.title,
+                            logDateTime = logDateTime
+                        ))
+                    }
                 }
             }
             date = date.plusDays(1)
