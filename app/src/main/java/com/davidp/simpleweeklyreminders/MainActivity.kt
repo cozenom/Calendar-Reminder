@@ -158,7 +158,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun ReminderApp(viewModel: ReminderViewModel) {
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var selectedTab by remember { mutableIntStateOf(1) }
     val tabs = listOf("Reminders", "Calendar")
     var showAddReminderDialog by remember { mutableStateOf(false) }
 
