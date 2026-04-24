@@ -34,6 +34,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.filled.DragIndicator
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -64,6 +68,7 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TimePickerDefaults
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -238,13 +243,32 @@ fun ReminderList(
     onDeleteReminder: (Reminder) -> Unit,
     viewModel: ReminderViewModel
 ) {
-    LazyColumn {
-        items(reminders) { reminder ->
-            ReminderItem(
-                reminder = reminder,
-                onDelete = { onDeleteReminder(reminder) },
-                viewModel = viewModel
-            )
+    var list by remember { mutableStateOf(reminders) }
+    var isDraggingActive by remember { mutableStateOf(false) }
+
+    LaunchedEffect(reminders) {
+        if (!isDraggingActive) list = reminders
+    }
+
+    val lazyListState = rememberLazyListState()
+    val reorderState = rememberReorderableLazyListState(lazyListState) { from, to ->
+        list = list.toMutableList().apply { add(to.index, removeAt(from.index)) }
+        viewModel.updateRemindersOrder(list)
+    }
+
+    LazyColumn(state = lazyListState) {
+        items(list, key = { it.id }) { reminder ->
+            ReorderableItem(reorderState, key = reminder.id) { _ ->
+                ReminderItem(
+                    reminder = reminder,
+                    onDelete = { onDeleteReminder(reminder) },
+                    viewModel = viewModel,
+                    dragHandleModifier = Modifier.draggableHandle(
+                        onDragStarted = { isDraggingActive = true },
+                        onDragStopped = { isDraggingActive = false }
+                    )
+                )
+            }
         }
     }
 }
@@ -253,7 +277,8 @@ fun ReminderList(
 fun ReminderItem(
     reminder: Reminder,
     onDelete: () -> Unit,
-    viewModel: ReminderViewModel
+    viewModel: ReminderViewModel,
+    dragHandleModifier: Modifier = Modifier
 ) {
     var isEditing by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -395,6 +420,14 @@ fun ReminderItem(
             } else {
                 // Display mode
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.DragIndicator,
+                        contentDescription = "Drag to reorder",
+                        modifier = dragHandleModifier
+                            .size(20.dp)
+                            .padding(end = 6.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                    )
                     Icon(
                         imageVector = iconFromKey(reminder.icon).icon,
                         contentDescription = null,

@@ -90,4 +90,7 @@ dependencies {
 
     // WorkManager
     implementation(libs.androidx.work.runtime.ktx)
+
+    // Drag to reorder
+    implementation("sh.calvin.reorderable:reorderable:2.4.0")
 }

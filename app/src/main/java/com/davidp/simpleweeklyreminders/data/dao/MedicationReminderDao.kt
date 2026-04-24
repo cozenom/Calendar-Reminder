@@ -12,7 +12,7 @@ import java.time.LocalDate
 
 @Dao
 interface ReminderDao {
-    @Query("SELECT * FROM reminders")
+    @Query("SELECT * FROM reminders ORDER BY sortOrder ASC, createdAt ASC")
     fun getAllReminders(): Flow<List<Reminder>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -35,4 +35,7 @@ interface ReminderDao {
 
     @Query("SELECT * FROM reminders")
     suspend fun getAllRemindersList(): List<Reminder>
+
+    @Query("UPDATE reminders SET sortOrder = :sortOrder WHERE id = :id")
+    suspend fun updateSortOrder(id: Int, sortOrder: Int)
 }

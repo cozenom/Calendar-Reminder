@@ -73,4 +73,10 @@ class ReminderRepository(
     suspend fun updateLogCompletedStatus(logId: Int, completed: Boolean) {
         reminderLogDao.updateCompletedStatus(logId, completed)
     }
+
+    suspend fun updateRemindersOrder(reminders: List<Reminder>) {
+        reminders.forEachIndexed { index, reminder ->
+            reminderDao.updateSortOrder(reminder.id, index)
+        }
+    }
 }

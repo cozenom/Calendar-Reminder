@@ -52,6 +52,10 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
         repository.updateLogCompletedStatus(logId, completed)
     }
 
+    fun updateRemindersOrder(reminders: List<Reminder>) = viewModelScope.launch {
+        repository.updateRemindersOrder(reminders)
+    }
+
     fun getLogsForMonth(yearMonth: YearMonth): Flow<List<ReminderLog>> {
         return logRepository.getLogsForDateRange(
             yearMonth.atDay(1).atStartOfDay(),
