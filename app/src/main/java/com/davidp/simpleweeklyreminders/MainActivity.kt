@@ -42,6 +42,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
@@ -88,6 +89,8 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.window.Dialog
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
@@ -293,6 +296,8 @@ fun ReminderItem(
     var showStartDatePicker by remember { mutableStateOf(false) }
     var showEndDatePicker by remember { mutableStateOf(false) }
     var editedReminderDays by remember { mutableStateOf(reminder.reminderDays) }
+    var editedDayInterval by remember { mutableIntStateOf(reminder.dayInterval ?: 1) }
+    var useEveryNDays by remember { mutableStateOf(reminder.dayInterval != null) }
     var editedNotes by remember { mutableStateOf(reminder.notes ?: "") }
     var editedIcon by remember { mutableStateOf(reminder.icon ?: DEFAULT_ICON_KEY) }
     var showEditIconPicker by remember { mutableStateOf(false) }
@@ -363,7 +368,13 @@ fun ReminderItem(
                     }
                 }
                 Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-                WeekdaySelector(selectedDays = editedReminderDays, onDaysChanged = { editedReminderDays = it })
+                RecurrenceToggle(useEveryNDays = useEveryNDays, onChanged = { useEveryNDays = it })
+                Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
+                if (useEveryNDays) {
+                    DayIntervalSelector(interval = editedDayInterval, onIntervalChange = { editedDayInterval = it })
+                } else {
+                    WeekdaySelector(selectedDays = editedReminderDays, onDaysChanged = { editedReminderDays = it })
+                }
                 Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
                 OutlinedTextField(
                     value = editedNotes,
@@ -398,7 +409,8 @@ fun ReminderItem(
                                     endDate = editedEndDate,
                                     reminderDays = editedReminderDays,
                                     notes = editedNotes.ifBlank { null },
-                                    icon = editedIcon
+                                    icon = editedIcon,
+                                    dayInterval = if (useEveryNDays) editedDayInterval else null
                                 )
                             )
                             isEditing = false
@@ -451,7 +463,11 @@ fun ReminderItem(
                 Text("Frequency: ${reminder.frequency} times daily")
                 Text("Start Date: ${reminder.startDate}")
                 reminder.endDate?.let { Text("End Date: $it") }
-                Text("Days: ${reminder.reminderDays.sorted().joinToString(", ") { getDayName(it) }}")
+                if (reminder.dayInterval != null) {
+                    Text("Repeat: Every ${reminder.dayInterval} days")
+                } else {
+                    Text("Days: ${reminder.reminderDays.sorted().joinToString(", ") { getDayName(it) }}")
+                }
                 reminder.notes?.let {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -536,6 +552,8 @@ fun AddReminderForm(onAddReminder: (reminder: Reminder) -> Unit) {
     var showStartDatePicker by remember { mutableStateOf(false) }
     var showEndDatePicker by remember { mutableStateOf(false) }
     var reminderDays by remember { mutableStateOf(setOf(1, 2, 3, 4, 5, 6, 7)) }
+    var useEveryNDays by remember { mutableStateOf(false) }
+    var dayInterval by remember { mutableIntStateOf(1) }
     var notes by remember { mutableStateOf("") }
     var selectedIcon by remember { mutableStateOf(DEFAULT_ICON_KEY) }
 
@@ -621,7 +639,13 @@ fun AddReminderForm(onAddReminder: (reminder: Reminder) -> Unit) {
             )
         }
 
-        WeekdaySelector(selectedDays = reminderDays, onDaysChanged = { reminderDays = it })
+        RecurrenceToggle(useEveryNDays = useEveryNDays, onChanged = { useEveryNDays = it })
+        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
+        if (useEveryNDays) {
+            DayIntervalSelector(interval = dayInterval, onIntervalChange = { dayInterval = it })
+        } else {
+            WeekdaySelector(selectedDays = reminderDays, onDaysChanged = { reminderDays = it })
+        }
         Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
         OutlinedTextField(
@@ -656,7 +680,8 @@ fun AddReminderForm(onAddReminder: (reminder: Reminder) -> Unit) {
                     endDate = endDate,
                     reminderDays = reminderDays,
                     notes = notes.ifBlank { null },
-                    icon = selectedIcon
+                    icon = selectedIcon,
+                    dayInterval = if (useEveryNDays) dayInterval else null
                 )
                 onAddReminder(reminder)
                 title = "Reminder"
@@ -665,6 +690,8 @@ fun AddReminderForm(onAddReminder: (reminder: Reminder) -> Unit) {
                 startDate = LocalDate.now()
                 endDate = null
                 reminderDays = setOf(1, 2, 3, 4, 5, 6, 7)
+                useEveryNDays = false
+                dayInterval = 1
                 notes = ""
                 selectedIcon = DEFAULT_ICON_KEY
             },
@@ -699,6 +726,87 @@ fun FrequencySelector(frequency: Int, onFrequencyChange: (Int) -> Unit) {
             contentPadding = PaddingValues(0.dp)
         ) {
             Text(text = "+", fontSize = 20.sp)
+        }
+    }
+}
+
+@Composable
+fun RecurrenceToggle(useEveryNDays: Boolean, onChanged: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        if (!useEveryNDays) {
+            Button(
+                onClick = {},
+                modifier = Modifier.weight(1f),
+                shape = MaterialTheme.appShapes.medium
+            ) { Text("Specific Days") }
+        } else {
+            androidx.compose.material3.OutlinedButton(
+                onClick = { onChanged(false) },
+                modifier = Modifier.weight(1f),
+                shape = MaterialTheme.appShapes.medium
+            ) { Text("Specific Days") }
+        }
+        if (useEveryNDays) {
+            Button(
+                onClick = {},
+                modifier = Modifier.weight(1f),
+                shape = MaterialTheme.appShapes.medium
+            ) { Text("Every N Days") }
+        } else {
+            androidx.compose.material3.OutlinedButton(
+                onClick = { onChanged(true) },
+                modifier = Modifier.weight(1f),
+                shape = MaterialTheme.appShapes.medium
+            ) { Text("Every N Days") }
+        }
+    }
+}
+
+@Composable
+fun DayIntervalSelector(interval: Int, onIntervalChange: (Int) -> Unit) {
+    var inputText by remember { mutableStateOf(interval.toString()) }
+    LaunchedEffect(interval) { inputText = interval.toString() }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            "Repeat every",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Button(
+                onClick = { if (interval > 1) onIntervalChange(interval - 1) },
+                modifier = Modifier.width(MaterialTheme.dimensions.frequencyButtonWidth),
+                contentPadding = PaddingValues(0.dp)
+            ) { Text(text = "-", fontSize = 20.sp) }
+            OutlinedTextField(
+                value = inputText,
+                onValueChange = { text ->
+                    inputText = text
+                    val parsed = text.toIntOrNull()
+                    if (parsed != null && parsed >= 1) onIntervalChange(parsed)
+                },
+                modifier = Modifier
+                    .padding(horizontal = 8.dp)
+                    .width(72.dp),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true,
+                textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center)
+            )
+            Button(
+                onClick = { onIntervalChange(interval + 1) },
+                modifier = Modifier.width(MaterialTheme.dimensions.frequencyButtonWidth),
+                contentPadding = PaddingValues(0.dp)
+            ) { Text(text = "+", fontSize = 20.sp) }
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("days")
         }
     }
 }

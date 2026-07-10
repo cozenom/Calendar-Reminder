@@ -12,7 +12,7 @@ import com.davidp.simpleweeklyreminders.data.model.ReminderLog
 
 @Database(
     entities = [Reminder::class, ReminderLog::class],
-    version = 2,
+    version = 3,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

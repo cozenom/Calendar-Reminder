@@ -44,17 +44,16 @@ class ReminderRepository(
         val now = LocalDateTime.now()
         val currentDate = LocalDate.now()
         val endDate = reminder.endDate ?: currentDate.plusYears(1)
-        val startOfStartWeek = reminder.startDate.with(DayOfWeek.MONDAY)
         val loopStart = if (reminder.startDate > currentDate) reminder.startDate else currentDate
         val existingDateTimes = reminderLogDao
             .getExistingLogDateTimesForReminder(reminder.id, now)
             .toHashSet()
 
-        var date = loopStart
-        while (date <= endDate) {
-            val weeksSinceStart = ChronoUnit.WEEKS.between(startOfStartWeek, date.with(DayOfWeek.MONDAY))
-            if (weeksSinceStart % reminder.weekInterval == 0L &&
-                reminder.reminderDays.contains(date.dayOfWeek.value)) {
+        if (reminder.dayInterval != null) {
+            val daysSinceStart = ChronoUnit.DAYS.between(reminder.startDate, loopStart)
+            val offset = daysSinceStart % reminder.dayInterval
+            var date = if (offset == 0L) loopStart else loopStart.plusDays(reminder.dayInterval - offset)
+            while (date <= endDate) {
                 for (time in reminder.reminderTimes) {
                     val logDateTime = LocalDateTime.of(date, time)
                     if (logDateTime !in existingDateTimes) {
@@ -65,8 +64,28 @@ class ReminderRepository(
                         ))
                     }
                 }
+                date = date.plusDays(reminder.dayInterval.toLong())
             }
-            date = date.plusDays(1)
+        } else {
+            val startOfStartWeek = reminder.startDate.with(DayOfWeek.MONDAY)
+            var date = loopStart
+            while (date <= endDate) {
+                val weeksSinceStart = ChronoUnit.WEEKS.between(startOfStartWeek, date.with(DayOfWeek.MONDAY))
+                if (weeksSinceStart % reminder.weekInterval == 0L &&
+                    reminder.reminderDays.contains(date.dayOfWeek.value)) {
+                    for (time in reminder.reminderTimes) {
+                        val logDateTime = LocalDateTime.of(date, time)
+                        if (logDateTime !in existingDateTimes) {
+                            reminderLogDao.insert(ReminderLog(
+                                reminderId = reminder.id,
+                                title = reminder.title,
+                                logDateTime = logDateTime
+                            ))
+                        }
+                    }
+                }
+                date = date.plusDays(1)
+            }
         }
     }
 
