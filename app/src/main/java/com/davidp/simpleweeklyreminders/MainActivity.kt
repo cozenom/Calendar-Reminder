@@ -13,6 +13,12 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import com.davidp.simpleweeklyreminders.ui.theme.CalendarAppTheme
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -22,7 +28,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -44,7 +50,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Button
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -53,8 +67,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -70,12 +82,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.activity.compose.BackHandler
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.core.content.ContextCompat
@@ -151,19 +164,40 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReminderApp(viewModel: ReminderViewModel) {
     var selectedTab by remember { mutableIntStateOf(1) }
-    val tabs = listOf("Reminders", "Calendar")
     var showAddReminderDialog by remember { mutableStateOf(false) }
 
     Scaffold(topBar = {
-        TabRow(selectedTabIndex = selectedTab, modifier = Modifier.statusBarsPadding()) {
-            tabs.forEachIndexed { index, title ->
-                Tab(text = { Text(title) },
-                    selected = selectedTab == index,
-                    onClick = { selectedTab = index })
-            }
+        CenterAlignedTopAppBar(
+            title = { Text(if (selectedTab == 0) "Your Reminders" else "Calendar") }
+        )
+    }, bottomBar = {
+        NavigationBar {
+            NavigationBarItem(
+                selected = selectedTab == 0,
+                onClick = { selectedTab = 0 },
+                icon = {
+                    Icon(
+                        if (selectedTab == 0) Icons.Filled.Notifications else Icons.Outlined.Notifications,
+                        contentDescription = null
+                    )
+                },
+                label = { Text("Reminders") }
+            )
+            NavigationBarItem(
+                selected = selectedTab == 1,
+                onClick = { selectedTab = 1 },
+                icon = {
+                    Icon(
+                        if (selectedTab == 1) Icons.Filled.CalendarMonth else Icons.Outlined.CalendarMonth,
+                        contentDescription = null
+                    )
+                },
+                label = { Text("Calendar") }
+            )
         }
     }, floatingActionButton = {
         if (selectedTab == 0) {
@@ -172,10 +206,19 @@ fun ReminderApp(viewModel: ReminderViewModel) {
             }
         }
     }) { paddingValues ->
-        Box(modifier = Modifier.padding(paddingValues)) {
-            when (selectedTab) {
+        AnimatedContent(
+            targetState = selectedTab,
+            modifier = Modifier.padding(paddingValues),
+            transitionSpec = {
+                val direction = if (targetState > initialState) 1 else -1
+                (slideInHorizontally { direction * it / 4 } + fadeIn()) togetherWith
+                        (slideOutHorizontally { -direction * it / 4 } + fadeOut())
+            },
+            label = "tabSwitch"
+        ) { tab ->
+            when (tab) {
                 0 -> RemindersTab(viewModel)
-                1 -> CalendarTab(viewModel)
+                else -> CalendarTab(viewModel)
             }
         }
     }
@@ -205,15 +248,41 @@ fun RemindersTab(viewModel: ReminderViewModel) {
     val today = LocalDate.now()
     val todayLogs by remember(today) { viewModel.getLogsForDate(today) }.collectAsState(initial = emptyList())
 
-    Column(modifier = Modifier.padding(16.dp)) {
-        Text("Your Reminders", style = MaterialTheme.typography.headlineMedium)
-        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
-        ReminderList(
-            reminders = reminders,
-            todayLogsByReminder = todayLogs.groupBy { it.reminderId },
-            onDeleteReminder = { viewModel.delete(it) },
-            viewModel = viewModel
-        )
+    if (reminders.isEmpty()) {
+        Box(
+            modifier = Modifier.fillMaxSize().padding(32.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    imageVector = Icons.Outlined.Notifications,
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                )
+                Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
+                Text(
+                    "No reminders yet",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "Tap + to create your first reminder",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                )
+            }
+        }
+    } else {
+        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+            ReminderList(
+                reminders = reminders,
+                todayLogsByReminder = todayLogs.groupBy { it.reminderId },
+                onDeleteReminder = { viewModel.delete(it) },
+                viewModel = viewModel
+            )
+        }
     }
 }
 
@@ -226,6 +295,7 @@ fun ReminderList(
 ) {
     var list by remember { mutableStateOf(reminders) }
     var isDraggingActive by remember { mutableStateOf(false) }
+    val haptics = LocalHapticFeedback.current
 
     LaunchedEffect(reminders) {
         if (!isDraggingActive) list = reminders
@@ -237,16 +307,31 @@ fun ReminderList(
         viewModel.updateRemindersOrder(list)
     }
 
-    LazyColumn(state = lazyListState) {
+    LazyColumn(
+        state = lazyListState,
+        // Fill the height so a dragged card isn't clipped at the bottom of a
+        // short list (the list would otherwise end right below its last item)
+        modifier = Modifier.fillMaxSize(),
+        // Keep the FAB from covering the last card's buttons
+        contentPadding = PaddingValues(bottom = 88.dp)
+    ) {
         items(list, key = { it.id }) { reminder ->
-            ReorderableItem(reorderState, key = reminder.id) { _ ->
+            ReorderableItem(
+                reorderState,
+                key = reminder.id,
+                // Slide items into place on add/delete/reorder
+                modifier = Modifier.animateItem()
+            ) { _ ->
                 ReminderItem(
                     reminder = reminder,
                     todayLogs = todayLogsByReminder[reminder.id] ?: emptyList(),
                     onDelete = { onDeleteReminder(reminder) },
                     viewModel = viewModel,
                     dragHandleModifier = Modifier.draggableHandle(
-                        onDragStarted = { isDraggingActive = true },
+                        onDragStarted = {
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            isDraggingActive = true
+                        },
                         onDragStopped = { isDraggingActive = false }
                     )
                 )
@@ -396,92 +481,71 @@ fun CalendarTab(viewModel: ReminderViewModel) {
     val activeReminders by viewModel.getActiveReminders(selectedDate).collectAsState(initial = emptyList())
     val selectedDateLogs by viewModel.getLogsForDate(selectedDate).collectAsState(initial = emptyList())
 
-    Column(modifier = Modifier.padding(16.dp)) {
-        Text("Calendar", style = MaterialTheme.typography.headlineMedium)
-        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
-
-        // Month navigation
-        Surface(
-            shape = MaterialTheme.appShapes.medium,
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            tonalElevation = 1.dp,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = {
-                    coroutineScope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
-                }) {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Previous month")
-                }
-                Text(
-                    text = currentMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy")),
-                    style = MaterialTheme.typography.titleLarge
-                )
-                IconButton(onClick = {
-                    coroutineScope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
-                }) {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next month")
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-
-        // Legend
-        Surface(
-            shape = MaterialTheme.appShapes.medium,
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Row(
-                modifier = Modifier.padding(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val reminderColors = MaterialTheme.reminderColors
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(MaterialTheme.dimensions.indicatorDotLarge).background(reminderColors.completedIndicator, CircleShape))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Done", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(MaterialTheme.dimensions.indicatorDotLarge).background(reminderColors.pendingIndicator, CircleShape))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Pending", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Swipeable calendar
+    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+        // Calendar card: month navigation + swipeable grid in one container
         Surface(
             shape = MaterialTheme.appShapes.medium,
             color = MaterialTheme.colorScheme.surfaceVariant,
             tonalElevation = 3.dp,
             modifier = Modifier.fillMaxWidth()
         ) {
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.fillMaxWidth().padding(8.dp)
-            ) { page ->
-                val monthForPage = baseYearMonth.plusMonths((page - initialPage).toLong())
-                val logsForPage by viewModel.getLogsForMonth(monthForPage).collectAsState(initial = emptyList())
+            Column(modifier = Modifier.padding(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = {
+                        coroutineScope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
+                    }) {
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Previous month")
+                    }
+                    Text(
+                        text = currentMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy")),
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                    IconButton(onClick = {
+                        coroutineScope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
+                    }) {
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next month")
+                    }
+                }
 
-                CalendarView(
-                    currentMonth = monthForPage,
-                    onDateSelected = { selectedDate = it },
-                    selectedDate = selectedDate,
-                    logs = logsForPage
-                )
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxWidth()
+                ) { page ->
+                    val monthForPage = baseYearMonth.plusMonths((page - initialPage).toLong())
+                    val logsForPage by viewModel.getLogsForMonth(monthForPage).collectAsState(initial = emptyList())
+
+                    CalendarView(
+                        currentMonth = monthForPage,
+                        onDateSelected = { selectedDate = it },
+                        selectedDate = selectedDate,
+                        logs = logsForPage
+                    )
+                }
             }
         }
 
-        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
+        // Legend: small bare row, no container box
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val reminderColors = MaterialTheme.reminderColors
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(modifier = Modifier.size(MaterialTheme.dimensions.indicatorDotLarge).background(reminderColors.completedIndicator, CircleShape))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Done", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(modifier = Modifier.size(MaterialTheme.dimensions.indicatorDotLarge).background(reminderColors.pendingIndicator, CircleShape))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Pending", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
 
         // Selected date's reminders
         Surface(
@@ -553,6 +617,7 @@ fun CalendarView(
                     val day = index - firstDayOfMonth + 2
                     val date = currentMonth.atDay(day)
                     val isSelected = date == selectedDate
+                    val isToday = date == LocalDate.now()
                     val dayLogs = logs.filter { it.logDateTime.toLocalDate() == date }
 
                     Column(
@@ -564,6 +629,13 @@ fun CalendarView(
                                 if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
                                 shape = MaterialTheme.appShapes.small
                             )
+                            .then(
+                                if (isToday) Modifier.border(
+                                    1.dp,
+                                    MaterialTheme.colorScheme.primary,
+                                    MaterialTheme.appShapes.small
+                                ) else Modifier
+                            )
                             .padding(6.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
@@ -571,8 +643,12 @@ fun CalendarView(
                             text = day.toString(),
                             textAlign = TextAlign.Center,
                             style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = if (isSelected) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal,
-                            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                            fontWeight = if (isSelected || isToday) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal,
+                            color = when {
+                                isSelected -> MaterialTheme.colorScheme.onPrimaryContainer
+                                isToday -> MaterialTheme.colorScheme.primary
+                                else -> MaterialTheme.colorScheme.onSurface
+                            }
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         FlexibleDotRow(logs = dayLogs, maxDots = 4)
@@ -593,20 +669,23 @@ fun FlexibleDotRow(logs: List<ReminderLog>, maxDots: Int) {
         if (group.all { it.completed }) reminderColors.completedIndicator else reminderColors.pendingIndicator
     }
     Row(
-        modifier = Modifier.fillMaxWidth().height(6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+        modifier = Modifier.height(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         reminderDotColors.take(maxDots).forEach { dotColor ->
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .padding(horizontal = 1.dp)
-                    .background(dotColor, CircleShape)
-            )
+            Box(modifier = Modifier.size(5.dp).background(dotColor, CircleShape))
         }
         if (reminderDotColors.size > maxDots) {
-            Text("+${reminderDotColors.size - maxDots}", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1f))
+            // Wider pill hints there are more reminders than dots shown
+            Box(
+                modifier = Modifier
+                    .size(width = 9.dp, height = 5.dp)
+                    .background(
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        CircleShape
+                    )
+            )
         }
     }
 }
