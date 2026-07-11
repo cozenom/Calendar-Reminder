@@ -1,6 +1,12 @@
 package com.davidp.simpleweeklyreminders.data.model
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.automirrored.filled.DirectionsBike
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
+import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
+import androidx.compose.material.icons.automirrored.filled.LibraryBooks
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.graphics.vector.ImageVector
 
@@ -100,31 +106,31 @@ val ReminderIconCategories: List<IconCategory> = listOf(
         ReminderIconOption("work",           "Work",      Icons.Filled.Work),
         ReminderIconOption("school",         "School",    Icons.Filled.School),
         ReminderIconOption("computer",       "Computer",  Icons.Filled.Computer),
-        ReminderIconOption("assignment",     "Task",      Icons.Filled.Assignment),
+        ReminderIconOption("assignment",     "Task",      Icons.AutoMirrored.Filled.Assignment),
         ReminderIconOption("businessCenter", "Business",  Icons.Filled.BusinessCenter),
         ReminderIconOption("calculate",      "Calculate", Icons.Filled.Calculate),
         ReminderIconOption("edit",           "Edit",      Icons.Filled.Edit),
         ReminderIconOption("gavel",          "Law",       Icons.Filled.Gavel),
         ReminderIconOption("laptop",         "Laptop",    Icons.Filled.Laptop),
-        ReminderIconOption("libraryBooks",   "Library",   Icons.Filled.LibraryBooks),
+        ReminderIconOption("libraryBooks",   "Library",   Icons.AutoMirrored.Filled.LibraryBooks),
         ReminderIconOption("science",        "Science",   Icons.Filled.Science),
         ReminderIconOption("code",           "Code",      Icons.Filled.Code),
         ReminderIconOption("campaign",       "Campaign",  Icons.Filled.Campaign),
-        ReminderIconOption("menuBook",       "Book",      Icons.Filled.MenuBook),
+        ReminderIconOption("menuBook",       "Book",      Icons.AutoMirrored.Filled.MenuBook),
     )),
 
-    IconCategory("Sport", Icons.Filled.DirectionsRun, listOf(
-        ReminderIconOption("directionsRun",    "Run",        Icons.Filled.DirectionsRun),
+    IconCategory("Sport", Icons.AutoMirrored.Filled.DirectionsRun, listOf(
+        ReminderIconOption("directionsRun",    "Run",        Icons.AutoMirrored.Filled.DirectionsRun),
         ReminderIconOption("sportsBasketball", "Basketball", Icons.Filled.SportsBasketball),
         ReminderIconOption("sportsSoccer",     "Soccer",     Icons.Filled.SportsSoccer),
         ReminderIconOption("pool",             "Swim",       Icons.Filled.Pool),
         ReminderIconOption("hiking",           "Hike",       Icons.Filled.Hiking),
-        ReminderIconOption("directionsBike",   "Bike",       Icons.Filled.DirectionsBike),
+        ReminderIconOption("directionsBike",   "Bike",       Icons.AutoMirrored.Filled.DirectionsBike),
         ReminderIconOption("sportsTennis",     "Tennis",     Icons.Filled.SportsTennis),
         ReminderIconOption("sailing",          "Sail",       Icons.Filled.Sailing),
         ReminderIconOption("snowboarding",     "Snowboard",  Icons.Filled.Snowboarding),
         ReminderIconOption("skateboarding",    "Skate",      Icons.Filled.Skateboarding),
-        ReminderIconOption("directionsWalk",   "Walk",       Icons.Filled.DirectionsWalk),
+        ReminderIconOption("directionsWalk",   "Walk",       Icons.AutoMirrored.Filled.DirectionsWalk),
         ReminderIconOption("nordicWalking",    "Nordic",     Icons.Filled.NordicWalking),
         ReminderIconOption("kayaking",         "Kayak",      Icons.Filled.Kayaking),
         ReminderIconOption("iceSkating",       "Skate",      Icons.Filled.IceSkating),
