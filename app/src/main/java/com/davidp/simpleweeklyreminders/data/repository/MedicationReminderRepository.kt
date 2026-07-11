@@ -34,28 +34,44 @@ class ReminderRepository(
             return
         }
 
-        // Remember completed-early future logs so their completion survives regeneration
-        val completedCountByDate = reminderLogDao.getFutureLogsForReminder(reminder.id, now)
-            .filter { it.completed }
-            .groupingBy { it.logDateTime.toLocalDate() }
-            .eachCount()
+        // Snapshot the outgoing future schedule so completions survive regeneration
+        val oldFutureLogs = reminderLogDao.getFutureLogsForReminder(reminder.id, now)
+        val completedOldLogs = oldFutureLogs.filter { it.completed }
 
         // Delete all future logs to avoid duplicates when regenerating
         reminderLogDao.deleteFutureLogsForReminder(reminder.id, now)
         // Regenerate logs with updated schedule
         generateLogsForReminder(reminder)
 
-        // Re-apply completions to the regenerated logs on the same dates
-        if (completedCountByDate.isNotEmpty()) {
-            reminderLogDao.getFutureLogsForReminder(reminder.id, now)
-                .groupBy { it.logDateTime.toLocalDate() }
-                .forEach { (date, logs) ->
-                    val count = completedCountByDate[date] ?: return@forEach
-                    logs.sortedBy { it.logDateTime }.take(count).forEach { log ->
-                        reminderLogDao.updateCompletedStatus(log.id, true)
-                    }
-                }
+        if (completedOldLogs.isEmpty()) return
+
+        val newLogs = reminderLogDao.getFutureLogsForReminder(reminder.id, now)
+        val newByDateTime = newLogs.associateBy { it.logDateTime }
+
+        // 1) A slot that still exists at the same date+time keeps its completion
+        val unmatchedCountByDate = mutableMapOf<LocalDate, Int>()
+        for (old in completedOldLogs) {
+            val match = newByDateTime[old.logDateTime]
+            if (match != null) {
+                reminderLogDao.updateCompletedStatus(match.id, true)
+            } else {
+                unmatchedCountByDate.merge(old.logDateTime.toLocalDate(), 1, Int::plus)
+            }
         }
+        if (unmatchedCountByDate.isEmpty()) return
+
+        // 2) A completion whose time was changed carries over to a slot that is
+        //    new on that date; a slot removed outright takes its completion with
+        //    it rather than ticking some other unrelated time
+        val oldDateTimes = oldFutureLogs.mapTo(HashSet()) { it.logDateTime }
+        newLogs.filter { it.logDateTime !in oldDateTimes }
+            .groupBy { it.logDateTime.toLocalDate() }
+            .forEach { (date, logs) ->
+                val count = unmatchedCountByDate[date] ?: return@forEach
+                logs.sortedBy { it.logDateTime }.take(count).forEach { log ->
+                    reminderLogDao.updateCompletedStatus(log.id, true)
+                }
+            }
     }
 
     suspend fun delete(reminder: Reminder) {
