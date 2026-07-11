@@ -39,79 +39,91 @@ class NotificationActionReceiver : BroadcastReceiver() {
         val logId = intent.getIntExtra(ReminderWorker.EXTRA_LOG_ID, -1)
         if (logId == -1) return
 
-        when (intent.action) {
-            ReminderWorker.ACTION_SHOW_NOTIFICATION -> showNotification(context, logId)
-            ReminderWorker.ACTION_COMPLETED -> markAsCompleted(context, logId)
+        // goAsync keeps the process alive (with a wakelock) until finish() —
+        // without it the coroutine can be killed as soon as onReceive returns
+        val pendingResult = goAsync()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                when (intent.action) {
+                    ReminderWorker.ACTION_SHOW_NOTIFICATION -> showNotification(context, logId)
+                    ReminderWorker.ACTION_COMPLETED -> markAsCompleted(context, logId)
+                }
+            } finally {
+                pendingResult.finish()
+            }
         }
     }
 
-    private fun showNotification(context: Context, logId: Int) {
+    private suspend fun showNotification(context: Context, logId: Int) {
         Log.d("NotificationActionReceiver", "Showing notification for log $logId")
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         createNotificationChannel(notificationManager)
 
-        CoroutineScope(Dispatchers.IO).launch {
-            val database = AppDatabase.getDatabase(context)
-            val log = database.reminderLogDao().getLogById(logId) ?: return@launch
-            val reminder = database.reminderDao().getReminderByIdOnce(log.reminderId)
+        val database = AppDatabase.getDatabase(context)
+        val log = database.reminderLogDao().getLogById(logId) ?: return
 
-            val intent = Intent(context, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            }
-            val pendingIntent = PendingIntent.getActivity(
-                context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
+        // Keep the alarm chain going regardless of whether this log still needs a notification
+        val nextLog = database.reminderLogDao().getNextLogForReminder(log.reminderId, log.logDateTime)
+        if (nextLog != null) {
+            ReminderWorker.scheduleAlarm(context, nextLog)
+        }
 
-            val completedIntent = Intent(context, NotificationActionReceiver::class.java).apply {
-                action = ReminderWorker.ACTION_COMPLETED
-                putExtra(ReminderWorker.EXTRA_LOG_ID, logId)
-            }
-            val completedPendingIntent = PendingIntent.getBroadcast(
-                context,
-                logId,
-                completedIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
+        // Completed early via the calendar — nothing to notify about
+        if (log.completed) return
 
-            val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        val reminder = database.reminderDao().getReminderByIdOnce(log.reminderId)
 
-            val largeIcon: Bitmap? = reminder?.icon
-                ?.let { iconDrawableRes(it) }
-                ?.let { resId -> buildIconBitmap(context, resId) }
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
-            val title = reminder?.title ?: log.title
+        val completedIntent = Intent(context, NotificationActionReceiver::class.java).apply {
+            action = ReminderWorker.ACTION_COMPLETED
+            putExtra(ReminderWorker.EXTRA_LOG_ID, logId)
+        }
+        val completedPendingIntent = PendingIntent.getBroadcast(
+            context,
+            logId,
+            completedIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
-            val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_medication)
-                .setContentTitle(title)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setCategory(NotificationCompat.CATEGORY_REMINDER)
-                .setContentIntent(pendingIntent)
-                .setOngoing(true)
-                .setAutoCancel(false)
-                .addAction(R.drawable.ic_check, "Completed", completedPendingIntent)
-                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                .setSound(soundUri)
-                .setVibrate(longArrayOf(0, 250))
-                .setOnlyAlertOnce(true)
+        val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
 
-            if (largeIcon != null) {
-                builder.setLargeIcon(largeIcon)
-            }
+        val largeIcon: Bitmap? = reminder?.icon
+            ?.let { iconDrawableRes(it) }
+            ?.let { resId -> buildIconBitmap(context, resId) }
 
-            try {
-                notificationManager.notify(logId, builder.build())
-                Log.d("NotificationActionReceiver", "Notification shown for log $logId")
-            } catch (e: Exception) {
-                Log.e("NotificationActionReceiver", "Error showing notification: ${e.message}", e)
-            }
+        val title = reminder?.title ?: log.title
 
-            val nextLog = database.reminderLogDao().getNextLogForReminder(log.reminderId, log.logDateTime)
-            if (nextLog != null) {
-                ReminderWorker.scheduleAlarm(context, nextLog)
-            }
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_medication)
+            .setContentTitle(title)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setContentIntent(pendingIntent)
+            .setOngoing(true)
+            .setAutoCancel(false)
+            .addAction(R.drawable.ic_check, "Completed", completedPendingIntent)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setSound(soundUri)
+            .setVibrate(longArrayOf(0, 250))
+            .setOnlyAlertOnce(true)
+
+        if (largeIcon != null) {
+            builder.setLargeIcon(largeIcon)
+        }
+
+        try {
+            notificationManager.notify(logId, builder.build())
+            Log.d("NotificationActionReceiver", "Notification shown for log $logId")
+        } catch (e: Exception) {
+            Log.e("NotificationActionReceiver", "Error showing notification: ${e.message}", e)
         }
     }
 
@@ -140,20 +152,19 @@ class NotificationActionReceiver : BroadcastReceiver() {
     }
 
     private fun saveDismissedTimestamp(context: Context) {
+        // commit (not apply): an async write can be lost if the process dies after onReceive
         context.getSharedPreferences(BootReceiver.PREFS_NAME, Context.MODE_PRIVATE)
-            .edit { putString(BootReceiver.KEY_LAST_DISMISSED, java.time.LocalDateTime.now().toString()) }
+            .edit(commit = true) { putString(BootReceiver.KEY_LAST_DISMISSED, java.time.LocalDateTime.now().toString()) }
     }
 
-    private fun markAsCompleted(context: Context, logId: Int) {
-        CoroutineScope(Dispatchers.IO).launch {
-            val database = AppDatabase.getDatabase(context)
-            val reminderLogDao = database.reminderLogDao()
-            reminderLogDao.updateCompletedStatus(logId, true)
+    private suspend fun markAsCompleted(context: Context, logId: Int) {
+        val database = AppDatabase.getDatabase(context)
+        val reminderLogDao = database.reminderLogDao()
+        reminderLogDao.updateCompletedStatus(logId, true)
 
-            val notificationManager =
-                context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.cancel(logId)
-        }
+        val notificationManager =
+            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.cancel(logId)
     }
 
     private fun buildIconBitmap(context: Context, resId: Int): Bitmap {

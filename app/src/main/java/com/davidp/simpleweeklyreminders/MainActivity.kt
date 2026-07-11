@@ -480,7 +480,21 @@ fun ReminderItem(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Button(
-                        onClick = { isEditing = true },
+                        onClick = {
+                            // Re-seed the form from the current reminder so
+                            // previously cancelled edits don't reappear
+                            editedTitle = reminder.title
+                            editedTimes = reminder.reminderTimes
+                            editedFrequency = reminder.frequency
+                            editedStartDate = reminder.startDate
+                            editedEndDate = reminder.endDate
+                            editedReminderDays = reminder.reminderDays
+                            editedDayInterval = reminder.dayInterval ?: 1
+                            useEveryNDays = reminder.dayInterval != null
+                            editedNotes = reminder.notes ?: ""
+                            editedIcon = reminder.icon ?: DEFAULT_ICON_KEY
+                            isEditing = true
+                        },
                         modifier = Modifier.weight(1f),
                         shape = MaterialTheme.appShapes.medium
                     ) {

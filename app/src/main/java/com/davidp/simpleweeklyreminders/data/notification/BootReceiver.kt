@@ -19,62 +19,70 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
             ReminderWorker.schedule(context)
-            showMissedNotification(context)
+
+            // goAsync keeps the process alive (with a wakelock) until finish() —
+            // without it the coroutine can be killed as soon as onReceive returns
+            val pendingResult = goAsync()
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    showMissedNotification(context)
+                } finally {
+                    pendingResult.finish()
+                }
+            }
         }
     }
 
-    private fun showMissedNotification(context: Context) {
-        CoroutineScope(Dispatchers.IO).launch {
-            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            val since = prefs.getString(KEY_LAST_DISMISSED, null)
-                ?.let { LocalDateTime.parse(it) }
-                ?: LocalDateTime.MIN
+    private suspend fun showMissedNotification(context: Context) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val since = prefs.getString(KEY_LAST_DISMISSED, null)
+            ?.let { LocalDateTime.parse(it) }
+            ?: LocalDateTime.MIN
 
-            val now = LocalDateTime.now()
-            val database = AppDatabase.getDatabase(context)
-            val missedLogs = database.reminderLogDao().getMissedLogsList(since, now)
-            if (missedLogs.isEmpty()) return@launch
+        val now = LocalDateTime.now()
+        val database = AppDatabase.getDatabase(context)
+        val missedLogs = database.reminderLogDao().getMissedLogsList(since, now)
+        if (missedLogs.isEmpty()) return
 
-            val notificationManager =
-                context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val notificationManager =
+            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-            val channel = NotificationChannel(
-                MISSED_CHANNEL_ID,
-                "Missed Reminders",
-                NotificationManager.IMPORTANCE_HIGH
-            )
-            notificationManager.createNotificationChannel(channel)
+        val channel = NotificationChannel(
+            MISSED_CHANNEL_ID,
+            "Missed Reminders",
+            NotificationManager.IMPORTANCE_HIGH
+        )
+        notificationManager.createNotificationChannel(channel)
 
-            val tapIntent = Intent(context, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            }
-            val pendingIntent = PendingIntent.getActivity(
-                context, 0, tapIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-
-            val dismissIntent = Intent(context, NotificationActionReceiver::class.java).apply {
-                action = ACTION_MISSED_DISMISSED
-            }
-            val dismissPendingIntent = PendingIntent.getBroadcast(
-                context,
-                MISSED_NOTIFICATION_ID,
-                dismissIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-
-            val count = missedLogs.size
-            val notification = NotificationCompat.Builder(context, MISSED_CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_medication)
-                .setContentTitle("Missed Reminder${if (count > 1) "s" else ""}")
-                .setContentText("You missed $count reminder${if (count > 1) "s" else ""} while your phone was off")
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setContentIntent(pendingIntent)
-                .setDeleteIntent(dismissPendingIntent)
-                .setAutoCancel(true)
-                .build()
-
-            notificationManager.notify(MISSED_NOTIFICATION_ID, notification)
+        val tapIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
+        val pendingIntent = PendingIntent.getActivity(
+            context, 0, tapIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val dismissIntent = Intent(context, NotificationActionReceiver::class.java).apply {
+            action = ACTION_MISSED_DISMISSED
+        }
+        val dismissPendingIntent = PendingIntent.getBroadcast(
+            context,
+            MISSED_NOTIFICATION_ID,
+            dismissIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val count = missedLogs.size
+        val notification = NotificationCompat.Builder(context, MISSED_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_medication)
+            .setContentTitle("Missed Reminder${if (count > 1) "s" else ""}")
+            .setContentText("You missed $count reminder${if (count > 1) "s" else ""} while your phone was off")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(pendingIntent)
+            .setDeleteIntent(dismissPendingIntent)
+            .setAutoCancel(true)
+            .build()
+
+        notificationManager.notify(MISSED_NOTIFICATION_ID, notification)
     }
 
     companion object {
