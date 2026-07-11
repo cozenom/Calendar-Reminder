@@ -19,8 +19,7 @@ data class Reminder(
     val color: String? = null,
     val completedColor: String? = null,
     val icon: String? = null,
-    val weekInterval: Int = 1,           // 1 = every week, 2 = every 2 weeks, etc.
-    val dayInterval: Int? = null,        // null = weekly mode; set to repeat every N days
+    val dayInterval: Int? = null,        // null = specific weekdays; set to repeat every N days
     val isActive: Boolean = true,        // false = paused, skipped in scheduling
     val createdAt: LocalDateTime = LocalDateTime.now(),
     val sortOrder: Int = 0               // user-defined drag order, fallback = createdAt
