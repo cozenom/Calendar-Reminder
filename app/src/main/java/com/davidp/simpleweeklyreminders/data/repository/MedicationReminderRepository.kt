@@ -23,10 +23,32 @@ class ReminderRepository(
 
     suspend fun update(reminder: Reminder) {
         reminderDao.updateReminder(reminder)
-        // Delete all logs from today onwards to avoid duplicates when regenerating
-        reminderLogDao.deleteFutureLogsForReminder(reminder.id, LocalDateTime.now())
+        // Keep historical log snapshots in sync with the new title
+        reminderLogDao.updateTitleForReminder(reminder.id, reminder.title)
+
+        val now = LocalDateTime.now()
+        // Remember completed-early future logs so their completion survives regeneration
+        val completedCountByDate = reminderLogDao.getFutureLogsForReminder(reminder.id, now)
+            .filter { it.completed }
+            .groupingBy { it.logDateTime.toLocalDate() }
+            .eachCount()
+
+        // Delete all future logs to avoid duplicates when regenerating
+        reminderLogDao.deleteFutureLogsForReminder(reminder.id, now)
         // Regenerate logs with updated schedule
         generateLogsForReminder(reminder)
+
+        // Re-apply completions to the regenerated logs on the same dates
+        if (completedCountByDate.isNotEmpty()) {
+            reminderLogDao.getFutureLogsForReminder(reminder.id, now)
+                .groupBy { it.logDateTime.toLocalDate() }
+                .forEach { (date, logs) ->
+                    val count = completedCountByDate[date] ?: return@forEach
+                    logs.sortedBy { it.logDateTime }.take(count).forEach { log ->
+                        reminderLogDao.updateCompletedStatus(log.id, true)
+                    }
+                }
+        }
     }
 
     suspend fun delete(reminder: Reminder) {
@@ -40,12 +62,13 @@ class ReminderRepository(
     private suspend fun generateLogsForReminder(reminder: Reminder) {
         if (!reminder.isActive) return
 
-        val now = LocalDateTime.now()
         val currentDate = LocalDate.now()
         val endDate = reminder.endDate ?: currentDate.plusYears(1)
         val loopStart = if (reminder.startDate > currentDate) reminder.startDate else currentDate
+        // Dedupe from the start of the first generated day so today's already-passed
+        // times (which survive deletion) aren't re-inserted
         val existingDateTimes = reminderLogDao
-            .getExistingLogDateTimesForReminder(reminder.id, now)
+            .getExistingLogDateTimesForReminder(reminder.id, loopStart.atStartOfDay())
             .toHashSet()
 
         if (reminder.dayInterval != null) {

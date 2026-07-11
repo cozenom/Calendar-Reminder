@@ -47,9 +47,15 @@ interface ReminderLogDao {
     @Query("SELECT * FROM reminder_logs WHERE logDateTime > :since AND logDateTime < :now AND completed = 0")
     suspend fun getMissedLogsList(since: LocalDateTime, now: LocalDateTime): List<ReminderLog>
 
-    @Query("DELETE FROM reminder_logs WHERE reminderId = :reminderId AND logDateTime > :fromDateTime AND completed = 0")
+    @Query("DELETE FROM reminder_logs WHERE reminderId = :reminderId AND logDateTime > :fromDateTime")
     suspend fun deleteFutureLogsForReminder(reminderId: Int, fromDateTime: LocalDateTime)
 
-    @Query("SELECT logDateTime FROM reminder_logs WHERE reminderId = :reminderId AND logDateTime > :after")
-    suspend fun getExistingLogDateTimesForReminder(reminderId: Int, after: LocalDateTime): List<LocalDateTime>
+    @Query("SELECT logDateTime FROM reminder_logs WHERE reminderId = :reminderId AND logDateTime >= :from")
+    suspend fun getExistingLogDateTimesForReminder(reminderId: Int, from: LocalDateTime): List<LocalDateTime>
+
+    @Query("SELECT * FROM reminder_logs WHERE reminderId = :reminderId AND logDateTime > :after")
+    suspend fun getFutureLogsForReminder(reminderId: Int, after: LocalDateTime): List<ReminderLog>
+
+    @Query("UPDATE reminder_logs SET title = :title WHERE reminderId = :reminderId")
+    suspend fun updateTitleForReminder(reminderId: Int, title: String)
 }
