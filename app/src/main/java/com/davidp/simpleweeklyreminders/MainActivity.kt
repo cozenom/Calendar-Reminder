@@ -35,7 +35,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.filled.DragIndicator
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
@@ -50,9 +49,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -88,7 +85,6 @@ import androidx.compose.ui.unit.sp
 import androidx.activity.compose.BackHandler
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.window.Dialog
@@ -218,12 +214,15 @@ fun ReminderApp(viewModel: ReminderViewModel) {
 @Composable
 fun RemindersTab(viewModel: ReminderViewModel) {
     val reminders by viewModel.allReminders.collectAsState(initial = emptyList())
+    val today = LocalDate.now()
+    val todayLogs by remember(today) { viewModel.getLogsForDate(today) }.collectAsState(initial = emptyList())
 
     Column(modifier = Modifier.padding(16.dp)) {
         Text("Your Reminders", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
         ReminderList(
             reminders = reminders,
+            todayLogsByReminder = todayLogs.groupBy { it.reminderId },
             onDeleteReminder = { viewModel.delete(it) },
             viewModel = viewModel
         )
@@ -247,6 +246,7 @@ fun AddReminderDialog(
 @Composable
 fun ReminderList(
     reminders: List<Reminder>,
+    todayLogsByReminder: Map<Int, List<ReminderLog>>,
     onDeleteReminder: (Reminder) -> Unit,
     viewModel: ReminderViewModel
 ) {
@@ -268,6 +268,7 @@ fun ReminderList(
             ReorderableItem(reorderState, key = reminder.id) { _ ->
                 ReminderItem(
                     reminder = reminder,
+                    todayLogs = todayLogsByReminder[reminder.id] ?: emptyList(),
                     onDelete = { onDeleteReminder(reminder) },
                     viewModel = viewModel,
                     dragHandleModifier = Modifier.draggableHandle(
@@ -277,287 +278,6 @@ fun ReminderList(
                 )
             }
         }
-    }
-}
-
-@Composable
-fun ReminderItem(
-    reminder: Reminder,
-    onDelete: () -> Unit,
-    viewModel: ReminderViewModel,
-    dragHandleModifier: Modifier = Modifier
-) {
-    var isEditing by remember { mutableStateOf(false) }
-    var showDeleteConfirm by remember { mutableStateOf(false) }
-    BackHandler(enabled = isEditing) {
-        isEditing = false
-    }
-    var editedTitle by remember { mutableStateOf(reminder.title) }
-    var editedTimes by remember { mutableStateOf(reminder.reminderTimes) }
-    var editedFrequency by remember { mutableIntStateOf(reminder.frequency) }
-    var editedStartDate by remember { mutableStateOf(reminder.startDate) }
-    var editedEndDate by remember { mutableStateOf(reminder.endDate) }
-    var showStartDatePicker by remember { mutableStateOf(false) }
-    var showEndDatePicker by remember { mutableStateOf(false) }
-    var editedReminderDays by remember { mutableStateOf(reminder.reminderDays) }
-    var editedDayInterval by remember { mutableIntStateOf(reminder.dayInterval ?: 1) }
-    var useEveryNDays by remember { mutableStateOf(reminder.dayInterval != null) }
-    var editedNotes by remember { mutableStateOf(reminder.notes ?: "") }
-    var editedIcon by remember { mutableStateOf(reminder.icon ?: DEFAULT_ICON_KEY) }
-    var showEditIconPicker by remember { mutableStateOf(false) }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        shape = MaterialTheme.appShapes.large,
-        elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            if (isEditing) {
-                OutlinedTextField(
-                    value = editedTitle,
-                    onValueChange = { editedTitle = it },
-                    label = { Text("Title") },
-                    trailingIcon = {
-                        if (editedTitle.isNotEmpty()) {
-                            IconButton(onClick = { editedTitle = "" }) {
-                                Icon(Icons.Filled.Clear, contentDescription = "Clear")
-                            }
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-                FrequencySelector(frequency = editedFrequency, onFrequencyChange = {
-                    editedFrequency = it
-                    editedTimes = List(it) { index ->
-                        if (index < editedTimes.size) editedTimes[index]
-                        else LocalTime.now().truncatedTo(ChronoUnit.MINUTES)
-                    }
-                })
-                Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-                editedTimes.forEachIndexed { index, time ->
-                    Material3TimePicker(initialTime = time, onTimeSelected = { newTime ->
-                        editedTimes = editedTimes.toMutableList().also { it[index] = newTime }
-                    })
-                    Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-                }
-                androidx.compose.material3.OutlinedButton(
-                    onClick = { showStartDatePicker = true },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.appShapes.medium
-                ) {
-                    Text("Start Date: ${editedStartDate.format(DateTimeFormatter.ofPattern("MMM dd, yyyy"))}")
-                }
-                Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    androidx.compose.material3.OutlinedButton(
-                        onClick = { showEndDatePicker = true },
-                        modifier = Modifier.weight(1f),
-                        shape = MaterialTheme.appShapes.medium
-                    ) {
-                        Text(
-                            if (editedEndDate != null) "End: ${editedEndDate?.format(DateTimeFormatter.ofPattern("MMM dd"))}"
-                            else "Set End Date",
-                            maxLines = 1
-                        )
-                    }
-                    if (editedEndDate != null) {
-                        TextButton(onClick = { editedEndDate = null }, shape = MaterialTheme.appShapes.medium) {
-                            Text("Clear")
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-                RecurrenceToggle(useEveryNDays = useEveryNDays, onChanged = { useEveryNDays = it })
-                Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-                if (useEveryNDays) {
-                    DayIntervalSelector(interval = editedDayInterval, onIntervalChange = { editedDayInterval = it })
-                } else {
-                    WeekdaySelector(selectedDays = editedReminderDays, onDaysChanged = { editedReminderDays = it })
-                }
-                Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-                OutlinedTextField(
-                    value = editedNotes,
-                    onValueChange = { editedNotes = it },
-                    label = { Text("Notes (optional)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 2
-                )
-                Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-                IconPickerRow(selectedKey = editedIcon, onChangeTapped = { showEditIconPicker = true })
-                if (showEditIconPicker) {
-                    IconPickerDialog(
-                        currentKey = editedIcon,
-                        onIconSelected = { editedIcon = it },
-                        onDismiss = { showEditIconPicker = false }
-                    )
-                }
-                Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Button(
-                        onClick = {
-                            viewModel.update(
-                                reminder.copy(
-                                    title = editedTitle.ifBlank { "Reminder" },
-                                    reminderTimes = editedTimes,
-                                    frequency = editedFrequency,
-                                    startDate = editedStartDate,
-                                    endDate = editedEndDate,
-                                    reminderDays = editedReminderDays,
-                                    notes = editedNotes.ifBlank { null },
-                                    icon = editedIcon,
-                                    dayInterval = if (useEveryNDays) editedDayInterval else null
-                                )
-                            )
-                            isEditing = false
-                        },
-                        enabled = true,
-                        modifier = Modifier.weight(1f),
-                        shape = MaterialTheme.appShapes.medium
-                    ) {
-                        Text("Save")
-                    }
-                    androidx.compose.material3.OutlinedButton(
-                        onClick = { isEditing = false },
-                        modifier = Modifier.weight(1f),
-                        shape = MaterialTheme.appShapes.medium
-                    ) {
-                        Text("Cancel")
-                    }
-                }
-            } else {
-                // Display mode
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.DragIndicator,
-                        contentDescription = "Drag to reorder",
-                        modifier = dragHandleModifier
-                            .size(20.dp)
-                            .padding(end = 6.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                    )
-                    Icon(
-                        imageVector = iconFromKey(reminder.icon).icon,
-                        contentDescription = null,
-                        tint = if (reminder.isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(24.dp).padding(end = 4.dp)
-                    )
-                    Text(
-                        reminder.title,
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = if (reminder.isActive) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Switch(
-                        checked = reminder.isActive,
-                        onCheckedChange = { viewModel.update(reminder.copy(isActive = it)) }
-                    )
-                }
-                reminder.reminderTimes.forEachIndexed { index, time ->
-                    Text("Time ${index + 1}: ${time.format(DateTimeFormatter.ofPattern("HH:mm"))}")
-                }
-                Text("Frequency: ${reminder.frequency} times daily")
-                Text("Start Date: ${reminder.startDate}")
-                reminder.endDate?.let { Text("End Date: $it") }
-                if (reminder.dayInterval != null) {
-                    Text("Repeat: Every ${reminder.dayInterval} days")
-                } else {
-                    Text("Days: ${reminder.reminderDays.sorted().joinToString(", ") { getDayName(it) }}")
-                }
-                reminder.notes?.let {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Button(
-                        onClick = {
-                            // Re-seed the form from the current reminder so
-                            // previously cancelled edits don't reappear
-                            editedTitle = reminder.title
-                            editedTimes = reminder.reminderTimes
-                            editedFrequency = reminder.frequency
-                            editedStartDate = reminder.startDate
-                            editedEndDate = reminder.endDate
-                            editedReminderDays = reminder.reminderDays
-                            editedDayInterval = reminder.dayInterval ?: 1
-                            useEveryNDays = reminder.dayInterval != null
-                            editedNotes = reminder.notes ?: ""
-                            editedIcon = reminder.icon ?: DEFAULT_ICON_KEY
-                            isEditing = true
-                        },
-                        modifier = Modifier.weight(1f),
-                        shape = MaterialTheme.appShapes.medium
-                    ) {
-                        Text("Edit")
-                    }
-                    androidx.compose.material3.OutlinedButton(
-                        onClick = { showDeleteConfirm = true },
-                        modifier = Modifier.weight(1f),
-                        shape = MaterialTheme.appShapes.medium
-                    ) {
-                        Text("Delete")
-                    }
-                }
-            }
-        }
-    }
-
-    if (showDeleteConfirm) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Delete Reminder") },
-            text = { Text("Are you sure you want to delete \"${reminder.title}\"?") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showDeleteConfirm = false
-                        onDelete()
-                    },
-                    shape = MaterialTheme.appShapes.medium,
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) {
-                    Text("Delete")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showDeleteConfirm = false },
-                    shape = MaterialTheme.appShapes.medium
-                ) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
-
-    if (showStartDatePicker) {
-        CalendarDialog(
-            onDismissRequest = { showStartDatePicker = false },
-            onDateSelected = { editedStartDate = it; showStartDatePicker = false },
-            initialDate = editedStartDate
-        )
-    }
-    if (showEndDatePicker) {
-        CalendarDialog(
-            onDismissRequest = { showEndDatePicker = false },
-            onDateSelected = { editedEndDate = it; showEndDatePicker = false },
-            initialDate = editedEndDate ?: LocalDate.now()
-        )
     }
 }
 
@@ -1307,18 +1027,5 @@ fun IconPickerRow(selectedKey: String?, onChangeTapped: () -> Unit) {
             modifier = Modifier.padding(start = 8.dp).weight(1f)
         )
         TextButton(onClick = onChangeTapped) { Text("Change") }
-    }
-}
-
-fun getDayName(day: Int): String {
-    return when (day) {
-        1 -> "Mon"
-        2 -> "Tue"
-        3 -> "Wed"
-        4 -> "Thu"
-        5 -> "Fri"
-        6 -> "Sat"
-        7 -> "Sun"
-        else -> ""
     }
 }

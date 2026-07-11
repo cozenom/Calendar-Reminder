@@ -52,6 +52,10 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
         repository.updateLogCompletedStatus(logId, completed)
     }
 
+    fun logAdHocCompletion(reminder: Reminder, dateTime: LocalDateTime) = viewModelScope.launch {
+        repository.insertCompletedLog(reminder, dateTime)
+    }
+
     fun updateRemindersOrder(reminders: List<Reminder>) = viewModelScope.launch {
         repository.updateRemindersOrder(reminders)
     }

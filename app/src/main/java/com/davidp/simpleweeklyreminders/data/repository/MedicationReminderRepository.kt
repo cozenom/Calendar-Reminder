@@ -122,6 +122,22 @@ class ReminderRepository(
         reminderLogDao.updateCompletedStatus(logId, completed)
     }
 
+    /**
+     * Records a completion for a slot that has no log — a time that had already
+     * passed when the reminder was created or edited (logs are never generated
+     * in the past), checked off after the fact from the reminder card.
+     */
+    suspend fun insertCompletedLog(reminder: Reminder, dateTime: LocalDateTime) {
+        reminderLogDao.insert(
+            ReminderLog(
+                reminderId = reminder.id,
+                title = reminder.title,
+                logDateTime = dateTime,
+                completed = true
+            )
+        )
+    }
+
     suspend fun updateRemindersOrder(reminders: List<Reminder>) {
         reminders.forEachIndexed { index, reminder ->
             reminderDao.updateSortOrder(reminder.id, index)
