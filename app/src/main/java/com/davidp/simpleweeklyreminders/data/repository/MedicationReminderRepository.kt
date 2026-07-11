@@ -27,6 +27,13 @@ class ReminderRepository(
         reminderLogDao.updateTitleForReminder(reminder.id, reminder.title)
 
         val now = LocalDateTime.now()
+        if (!reminder.isActive) {
+            // Paused: nothing gets regenerated, so keep completed-early logs —
+            // the carry-over below handles them when the reminder is reactivated
+            reminderLogDao.deleteFutureIncompleteLogsForReminder(reminder.id, now)
+            return
+        }
+
         // Remember completed-early future logs so their completion survives regeneration
         val completedCountByDate = reminderLogDao.getFutureLogsForReminder(reminder.id, now)
             .filter { it.completed }
@@ -62,6 +69,7 @@ class ReminderRepository(
     private suspend fun generateLogsForReminder(reminder: Reminder) {
         if (!reminder.isActive) return
 
+        val now = LocalDateTime.now()
         val currentDate = LocalDate.now()
         val endDate = reminder.endDate ?: currentDate.plusYears(1)
         val loopStart = if (reminder.startDate > currentDate) reminder.startDate else currentDate
@@ -78,7 +86,9 @@ class ReminderRepository(
             while (date <= endDate) {
                 for (time in reminder.reminderTimes) {
                     val logDateTime = LocalDateTime.of(date, time)
-                    if (logDateTime !in existingDateTimes) {
+                    // Never create already-passed occurrences: a reminder that was
+                    // paused or didn't exist at that time can't have missed it
+                    if (logDateTime > now && logDateTime !in existingDateTimes) {
                         reminderLogDao.insert(ReminderLog(
                             reminderId = reminder.id,
                             title = reminder.title,
@@ -94,7 +104,7 @@ class ReminderRepository(
                 if (reminder.reminderDays.contains(date.dayOfWeek.value)) {
                     for (time in reminder.reminderTimes) {
                         val logDateTime = LocalDateTime.of(date, time)
-                        if (logDateTime !in existingDateTimes) {
+                        if (logDateTime > now && logDateTime !in existingDateTimes) {
                             reminderLogDao.insert(ReminderLog(
                                 reminderId = reminder.id,
                                 title = reminder.title,
