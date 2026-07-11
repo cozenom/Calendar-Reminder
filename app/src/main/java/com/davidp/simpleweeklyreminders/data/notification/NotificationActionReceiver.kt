@@ -18,7 +18,6 @@ import android.media.RingtoneManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
-import androidx.core.content.edit
 import com.davidp.simpleweeklyreminders.MainActivity
 import com.davidp.simpleweeklyreminders.R
 import com.davidp.simpleweeklyreminders.data.database.AppDatabase
@@ -32,7 +31,7 @@ import androidx.core.graphics.toColorInt
 class NotificationActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == BootReceiver.ACTION_MISSED_DISMISSED) {
-            saveDismissedTimestamp(context)
+            BootReceiver.markSeenNow(context)
             return
         }
 
@@ -149,12 +148,6 @@ class NotificationActionReceiver : BroadcastReceiver() {
             )
         }
         notificationManager.createNotificationChannel(channel)
-    }
-
-    private fun saveDismissedTimestamp(context: Context) {
-        // commit (not apply): an async write can be lost if the process dies after onReceive
-        context.getSharedPreferences(BootReceiver.PREFS_NAME, Context.MODE_PRIVATE)
-            .edit(commit = true) { putString(BootReceiver.KEY_LAST_DISMISSED, java.time.LocalDateTime.now().toString()) }
     }
 
     private suspend fun markAsCompleted(context: Context, logId: Int) {

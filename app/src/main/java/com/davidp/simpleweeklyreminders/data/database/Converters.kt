@@ -49,6 +49,9 @@ class Converters {
 
     @TypeConverter
     fun toListLocalTime(value: String?): List<LocalTime> {
-        return value?.split(",")?.mapNotNull { LocalTime.parse(it, timeFormatter) } ?: emptyList()
+        // An empty list round-trips as "" — splitting that yields [""] and parse would throw
+        return value?.takeIf { it.isNotEmpty() }
+            ?.split(",")?.mapNotNull { LocalTime.parse(it, timeFormatter) }
+            ?: emptyList()
     }
 }

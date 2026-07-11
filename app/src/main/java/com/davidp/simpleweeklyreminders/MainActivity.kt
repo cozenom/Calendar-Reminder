@@ -98,6 +98,7 @@ import com.davidp.simpleweeklyreminders.data.model.DEFAULT_ICON_KEY
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderLog
 import com.davidp.simpleweeklyreminders.data.model.iconFromKey
+import com.davidp.simpleweeklyreminders.data.notification.BootReceiver
 import com.davidp.simpleweeklyreminders.data.notification.ReminderWorker
 import com.davidp.simpleweeklyreminders.ui.theme.appShapes
 import com.davidp.simpleweeklyreminders.ui.theme.dimensions
@@ -108,6 +109,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -125,6 +127,8 @@ class MainActivity : ComponentActivity() {
 
         requestRequiredPermissions()
         ReminderWorker.schedule(this)
+        // User is looking at the app — reset the baseline for "missed reminders" reports
+        BootReceiver.markSeenNow(this)
 
         viewModel = ViewModelProvider(
             this, ReminderViewModelFactory(application)
@@ -328,7 +332,8 @@ fun ReminderItem(
                 FrequencySelector(frequency = editedFrequency, onFrequencyChange = {
                     editedFrequency = it
                     editedTimes = List(it) { index ->
-                        if (index < editedTimes.size) editedTimes[index] else LocalTime.now()
+                        if (index < editedTimes.size) editedTimes[index]
+                        else LocalTime.now().truncatedTo(ChronoUnit.MINUTES)
                     }
                 })
                 Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
@@ -560,7 +565,7 @@ fun ReminderItem(
 fun AddReminderForm(onAddReminder: (reminder: Reminder) -> Unit) {
     var title by remember { mutableStateOf("Reminder") }
     var frequency by remember { mutableIntStateOf(1) }
-    var reminderTimes by remember { mutableStateOf(listOf(LocalTime.now().plusMinutes(2))) }
+    var reminderTimes by remember { mutableStateOf(listOf(LocalTime.now().plusMinutes(2).truncatedTo(ChronoUnit.MINUTES))) }
     var startDate by remember { mutableStateOf(LocalDate.now()) }
     var endDate by remember { mutableStateOf<LocalDate?>(null) }
     var showStartDatePicker by remember { mutableStateOf(false) }
@@ -594,7 +599,8 @@ fun AddReminderForm(onAddReminder: (reminder: Reminder) -> Unit) {
         FrequencySelector(frequency = frequency, onFrequencyChange = {
             frequency = it
             reminderTimes = List(it) { index ->
-                if (index < reminderTimes.size) reminderTimes[index] else LocalTime.now().plusMinutes(2)
+                if (index < reminderTimes.size) reminderTimes[index]
+                else LocalTime.now().plusMinutes(2).truncatedTo(ChronoUnit.MINUTES)
             }
         })
         Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
@@ -700,7 +706,7 @@ fun AddReminderForm(onAddReminder: (reminder: Reminder) -> Unit) {
                 onAddReminder(reminder)
                 title = "Reminder"
                 frequency = 1
-                reminderTimes = listOf(LocalTime.now().plusMinutes(2))
+                reminderTimes = listOf(LocalTime.now().plusMinutes(2).truncatedTo(ChronoUnit.MINUTES))
                 startDate = LocalDate.now()
                 endDate = null
                 reminderDays = setOf(1, 2, 3, 4, 5, 6, 7)
@@ -842,7 +848,8 @@ fun WeekdaySelector(selectedDays: Set<Int>, onDaysChanged: (Set<Int>) -> Unit) {
                 isSelected = isSelected,
                 onClick = {
                     val newSet = if (isSelected) selectedDays - (index + 1) else selectedDays + (index + 1)
-                    onDaysChanged(newSet)
+                    // Keep at least one day selected — zero days would silently never fire
+                    if (newSet.isNotEmpty()) onDaysChanged(newSet)
                 },
                 modifier = Modifier.weight(1f).aspectRatio(1f)
             )

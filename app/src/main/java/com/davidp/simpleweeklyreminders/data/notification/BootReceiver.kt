@@ -7,6 +7,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationCompat
+import androidx.core.content.edit
 import com.davidp.simpleweeklyreminders.MainActivity
 import com.davidp.simpleweeklyreminders.R
 import com.davidp.simpleweeklyreminders.data.database.AppDatabase
@@ -35,9 +36,10 @@ class BootReceiver : BroadcastReceiver() {
 
     private suspend fun showMissedNotification(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val since = prefs.getString(KEY_LAST_DISMISSED, null)
+        // No baseline yet (first run before the app was ever opened): report nothing
+        val since = prefs.getString(KEY_LAST_SEEN, null)
             ?.let { LocalDateTime.parse(it) }
-            ?: LocalDateTime.MIN
+            ?: return
 
         val now = LocalDateTime.now()
         val database = AppDatabase.getDatabase(context)
@@ -75,7 +77,7 @@ class BootReceiver : BroadcastReceiver() {
         val notification = NotificationCompat.Builder(context, MISSED_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_medication)
             .setContentTitle("Missed Reminder${if (count > 1) "s" else ""}")
-            .setContentText("You missed $count reminder${if (count > 1) "s" else ""} while your phone was off")
+            .setContentText("You missed $count reminder${if (count > 1) "s" else ""} since you last checked")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(pendingIntent)
             .setDeleteIntent(dismissPendingIntent)
@@ -89,7 +91,14 @@ class BootReceiver : BroadcastReceiver() {
         private const val MISSED_CHANNEL_ID = "MissedRemindersChannel"
         private const val MISSED_NOTIFICATION_ID = 9999
         const val PREFS_NAME = "missed_notification_prefs"
-        const val KEY_LAST_DISMISSED = "last_dismissed_at"
+        // Baseline for "missed" reports: bumped on every app open and when the
+        // missed notification is dismissed
+        const val KEY_LAST_SEEN = "last_seen_at"
         const val ACTION_MISSED_DISMISSED = "com.davidp.simpleweeklyreminders.ACTION_MISSED_DISMISSED"
+
+        fun markSeenNow(context: Context) {
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit(commit = true) { putString(KEY_LAST_SEEN, LocalDateTime.now().toString()) }
+        }
     }
 }
