@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderLog
 import com.davidp.simpleweeklyreminders.data.model.iconFromKey
+import com.davidp.simpleweeklyreminders.data.model.isScheduledOn
 import com.davidp.simpleweeklyreminders.ui.theme.appShapes
 import com.davidp.simpleweeklyreminders.ui.theme.reminderColors
 import com.davidp.simpleweeklyreminders.viewmodel.ReminderViewModel
@@ -77,17 +78,6 @@ fun scheduleSummary(reminder: Reminder): String {
     return (listOf(base) + qualifiers).joinToString(" · ")
 }
 
-/** Whether this reminder's schedule includes the given date (ignores isActive). */
-fun isScheduledOn(reminder: Reminder, date: LocalDate): Boolean {
-    if (date < reminder.startDate) return false
-    reminder.endDate?.let { if (date > it) return false }
-    return if (reminder.dayInterval != null) {
-        ChronoUnit.DAYS.between(reminder.startDate, date) % reminder.dayInterval == 0L
-    } else {
-        reminder.reminderDays.contains(date.dayOfWeek.value)
-    }
-}
-
 /** The next date-time this reminder is scheduled to fire, or null if none (paused/ended). */
 fun nextOccurrence(reminder: Reminder, now: LocalDateTime = LocalDateTime.now()): LocalDateTime? {
     if (!reminder.isActive || reminder.reminderTimes.isEmpty()) return null
@@ -97,7 +87,7 @@ fun nextOccurrence(reminder: Reminder, now: LocalDateTime = LocalDateTime.now())
     val endDate = reminder.endDate ?: date.plusYears(1)
 
     while (date <= endDate) {
-        if (isScheduledOn(reminder, date)) {
+        if (reminder.isScheduledOn(date)) {
             for (time in sortedTimes) {
                 val dateTime = LocalDateTime.of(date, time)
                 if (dateTime > now) return dateTime
@@ -181,7 +171,7 @@ fun ReminderItem(
 
             Spacer(modifier = Modifier.height(12.dp))
             val today = LocalDate.now()
-            val scheduledToday = reminder.isActive && isScheduledOn(reminder, today)
+            val scheduledToday = reminder.isActive && reminder.isScheduledOn(today)
             // Grid of equal-width chips. How many fit per row is computed from the
             // available width and the user's font scale instead of assuming a screen
             // size, so large-font settings gracefully drop to fewer, wider chips.

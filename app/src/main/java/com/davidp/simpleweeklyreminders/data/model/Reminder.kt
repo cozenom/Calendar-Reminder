@@ -5,6 +5,7 @@ import androidx.room.PrimaryKey
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.temporal.ChronoUnit
 
 @Entity(tableName = "reminders")
 data class Reminder(
@@ -24,3 +25,14 @@ data class Reminder(
     val createdAt: LocalDateTime = LocalDateTime.now(),
     val sortOrder: Int = 0               // user-defined drag order, fallback = createdAt
 )
+
+/** Whether this reminder's schedule includes the given date (ignores isActive). */
+fun Reminder.isScheduledOn(date: LocalDate): Boolean {
+    if (date < startDate) return false
+    endDate?.let { if (date > it) return false }
+    return if (dayInterval != null) {
+        ChronoUnit.DAYS.between(startDate, date) % dayInterval == 0L
+    } else {
+        reminderDays.contains(date.dayOfWeek.value)
+    }
+}

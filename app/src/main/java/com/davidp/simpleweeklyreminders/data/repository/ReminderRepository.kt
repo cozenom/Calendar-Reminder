@@ -4,6 +4,7 @@ import com.davidp.simpleweeklyreminders.data.dao.ReminderDao
 import com.davidp.simpleweeklyreminders.data.dao.ReminderLogDao
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderLog
+import com.davidp.simpleweeklyreminders.data.model.isScheduledOn
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -40,6 +41,21 @@ class ReminderRepository(
 
         // Delete all future logs to avoid duplicates when regenerating
         reminderLogDao.deleteFutureLogsForReminder(reminder.id, now)
+
+        // The delete above only touches future logs, so a slot whose time passed
+        // between edits would keep its card chip actionable after the schedule
+        // dropped it. Clear today's incomplete leftovers the new schedule no longer
+        // contains; completed ones record something the user actually did, so they stay.
+        val today = now.toLocalDate()
+        val staleTodayLogIds = reminderLogDao
+            .getLogsForReminderInRange(reminder.id, today.atStartOfDay(), now)
+            .filter {
+                !it.completed &&
+                    (!reminder.isScheduledOn(today) || it.logDateTime.toLocalTime() !in reminder.reminderTimes)
+            }
+            .map { it.id }
+        if (staleTodayLogIds.isNotEmpty()) reminderLogDao.deleteLogsByIds(staleTodayLogIds)
+
         // Regenerate logs with updated schedule
         generateLogsForReminder(reminder)
 
@@ -89,6 +105,9 @@ class ReminderRepository(
         val currentDate = LocalDate.now()
         val endDate = reminder.endDate ?: currentDate.plusYears(1)
         val loopStart = if (reminder.startDate > currentDate) reminder.startDate else currentDate
+        // distinct(): reminders saved before the form deduped times may still hold
+        // duplicates, which would insert two logs for the same occurrence
+        val times = reminder.reminderTimes.distinct()
         // Dedupe from the start of the first generated day so today's already-passed
         // times (which survive deletion) aren't re-inserted
         val existingDateTimes = reminderLogDao
@@ -100,7 +119,7 @@ class ReminderRepository(
             val offset = daysSinceStart % reminder.dayInterval
             var date = if (offset == 0L) loopStart else loopStart.plusDays(reminder.dayInterval - offset)
             while (date <= endDate) {
-                for (time in reminder.reminderTimes) {
+                for (time in times) {
                     val logDateTime = LocalDateTime.of(date, time)
                     // Never create already-passed occurrences: a reminder that was
                     // paused or didn't exist at that time can't have missed it
@@ -118,7 +137,7 @@ class ReminderRepository(
             var date = loopStart
             while (date <= endDate) {
                 if (reminder.reminderDays.contains(date.dayOfWeek.value)) {
-                    for (time in reminder.reminderTimes) {
+                    for (time in times) {
                         val logDateTime = LocalDateTime.of(date, time)
                         if (logDateTime > now && logDateTime !in existingDateTimes) {
                             reminderLogDao.insert(ReminderLog(

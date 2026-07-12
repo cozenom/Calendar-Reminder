@@ -39,6 +39,12 @@ interface ReminderLogDao {
     @Query("SELECT * FROM reminder_logs WHERE reminderId = :reminderId AND logDateTime > :after")
     suspend fun getFutureLogsForReminder(reminderId: Int, after: LocalDateTime): List<ReminderLog>
 
+    @Query("SELECT * FROM reminder_logs WHERE reminderId = :reminderId AND logDateTime BETWEEN :start AND :end")
+    suspend fun getLogsForReminderInRange(reminderId: Int, start: LocalDateTime, end: LocalDateTime): List<ReminderLog>
+
+    @Query("DELETE FROM reminder_logs WHERE id IN (:ids)")
+    suspend fun deleteLogsByIds(ids: List<Int>)
+
     @Query("UPDATE reminder_logs SET title = :title WHERE reminderId = :reminderId")
     suspend fun updateTitleForReminder(reminderId: Int, title: String)
 }

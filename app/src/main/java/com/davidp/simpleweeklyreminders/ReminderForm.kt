@@ -219,6 +219,15 @@ private fun ReminderForm(
                 }
             }
         }
+        val endBeforeStart = endDate?.isBefore(startDate) == true
+        if (endBeforeStart) {
+            Text(
+                "End date is before the start date, so this reminder would never fire",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
         Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
         OutlinedTextField(
@@ -237,11 +246,14 @@ private fun ReminderForm(
             Button(
                 onClick = {
                     val base = initial ?: Reminder(title = "", reminderTimes = emptyList(), frequency = 0)
+                    // distinct(): the same time entered twice would create duplicate
+                    // logs, leaving an orphan that always shows up as "missed"
+                    val distinctTimes = times.distinct()
                     onSave(
                         base.copy(
                             title = title.ifBlank { "Reminder" },
-                            reminderTimes = times,
-                            frequency = times.size,
+                            reminderTimes = distinctTimes,
+                            frequency = distinctTimes.size,
                             startDate = startDate,
                             endDate = endDate,
                             reminderDays = reminderDays,
@@ -252,7 +264,8 @@ private fun ReminderForm(
                     )
                 },
                 modifier = Modifier.weight(1f),
-                shape = MaterialTheme.appShapes.medium
+                shape = MaterialTheme.appShapes.medium,
+                enabled = !endBeforeStart
             ) {
                 Text(if (initial == null) "Add Reminder" else "Save")
             }
