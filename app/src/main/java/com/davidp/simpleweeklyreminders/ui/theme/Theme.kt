@@ -38,7 +38,6 @@ object AppDimensions {
 
     // Button sizes
     val frequencyButtonWidth = 48.dp
-    val weekdayButtonSize = 40.dp
 }
 
 /**

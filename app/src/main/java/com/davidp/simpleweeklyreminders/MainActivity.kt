@@ -244,11 +244,14 @@ fun ReminderApp(viewModel: ReminderViewModel) {
 
 @Composable
 fun RemindersTab(viewModel: ReminderViewModel) {
-    val reminders by viewModel.allReminders.collectAsState(initial = emptyList())
+    // null = first DB emission hasn't arrived yet — show nothing rather than
+    // flashing the empty state on every switch to this tab
+    val reminders by viewModel.allReminders.collectAsState(initial = null)
     val today = LocalDate.now()
     val todayLogs by remember(today) { viewModel.getLogsForDate(today) }.collectAsState(initial = emptyList())
 
-    if (reminders.isEmpty()) {
+    val loadedReminders = reminders ?: return
+    if (loadedReminders.isEmpty()) {
         Box(
             modifier = Modifier.fillMaxSize().padding(32.dp),
             contentAlignment = Alignment.Center
@@ -277,7 +280,7 @@ fun RemindersTab(viewModel: ReminderViewModel) {
     } else {
         Column(modifier = Modifier.padding(horizontal = 16.dp)) {
             ReminderList(
-                reminders = reminders,
+                reminders = loadedReminders,
                 todayLogsByReminder = todayLogs.groupBy { it.reminderId },
                 onDeleteReminder = { viewModel.delete(it) },
                 viewModel = viewModel
@@ -478,8 +481,10 @@ fun CalendarTab(viewModel: ReminderViewModel) {
         baseYearMonth.plusMonths((pagerState.currentPage - initialPage).toLong())
     }
 
-    val activeReminders by viewModel.getActiveReminders(selectedDate).collectAsState(initial = emptyList())
-    val selectedDateLogs by viewModel.getLogsForDate(selectedDate).collectAsState(initial = emptyList())
+    // remember the flows so recomposition doesn't recreate them and reset
+    // collectAsState back to emptyList (visible as flicker)
+    val activeReminders by remember(selectedDate) { viewModel.getActiveReminders(selectedDate) }.collectAsState(initial = emptyList())
+    val selectedDateLogs by remember(selectedDate) { viewModel.getLogsForDate(selectedDate) }.collectAsState(initial = emptyList())
 
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         // Calendar card: month navigation + swipeable grid in one container
@@ -516,7 +521,7 @@ fun CalendarTab(viewModel: ReminderViewModel) {
                     modifier = Modifier.fillMaxWidth()
                 ) { page ->
                     val monthForPage = baseYearMonth.plusMonths((page - initialPage).toLong())
-                    val logsForPage by viewModel.getLogsForMonth(monthForPage).collectAsState(initial = emptyList())
+                    val logsForPage by remember(monthForPage) { viewModel.getLogsForMonth(monthForPage) }.collectAsState(initial = emptyList())
 
                     CalendarView(
                         currentMonth = monthForPage,
