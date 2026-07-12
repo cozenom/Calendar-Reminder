@@ -167,12 +167,13 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReminderApp(viewModel: ReminderViewModel) {
-    var selectedTab by remember { mutableIntStateOf(1) }
+    // Tab 0 = Calendar (home, leftmost, start tab), tab 1 = Reminders
+    var selectedTab by remember { mutableIntStateOf(0) }
     var showAddReminderDialog by remember { mutableStateOf(false) }
 
     Scaffold(topBar = {
         CenterAlignedTopAppBar(
-            title = { Text(if (selectedTab == 0) "Your Reminders" else "Calendar") }
+            title = { Text(if (selectedTab == 0) "Calendar" else "Your Reminders") }
         )
     }, bottomBar = {
         NavigationBar {
@@ -181,26 +182,26 @@ fun ReminderApp(viewModel: ReminderViewModel) {
                 onClick = { selectedTab = 0 },
                 icon = {
                     Icon(
-                        if (selectedTab == 0) Icons.Filled.Notifications else Icons.Outlined.Notifications,
+                        if (selectedTab == 0) Icons.Filled.CalendarMonth else Icons.Outlined.CalendarMonth,
                         contentDescription = null
                     )
                 },
-                label = { Text("Reminders") }
+                label = { Text("Calendar") }
             )
             NavigationBarItem(
                 selected = selectedTab == 1,
                 onClick = { selectedTab = 1 },
                 icon = {
                     Icon(
-                        if (selectedTab == 1) Icons.Filled.CalendarMonth else Icons.Outlined.CalendarMonth,
+                        if (selectedTab == 1) Icons.Filled.Notifications else Icons.Outlined.Notifications,
                         contentDescription = null
                     )
                 },
-                label = { Text("Calendar") }
+                label = { Text("Reminders") }
             )
         }
     }, floatingActionButton = {
-        if (selectedTab == 0) {
+        if (selectedTab == 1) {
             FloatingActionButton(onClick = { showAddReminderDialog = true }) {
                 Icon(Icons.Filled.Add, contentDescription = "Add Reminder")
             }
@@ -217,17 +218,16 @@ fun ReminderApp(viewModel: ReminderViewModel) {
             label = "tabSwitch"
         ) { tab ->
             when (tab) {
-                0 -> RemindersTab(viewModel)
-                else -> CalendarTab(viewModel)
+                0 -> CalendarTab(viewModel)
+                else -> RemindersTab(viewModel)
             }
         }
     }
 
+    // Back on Reminders returns to the Calendar (home) tab; back on Calendar
+    // is unhandled so the system exits the app (keeps predictive back working)
     BackHandler(enabled = selectedTab == 1) {
         selectedTab = 0
-    }
-    BackHandler(enabled = selectedTab == 0) {
-        // Do nothing — prevent closing the app on the reminders list
     }
 
     if (showAddReminderDialog) {
