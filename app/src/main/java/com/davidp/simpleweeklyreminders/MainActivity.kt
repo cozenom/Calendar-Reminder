@@ -55,8 +55,6 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Button
@@ -164,18 +162,13 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReminderApp(viewModel: ReminderViewModel) {
     // Tab 0 = Calendar (home, leftmost, start tab), tab 1 = Reminders
     var selectedTab by remember { mutableIntStateOf(0) }
     var showAddReminderDialog by remember { mutableStateOf(false) }
 
-    Scaffold(topBar = {
-        CenterAlignedTopAppBar(
-            title = { Text(if (selectedTab == 0) "Calendar" else "Your Reminders") }
-        )
-    }, bottomBar = {
+    Scaffold(bottomBar = {
         NavigationBar {
             NavigationBarItem(
                 selected = selectedTab == 0,
