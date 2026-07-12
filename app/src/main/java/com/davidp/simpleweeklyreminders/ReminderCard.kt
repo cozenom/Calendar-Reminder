@@ -3,9 +3,8 @@ package com.davidp.simpleweeklyreminders
 import android.text.format.DateFormat
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,8 +33,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.davidp.simpleweeklyreminders.data.model.Reminder
@@ -50,6 +51,10 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 
 private val WEEKDAY_ABBREVIATIONS = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+
+/** Comfortable width for a "12:00 PM" chip with its check icon at default font size. */
+private val TIME_CHIP_MIN_WIDTH = 90.dp
+private val TIME_CHIP_SPACING = 8.dp
 
 /** Human-readable recurrence line, e.g. "Mon, Wed, Fri", "Every 2 days", "Weekdays". */
 fun scheduleSummary(reminder: Reminder): String {
@@ -115,7 +120,6 @@ private fun formatNextOccurrence(dateTime: LocalDateTime, now: LocalDateTime, ti
     return "$day at $time"
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ReminderItem(
     reminder: Reminder,
@@ -178,26 +182,44 @@ fun ReminderItem(
             Spacer(modifier = Modifier.height(12.dp))
             val today = LocalDate.now()
             val scheduledToday = reminder.isActive && isScheduledOn(reminder, today)
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                reminder.reminderTimes.distinct().sorted().forEach { time ->
-                    val log = todayLogs.firstOrNull { it.logDateTime.toLocalTime() == time }
-                    TimeChip(
-                        label = time.format(DateTimeFormatter.ofPattern(timePattern)),
-                        completed = log?.completed == true,
-                        actionable = log != null || scheduledToday,
-                        onClick = {
-                            if (log != null) {
-                                viewModel.updateLogCompletedStatus(log.id, !log.completed)
-                            } else {
-                                // No log for this slot today (time had already passed when
-                                // the reminder was created/edited) — record it on demand
-                                viewModel.logAdHocCompletion(reminder, LocalDateTime.of(today, time))
+            // Grid of equal-width chips. How many fit per row is computed from the
+            // available width and the user's font scale instead of assuming a screen
+            // size, so large-font settings gracefully drop to fewer, wider chips.
+            BoxWithConstraints {
+                val minChipWidth = TIME_CHIP_MIN_WIDTH * LocalDensity.current.fontScale
+                val chipsPerRow = ((maxWidth + TIME_CHIP_SPACING) / (minChipWidth + TIME_CHIP_SPACING))
+                    .toInt()
+                    .coerceAtLeast(1)
+                Column(verticalArrangement = Arrangement.spacedBy(TIME_CHIP_SPACING)) {
+                    reminder.reminderTimes.distinct().sorted().chunked(chipsPerRow).forEach { rowTimes ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(TIME_CHIP_SPACING)
+                        ) {
+                            rowTimes.forEach { time ->
+                                val log = todayLogs.firstOrNull { it.logDateTime.toLocalTime() == time }
+                                TimeChip(
+                                    label = time.format(DateTimeFormatter.ofPattern(timePattern)),
+                                    completed = log?.completed == true,
+                                    actionable = log != null || scheduledToday,
+                                    onClick = {
+                                        if (log != null) {
+                                            viewModel.updateLogCompletedStatus(log.id, !log.completed)
+                                        } else {
+                                            // No log for this slot today (time had already passed when
+                                            // the reminder was created/edited) — record it on demand
+                                            viewModel.logAdHocCompletion(reminder, LocalDateTime.of(today, time))
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            // Keep a partial last row's chips the same size as full rows
+                            repeat(chipsPerRow - rowTimes.size) {
+                                Spacer(modifier = Modifier.weight(1f))
                             }
                         }
-                    )
+                    }
                 }
             }
 
@@ -288,11 +310,13 @@ private fun TimeChip(
     label: String,
     completed: Boolean,
     actionable: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val reminderColors = MaterialTheme.reminderColors
 
     Surface(
+        modifier = modifier,
         shape = MaterialTheme.appShapes.small,
         color = when {
             completed -> reminderColors.completedContainer
@@ -309,17 +333,22 @@ private fun TimeChip(
         enabled = actionable
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 6.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (completed) {
-                Icon(
-                    imageVector = Icons.Filled.Check,
-                    contentDescription = "Completed",
-                    modifier = Modifier.size(14.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-            }
+            // Icon space is always reserved (hidden via alpha when not completed) so
+            // ticking a reminder off doesn't change the chip's size.
+            Icon(
+                imageVector = Icons.Filled.Check,
+                contentDescription = if (completed) "Completed" else null,
+                modifier = Modifier
+                    .size(14.dp)
+                    .alpha(if (completed) 1f else 0f)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
             Text(label, style = MaterialTheme.typography.labelLarge)
         }
     }
