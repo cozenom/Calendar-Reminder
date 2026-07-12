@@ -75,6 +75,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -165,7 +166,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun ReminderApp(viewModel: ReminderViewModel) {
     // Tab 0 = Calendar (home, leftmost, start tab), tab 1 = Reminders
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     var showAddReminderDialog by remember { mutableStateOf(false) }
 
     Scaffold(bottomBar = {
