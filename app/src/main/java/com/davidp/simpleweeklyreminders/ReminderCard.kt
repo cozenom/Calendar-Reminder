@@ -2,6 +2,7 @@ package com.davidp.simpleweeklyreminders
 
 import android.text.format.DateFormat
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DragIndicator
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -120,6 +123,7 @@ fun ReminderItem(
 ) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showEditSheet by remember { mutableStateOf(false) }
+    var showNotes by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
@@ -226,9 +230,28 @@ fun ReminderItem(
                 }
             }
 
-            reminder.notes?.let {
+            reminder.notes?.takeIf { it.isNotBlank() }?.let { notes ->
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(
+                    modifier = Modifier.clickable { showNotes = !showNotes },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        if (showNotes) "Hide notes" else "Show notes",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Icon(
+                        imageVector = if (showNotes) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+                if (showNotes) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(notes, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
 
             Row(
