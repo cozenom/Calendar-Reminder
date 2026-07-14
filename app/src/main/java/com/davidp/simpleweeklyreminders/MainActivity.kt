@@ -14,6 +14,7 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import com.davidp.simpleweeklyreminders.ui.theme.CalendarAppTheme
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -58,6 +59,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -464,7 +467,7 @@ fun WeekdayButton(day: String, isSelected: Boolean, onClick: () -> Unit, modifie
 @Composable
 fun CalendarTab(viewModel: ReminderViewModel) {
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
-    var selectedLog by remember { mutableStateOf<ReminderLog?>(null) }
+    val haptics = LocalHapticFeedback.current
 
     val initialPage = 600
     val baseYearMonth = YearMonth.now()
@@ -566,24 +569,20 @@ fun CalendarTab(viewModel: ReminderViewModel) {
                     LazyColumn {
                         items(selectedDateLogs.groupBy { it.title }.values.toList()) { titleLogs ->
                             titleLogs.forEachIndexed { _, log ->
-                                ReminderEventItem(log = log, iconKey = activeReminders.find { it.id == log.reminderId }?.icon, onClick = { selectedLog = log })
+                                ReminderEventItem(
+                                    log = log,
+                                    iconKey = activeReminders.find { it.id == log.reminderId }?.icon,
+                                    onToggle = {
+                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        viewModel.updateLogCompletedStatus(log.id, !log.completed)
+                                    }
+                                )
                             }
                         }
                     }
                 }
             }
         }
-    }
-
-    selectedLog?.let { log ->
-        EventDetailsDialog(
-            log = log,
-            onDismiss = { selectedLog = null },
-            onStatusChange = { newStatus ->
-                viewModel.updateLogCompletedStatus(log.id, newStatus)
-                selectedLog = null
-            }
-        )
     }
 }
 
@@ -748,19 +747,26 @@ fun CalendarDialog(
 }
 
 @Composable
-fun ReminderEventItem(log: ReminderLog, iconKey: String?, onClick: () -> Unit) {
+fun ReminderEventItem(log: ReminderLog, iconKey: String?, onToggle: () -> Unit) {
     val reminderColors = MaterialTheme.reminderColors
-    val containerColor = if (log.completed) reminderColors.completedContainer else reminderColors.pendingContainer
-    val contentColor = if (log.completed) reminderColors.completedContent else reminderColors.pendingContent
-    val statusIcon = if (log.completed) "✓" else "✗"
+    val containerColor by animateColorAsState(
+        if (log.completed) reminderColors.completedContainer else reminderColors.pendingContainer,
+        label = "eventContainerColor"
+    )
+    val contentColor by animateColorAsState(
+        if (log.completed) reminderColors.completedContent else reminderColors.pendingContent,
+        label = "eventContentColor"
+    )
 
     Surface(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         shape = MaterialTheme.appShapes.medium,
-        color = containerColor,
-        onClick = onClick
+        color = containerColor
     ) {
-        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Icon(
                 imageVector = iconFromKey(iconKey).icon,
                 contentDescription = null,
@@ -777,33 +783,15 @@ fun ReminderEventItem(log: ReminderLog, iconKey: String?, onClick: () -> Unit) {
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(text = log.title, style = MaterialTheme.typography.bodyLarge, color = contentColor, modifier = Modifier.weight(1f))
-            Text(text = statusIcon, style = MaterialTheme.typography.titleMedium, color = contentColor)
+            Checkbox(
+                checked = log.completed,
+                onCheckedChange = { onToggle() },
+                colors = CheckboxDefaults.colors(
+                    checkedColor = contentColor,
+                    uncheckedColor = contentColor,
+                    checkmarkColor = containerColor
+                )
+            )
         }
     }
-}
-
-@Composable
-fun EventDetailsDialog(log: ReminderLog, onDismiss: () -> Unit, onStatusChange: (Boolean) -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(log.title) },
-        text = {
-            Column {
-                Text("Time: ${log.logDateTime.format(DateTimeFormatter.ofPattern("HH:mm"))}")
-                Text("Status: ${if (log.completed) "Completed" else "Pending"}")
-                Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
-                Button(
-                    onClick = { onStatusChange(!log.completed) },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.appShapes.medium
-                ) {
-                    Text(if (log.completed) "✗ Mark as Pending" else "✓ Mark as Done")
-                }
-            }
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss, shape = MaterialTheme.appShapes.medium) { Text("Close") }
-        }
-    )
 }
