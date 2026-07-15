@@ -184,7 +184,6 @@ class NotificationActionReceiver : BroadcastReceiver() {
             description = "Reminders"
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             setShowBadge(true)
-            setBypassDnd(true)
             enableLights(true)
             enableVibration(true)
             vibrationPattern = longArrayOf(0, 250)
