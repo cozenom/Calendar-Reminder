@@ -58,6 +58,8 @@ class ReminderWorker(
         const val EXTRA_LOG_ID = "log_id"
         const val EXTRA_REMINDER_ID = "reminder_id"
         const val EXTRA_IS_SNOOZE = "is_snooze"
+        // Material primary purple — notification accent shared by all notifications
+        const val ACCENT_COLOR = "#6650A4"
         private const val WORKER_NAME = "ReminderWorker"
 
         fun scheduleAlarm(context: Context, log: ReminderLog) {

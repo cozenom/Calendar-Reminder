@@ -143,7 +143,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
             .setSmallIcon(smallIconRes)
             .setContentTitle(title)
             .setContentText(contentText)
-            .setColor(ACCENT_COLOR.toColorInt())
+            .setColor(ReminderWorker.ACCENT_COLOR.toColorInt())
             // Header timestamp = when this was scheduled, not when it popped up —
             // matters for snoozed re-fires and delayed inexact alarms
             .setWhen(log.logDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli())
@@ -234,7 +234,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
 
         // Draw colored circle background
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        paint.color = ACCENT_COLOR.toColorInt()
+        paint.color = ReminderWorker.ACCENT_COLOR.toColorInt()
         canvas.drawCircle(size / 2f, size / 2f, size / 2f, paint)
 
         // Draw icon in white, inset so it fits inside the circle
@@ -249,7 +249,5 @@ class NotificationActionReceiver : BroadcastReceiver() {
 
     companion object {
         private const val CHANNEL_ID = "ReminderChannel"
-        // Material primary purple — used for the large-icon circle and setColor accent
-        private const val ACCENT_COLOR = "#6650A4"
     }
 }

@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationCompat
 import androidx.core.content.edit
+import androidx.core.graphics.toColorInt
 import com.davidp.simpleweeklyreminders.MainActivity
 import com.davidp.simpleweeklyreminders.R
 import com.davidp.simpleweeklyreminders.data.database.AppDatabase
@@ -78,7 +79,10 @@ class BootReceiver : BroadcastReceiver() {
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("Missed Reminder${if (count > 1) "s" else ""}")
             .setContentText("You missed $count reminder${if (count > 1) "s" else ""} since you last checked")
+            .setColor(ReminderWorker.ACCENT_COLOR.toColorInt())
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(pendingIntent)
             .setDeleteIntent(dismissPendingIntent)
             .setAutoCancel(true)
