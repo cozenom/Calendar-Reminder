@@ -47,4 +47,10 @@ interface ReminderLogDao {
 
     @Query("UPDATE reminder_logs SET title = :title WHERE reminderId = :reminderId")
     suspend fun updateTitleForReminder(reminderId: Int, title: String)
+
+    @Query("UPDATE reminder_logs SET snoozedUntil = :snoozedUntil WHERE id = :logId")
+    suspend fun updateSnoozedUntil(logId: Int, snoozedUntil: LocalDateTime?)
+
+    @Query("SELECT * FROM reminder_logs WHERE snoozedUntil IS NOT NULL AND completed = 0")
+    suspend fun getSnoozedLogsList(): List<ReminderLog>
 }

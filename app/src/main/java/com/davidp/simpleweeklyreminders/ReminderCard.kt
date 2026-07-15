@@ -18,12 +18,14 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Snooze
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -195,6 +197,7 @@ fun ReminderItem(
                                 TimeChip(
                                     label = time.format(DateTimeFormatter.ofPattern(timePattern)),
                                     completed = log?.completed == true,
+                                    snoozed = log?.snoozedUntil != null,
                                     actionable = log != null || scheduledToday,
                                     onClick = {
                                         if (log != null) {
@@ -317,11 +320,13 @@ fun ReminderItem(
 /**
  * One scheduled time as a chip. Tapping toggles (or records) today's
  * completion; chips are inert only when the reminder isn't scheduled today.
+ * A pending snooze shows a snooze glyph until the notification re-fires.
  */
 @Composable
 private fun TimeChip(
     label: String,
     completed: Boolean,
+    snoozed: Boolean,
     actionable: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -352,14 +357,20 @@ private fun TimeChip(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Icon space is always reserved (hidden via alpha when not completed) so
+            // Icon space is always reserved (hidden via alpha when blank) so
             // ticking a reminder off doesn't change the chip's size.
+            val showSnooze = snoozed && !completed
             Icon(
-                imageVector = Icons.Filled.Check,
-                contentDescription = if (completed) "Completed" else null,
+                imageVector = if (showSnooze) Icons.Filled.Snooze else Icons.Filled.Check,
+                contentDescription = when {
+                    completed -> "Completed"
+                    showSnooze -> "Snoozed"
+                    else -> null
+                },
+                tint = if (showSnooze) MaterialTheme.colorScheme.tertiary else LocalContentColor.current,
                 modifier = Modifier
                     .size(14.dp)
-                    .alpha(if (completed) 1f else 0f)
+                    .alpha(if (completed || showSnooze) 1f else 0f)
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text(label, style = MaterialTheme.typography.labelLarge)

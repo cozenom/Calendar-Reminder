@@ -40,18 +40,27 @@ class ReminderWorker(
             }
         }
 
+        // Re-arm pending snoozes from the DB — alarms don't survive reboot or
+        // force-stop. A snoozedUntil already in the past fires immediately.
+        reminderLogDao.getSnoozedLogsList().forEach { log ->
+            log.snoozedUntil?.let { snoozedUntil ->
+                scheduleSnoozeAlarm(applicationContext, log.id, snoozedUntil)
+            }
+        }
+
         Result.success()
     }
 
     companion object {
         const val ACTION_SHOW_NOTIFICATION = "com.davidp.simpleweeklyreminders.ACTION_SHOW_NOTIFICATION"
         const val ACTION_COMPLETED = "com.davidp.simpleweeklyreminders.ACTION_COMPLETED"
+        const val ACTION_SNOOZE = "com.davidp.simpleweeklyreminders.ACTION_SNOOZE"
         const val EXTRA_LOG_ID = "log_id"
         const val EXTRA_REMINDER_ID = "reminder_id"
+        const val EXTRA_IS_SNOOZE = "is_snooze"
         private const val WORKER_NAME = "ReminderWorker"
 
         fun scheduleAlarm(context: Context, log: ReminderLog) {
-            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
             val intent = Intent(context, NotificationActionReceiver::class.java).apply {
                 action = ACTION_SHOW_NOTIFICATION
                 putExtra(EXTRA_LOG_ID, log.id)
@@ -64,7 +73,30 @@ class ReminderWorker(
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
             val triggerTime = log.logDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            setExactAlarm(context, triggerTime, pendingIntent)
+        }
 
+        fun scheduleSnoozeAlarm(context: Context, logId: Int, snoozedUntil: LocalDateTime) {
+            val intent = Intent(context, NotificationActionReceiver::class.java).apply {
+                action = ACTION_SHOW_NOTIFICATION
+                putExtra(EXTRA_LOG_ID, logId)
+                putExtra(EXTRA_IS_SNOOZE, true)
+            }
+            // Negated logId keeps snooze alarms in their own requestCode namespace:
+            // the chain alarm above uses (positive) reminderId with the same action,
+            // and PendingIntent identity ignores extras
+            val pendingIntent = PendingIntent.getBroadcast(
+                context,
+                -logId,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            val triggerTime = snoozedUntil.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            setExactAlarm(context, triggerTime, pendingIntent)
+        }
+
+        private fun setExactAlarm(context: Context, triggerTime: Long, pendingIntent: PendingIntent) {
+            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 if (alarmManager.canScheduleExactAlarms()) {
                     alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)

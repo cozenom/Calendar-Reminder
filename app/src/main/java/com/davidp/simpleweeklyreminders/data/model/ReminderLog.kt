@@ -21,5 +21,7 @@ data class ReminderLog(
     val reminderId: Int,
     val title: String,
     val logDateTime: LocalDateTime,
-    val completed: Boolean = false
+    val completed: Boolean = false,
+    // Snooze survives reboots: the alarm is re-armed from this field, not from memory
+    val snoozedUntil: LocalDateTime? = null
 )

@@ -36,6 +36,7 @@
             <intent-filter>
                 <action android:name="com.davidp.simpleweeklyreminders.ACTION_SHOW_NOTIFICATION" />
                 <action android:name="com.davidp.simpleweeklyreminders.ACTION_COMPLETED" />
+                <action android:name="com.davidp.simpleweeklyreminders.ACTION_SNOOZE" />
                 <action android:name="com.davidp.simpleweeklyreminders.ACTION_MISSED_DISMISSED" />
             </intent-filter>
         </receiver>

@@ -53,6 +53,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Snooze
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.AlertDialog
@@ -783,6 +784,21 @@ fun ReminderEventItem(log: ReminderLog, iconKey: String?, onToggle: () -> Unit) 
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(text = log.title, style = MaterialTheme.typography.bodyLarge, color = contentColor, modifier = Modifier.weight(1f))
+            val snoozedUntil = log.snoozedUntil
+            if (snoozedUntil != null && !log.completed) {
+                Icon(
+                    imageVector = Icons.Filled.Snooze,
+                    contentDescription = "Snoozed",
+                    tint = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = snoozedUntil.format(DateTimeFormatter.ofPattern("HH:mm")),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.tertiary
+                )
+            }
             Checkbox(
                 checked = log.completed,
                 onCheckedChange = { onToggle() },

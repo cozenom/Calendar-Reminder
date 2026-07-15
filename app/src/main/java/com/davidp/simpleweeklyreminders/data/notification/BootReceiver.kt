@@ -75,7 +75,7 @@ class BootReceiver : BroadcastReceiver() {
 
         val count = missedLogs.size
         val notification = NotificationCompat.Builder(context, MISSED_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_medication)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("Missed Reminder${if (count > 1) "s" else ""}")
             .setContentText("You missed $count reminder${if (count > 1) "s" else ""} since you last checked")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
