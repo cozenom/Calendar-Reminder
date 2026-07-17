@@ -5,14 +5,14 @@ import android.app.AlarmManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
-import androidx.core.net.toUri
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import com.davidp.simpleweeklyreminders.ui.theme.CalendarAppTheme
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.fadeIn
@@ -24,16 +24,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -41,8 +41,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import sh.calvin.reorderable.ReorderableItem
-import sh.calvin.reorderable.rememberReorderableLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -58,18 +56,24 @@ import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -91,14 +95,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.activity.compose.BackHandler
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.material3.LocalTextStyle
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.lifecycle.ViewModelProvider
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderLog
@@ -106,15 +108,18 @@ import com.davidp.simpleweeklyreminders.data.model.ReminderType
 import com.davidp.simpleweeklyreminders.data.model.iconFromKey
 import com.davidp.simpleweeklyreminders.data.notification.BootReceiver
 import com.davidp.simpleweeklyreminders.data.notification.ReminderWorker
+import com.davidp.simpleweeklyreminders.ui.theme.CalendarAppTheme
 import com.davidp.simpleweeklyreminders.ui.theme.appShapes
 import com.davidp.simpleweeklyreminders.ui.theme.dimensions
 import com.davidp.simpleweeklyreminders.ui.theme.reminderColors
 import com.davidp.simpleweeklyreminders.viewmodel.ReminderViewModel
 import com.davidp.simpleweeklyreminders.viewmodel.ReminderViewModelFactory
+import kotlinx.coroutines.launch
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
-import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private lateinit var viewModel: ReminderViewModel
@@ -484,30 +489,43 @@ fun ReminderList(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecurrenceToggle(mode: ReminderType, onChanged: (ReminderType) -> Unit) {
     val options = listOf(
-        ReminderType.SPECIFIC_DAYS to "Specific Days",
+        ReminderType.SPECIFIC_DAYS to "Specific Weekdays",
         ReminderType.EVERY_N_DAYS to "Every N Days",
         ReminderType.ONE_TIME to "One-Time"
     )
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    var expanded by remember { mutableStateOf(false) }
+    val selectedLabel = options.first { it.first == mode }.second
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it }
     ) {
-        options.forEach { (type, label) ->
-            if (type == mode) {
-                Button(
-                    onClick = {},
-                    modifier = Modifier.weight(1f),
-                    shape = MaterialTheme.appShapes.medium
-                ) { Text(label) }
-            } else {
-                androidx.compose.material3.OutlinedButton(
-                    onClick = { onChanged(type) },
-                    modifier = Modifier.weight(1f),
-                    shape = MaterialTheme.appShapes.medium
-                ) { Text(label) }
+        OutlinedTextField(
+            value = selectedLabel,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Repeat") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            options.forEach { (type, label) ->
+                DropdownMenuItem(
+                    text = { Text(label) },
+                    onClick = {
+                        onChanged(type)
+                        expanded = false
+                    }
+                )
             }
         }
     }

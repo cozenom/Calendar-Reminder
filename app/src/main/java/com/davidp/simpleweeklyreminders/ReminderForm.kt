@@ -147,6 +147,15 @@ private fun ReminderForm(
         }
         Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
 
+        RecurrenceToggle(mode = recurrenceMode, onChanged = { recurrenceMode = it })
+        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
+        when (recurrenceMode) {
+            ReminderType.EVERY_N_DAYS -> DayIntervalSelector(interval = dayInterval, onIntervalChange = { dayInterval = it })
+            ReminderType.SPECIFIC_DAYS -> WeekdaySelector(selectedDays = reminderDays, onDaysChanged = { reminderDays = it })
+            ReminderType.ONE_TIME -> {} // single date picked below, nothing to select here
+        }
+        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
+
         Text(
             "Times",
             style = MaterialTheme.typography.labelMedium,
@@ -179,15 +188,6 @@ private fun ReminderForm(
             Icon(Icons.Filled.Add, contentDescription = null)
             Spacer(modifier = Modifier.width(4.dp))
             Text("Add time")
-        }
-        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-
-        RecurrenceToggle(mode = recurrenceMode, onChanged = { recurrenceMode = it })
-        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-        when (recurrenceMode) {
-            ReminderType.EVERY_N_DAYS -> DayIntervalSelector(interval = dayInterval, onIntervalChange = { dayInterval = it })
-            ReminderType.SPECIFIC_DAYS -> WeekdaySelector(selectedDays = reminderDays, onDaysChanged = { reminderDays = it })
-            ReminderType.ONE_TIME -> {} // single date picked below, nothing to select here
         }
         Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
