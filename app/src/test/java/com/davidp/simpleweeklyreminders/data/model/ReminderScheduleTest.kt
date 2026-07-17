@@ -138,4 +138,31 @@ class ReminderScheduleTest {
         assertFalse(r.isScheduledOn(monday.plusWeeks(1)))
         assertFalse(r.isScheduledOn(monday.minusDays(1)))
     }
+
+    // --- isArchived (relative to LocalDate.now() by definition, so these
+    // use offsets from "today" rather than the fixed anchors above) ---
+
+    @Test
+    fun `no end date is never archived`() {
+        val r = reminder(endDate = null)
+        assertFalse(r.isArchived)
+    }
+
+    @Test
+    fun `future end date is not archived`() {
+        val r = reminder(endDate = LocalDate.now().plusDays(1))
+        assertFalse(r.isArchived)
+    }
+
+    @Test
+    fun `end date of today is not yet archived`() {
+        val r = reminder(endDate = LocalDate.now())
+        assertFalse(r.isArchived)
+    }
+
+    @Test
+    fun `past end date is archived`() {
+        val r = reminder(endDate = LocalDate.now().minusDays(1))
+        assertTrue(r.isArchived)
+    }
 }

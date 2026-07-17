@@ -54,12 +54,16 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Snooze
+import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.FloatingActionButton
@@ -98,6 +102,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderLog
+import com.davidp.simpleweeklyreminders.data.model.ReminderType
 import com.davidp.simpleweeklyreminders.data.model.iconFromKey
 import com.davidp.simpleweeklyreminders.data.notification.BootReceiver
 import com.davidp.simpleweeklyreminders.data.notification.ReminderWorker
@@ -172,12 +177,13 @@ fun ReminderApp(viewModel: ReminderViewModel) {
     // Tab 0 = Calendar (home, leftmost, start tab), tab 1 = Reminders
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     var showAddReminderDialog by remember { mutableStateOf(false) }
+    var showArchive by remember { mutableStateOf(false) }
 
     Scaffold(bottomBar = {
         NavigationBar {
             NavigationBarItem(
                 selected = selectedTab == 0,
-                onClick = { selectedTab = 0 },
+                onClick = { selectedTab = 0; showArchive = false },
                 icon = {
                     Icon(
                         if (selectedTab == 0) Icons.Filled.CalendarMonth else Icons.Outlined.CalendarMonth,
@@ -199,7 +205,7 @@ fun ReminderApp(viewModel: ReminderViewModel) {
             )
         }
     }, floatingActionButton = {
-        if (selectedTab == 1) {
+        if (selectedTab == 1 && !showArchive) {
             FloatingActionButton(onClick = { showAddReminderDialog = true }) {
                 Icon(Icons.Filled.Add, contentDescription = "Add Reminder")
             }
@@ -217,14 +223,22 @@ fun ReminderApp(viewModel: ReminderViewModel) {
         ) { tab ->
             when (tab) {
                 0 -> CalendarTab(viewModel)
-                else -> RemindersTab(viewModel)
+                else -> if (showArchive) {
+                    ArchiveScreen(viewModel, onBack = { showArchive = false })
+                } else {
+                    RemindersTab(viewModel, onOpenArchive = { showArchive = true })
+                }
             }
         }
     }
 
-    // Back on Reminders returns to the Calendar (home) tab; back on Calendar
-    // is unhandled so the system exits the app (keeps predictive back working)
-    BackHandler(enabled = selectedTab == 1) {
+    // Back closes the Archive screen first, then returns Reminders to the
+    // Calendar (home) tab; back on Calendar is unhandled so the system exits
+    // the app (keeps predictive back working)
+    BackHandler(enabled = showArchive) {
+        showArchive = false
+    }
+    BackHandler(enabled = selectedTab == 1 && !showArchive) {
         selectedTab = 0
     }
 
@@ -241,7 +255,7 @@ fun ReminderApp(viewModel: ReminderViewModel) {
 }
 
 @Composable
-fun RemindersTab(viewModel: ReminderViewModel) {
+fun RemindersTab(viewModel: ReminderViewModel, onOpenArchive: () -> Unit) {
     // null = first DB emission hasn't arrived yet — show nothing rather than
     // flashing the empty state on every switch to this tab
     val reminders by viewModel.allReminders.collectAsState(initial = null)
@@ -249,34 +263,46 @@ fun RemindersTab(viewModel: ReminderViewModel) {
     val todayLogs by remember(today) { viewModel.getLogsForDate(today) }.collectAsState(initial = emptyList())
 
     val loadedReminders = reminders ?: return
-    if (loadedReminders.isEmpty()) {
-        Box(
-            modifier = Modifier.fillMaxSize().padding(32.dp),
-            contentAlignment = Alignment.Center
+
+    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(
-                    imageVector = Icons.Outlined.Notifications,
-                    contentDescription = null,
-                    modifier = Modifier.size(64.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                )
-                Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
-                Text(
-                    "No reminders yet",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    "Tap + to create your first reminder",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                )
+            Text("Reminders", style = MaterialTheme.typography.titleLarge)
+            IconButton(onClick = onOpenArchive) {
+                Icon(Icons.Outlined.Archive, contentDescription = "Archive")
             }
         }
-    } else {
-        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+
+        if (loadedReminders.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        imageVector = Icons.Outlined.Notifications,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                    Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
+                    Text(
+                        "No reminders yet",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        "Tap + to create your first reminder",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
+            }
+        } else {
             ReminderList(
                 reminders = loadedReminders,
                 todayLogsByReminder = todayLogs.groupBy { it.reminderId },
@@ -284,6 +310,123 @@ fun RemindersTab(viewModel: ReminderViewModel) {
                 viewModel = viewModel
             )
         }
+    }
+}
+
+@Composable
+fun ArchiveScreen(viewModel: ReminderViewModel, onBack: () -> Unit) {
+    val archived by viewModel.archivedReminders.collectAsState(initial = null)
+    val loadedArchived = archived ?: return
+
+    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Back")
+            }
+            Text("Archive", style = MaterialTheme.typography.titleLarge)
+        }
+
+        if (loadedArchived.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        imageVector = Icons.Outlined.Archive,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                    Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
+                    Text(
+                        "Nothing archived yet",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 24.dp)
+            ) {
+                items(loadedArchived, key = { it.id }) { reminder ->
+                    ArchivedReminderItem(
+                        reminder = reminder,
+                        onRestore = { viewModel.restore(reminder) },
+                        onDelete = { viewModel.delete(reminder) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ArchivedReminderItem(reminder: Reminder, onRestore: () -> Unit, onDelete: () -> Unit) {
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        shape = MaterialTheme.appShapes.large,
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                reminder.title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+            )
+            reminder.endDate?.let {
+                Text(
+                    "Ended ${it.format(DateTimeFormatter.ofPattern("MMM d, yyyy"))}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
+                if (reminder.reminderType != ReminderType.ONE_TIME) {
+                    TextButton(onClick = onRestore, shape = MaterialTheme.appShapes.medium) {
+                        Text("Restore")
+                    }
+                }
+                TextButton(
+                    onClick = { showDeleteConfirm = true },
+                    shape = MaterialTheme.appShapes.medium
+                ) {
+                    Text("Delete Forever", color = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete Reminder") },
+            text = { Text("Permanently delete \"${reminder.title}\" and its history? This can't be undone.") },
+            confirmButton = {
+                Button(
+                    onClick = { showDeleteConfirm = false; onDelete() },
+                    shape = MaterialTheme.appShapes.medium,
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }, shape = MaterialTheme.appShapes.medium) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -342,36 +485,30 @@ fun ReminderList(
 }
 
 @Composable
-fun RecurrenceToggle(useEveryNDays: Boolean, onChanged: (Boolean) -> Unit) {
+fun RecurrenceToggle(mode: ReminderType, onChanged: (ReminderType) -> Unit) {
+    val options = listOf(
+        ReminderType.SPECIFIC_DAYS to "Specific Days",
+        ReminderType.EVERY_N_DAYS to "Every N Days",
+        ReminderType.ONE_TIME to "One-Time"
+    )
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        if (!useEveryNDays) {
-            Button(
-                onClick = {},
-                modifier = Modifier.weight(1f),
-                shape = MaterialTheme.appShapes.medium
-            ) { Text("Specific Days") }
-        } else {
-            androidx.compose.material3.OutlinedButton(
-                onClick = { onChanged(false) },
-                modifier = Modifier.weight(1f),
-                shape = MaterialTheme.appShapes.medium
-            ) { Text("Specific Days") }
-        }
-        if (useEveryNDays) {
-            Button(
-                onClick = {},
-                modifier = Modifier.weight(1f),
-                shape = MaterialTheme.appShapes.medium
-            ) { Text("Every N Days") }
-        } else {
-            androidx.compose.material3.OutlinedButton(
-                onClick = { onChanged(true) },
-                modifier = Modifier.weight(1f),
-                shape = MaterialTheme.appShapes.medium
-            ) { Text("Every N Days") }
+        options.forEach { (type, label) ->
+            if (type == mode) {
+                Button(
+                    onClick = {},
+                    modifier = Modifier.weight(1f),
+                    shape = MaterialTheme.appShapes.medium
+                ) { Text(label) }
+            } else {
+                androidx.compose.material3.OutlinedButton(
+                    onClick = { onChanged(type) },
+                    modifier = Modifier.weight(1f),
+                    shape = MaterialTheme.appShapes.medium
+                ) { Text(label) }
+            }
         }
     }
 }

@@ -37,3 +37,6 @@ fun Reminder.isScheduledOn(date: LocalDate): Boolean {
         ReminderType.SPECIFIC_DAYS, ReminderType.ONE_TIME -> reminderDays.contains(date.dayOfWeek.value)
     }
 }
+
+/** True once this reminder's schedule has fully elapsed — the day after endDate, calendar-date based. */
+val Reminder.isArchived: Boolean get() = endDate != null && endDate < LocalDate.now()

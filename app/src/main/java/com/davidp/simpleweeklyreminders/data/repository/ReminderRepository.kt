@@ -5,8 +5,10 @@ import com.davidp.simpleweeklyreminders.data.dao.ReminderLogDao
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderLog
 import com.davidp.simpleweeklyreminders.data.model.ReminderType
+import com.davidp.simpleweeklyreminders.data.model.isArchived
 import com.davidp.simpleweeklyreminders.data.model.isScheduledOn
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
@@ -15,7 +17,10 @@ class ReminderRepository(
     private val reminderDao: ReminderDao,
     private val reminderLogDao: ReminderLogDao
 ) {
-    val allReminders: Flow<List<Reminder>> = reminderDao.getAllReminders()
+    val allReminders: Flow<List<Reminder>> =
+        reminderDao.getAllReminders().map { it.filterNot(Reminder::isArchived) }
+    val archivedReminders: Flow<List<Reminder>> =
+        reminderDao.getAllReminders().map { it.filter(Reminder::isArchived).sortedByDescending { r -> r.endDate } }
 
     suspend fun insert(reminder: Reminder): Long {
         val id = reminderDao.insertReminder(reminder)

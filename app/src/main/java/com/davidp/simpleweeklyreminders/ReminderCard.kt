@@ -272,6 +272,12 @@ fun ReminderItem(
                     Text("Edit")
                 }
                 TextButton(
+                    onClick = { viewModel.archive(reminder) },
+                    shape = MaterialTheme.appShapes.medium
+                ) {
+                    Text("Archive")
+                }
+                TextButton(
                     onClick = { showDeleteConfirm = true },
                     shape = MaterialTheme.appShapes.medium
                 ) {

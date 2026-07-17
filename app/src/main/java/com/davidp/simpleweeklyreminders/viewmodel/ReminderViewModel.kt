@@ -19,6 +19,7 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
     private val repository: ReminderRepository
     private val logRepository: ReminderLogRepository
     val allReminders: Flow<List<Reminder>>
+    val archivedReminders: Flow<List<Reminder>>
 
     init {
         val database = AppDatabase.getDatabase(application)
@@ -26,6 +27,7 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
         val reminderLogDao = database.reminderLogDao()
         repository = ReminderRepository(reminderDao, reminderLogDao)
         allReminders = repository.allReminders
+        archivedReminders = repository.archivedReminders
         logRepository = ReminderLogRepository(reminderLogDao)
     }
 
@@ -41,6 +43,16 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
 
     fun delete(reminder: Reminder) = viewModelScope.launch {
         repository.delete(reminder)
+        ReminderWorker.rescheduleNotifications(getApplication())
+    }
+
+    fun archive(reminder: Reminder) = viewModelScope.launch {
+        repository.update(reminder.copy(isActive = false, endDate = LocalDate.now().minusDays(1)))
+        ReminderWorker.rescheduleNotifications(getApplication())
+    }
+
+    fun restore(reminder: Reminder) = viewModelScope.launch {
+        repository.update(reminder.copy(isActive = true, endDate = null))
         ReminderWorker.rescheduleNotifications(getApplication())
     }
 

@@ -52,6 +52,7 @@ import com.davidp.simpleweeklyreminders.data.model.iconFromKey
 import com.davidp.simpleweeklyreminders.ui.theme.appShapes
 import com.davidp.simpleweeklyreminders.ui.theme.dimensions
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
@@ -90,7 +91,7 @@ private fun ReminderForm(
     var startDate by remember { mutableStateOf(initial?.startDate ?: LocalDate.now()) }
     var endDate by remember { mutableStateOf(initial?.endDate) }
     var reminderDays by remember { mutableStateOf(initial?.reminderDays ?: setOf(1, 2, 3, 4, 5, 6, 7)) }
-    var useEveryNDays by remember { mutableStateOf(initial?.reminderType == ReminderType.EVERY_N_DAYS) }
+    var recurrenceMode by remember { mutableStateOf(initial?.reminderType ?: ReminderType.SPECIFIC_DAYS) }
     var dayInterval by remember { mutableIntStateOf(initial?.dayInterval ?: 1) }
     var notes by remember { mutableStateOf(initial?.notes ?: "") }
     var selectedIcon by remember { mutableStateOf(initial?.icon ?: DEFAULT_ICON_KEY) }
@@ -181,12 +182,12 @@ private fun ReminderForm(
         }
         Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
-        RecurrenceToggle(useEveryNDays = useEveryNDays, onChanged = { useEveryNDays = it })
+        RecurrenceToggle(mode = recurrenceMode, onChanged = { recurrenceMode = it })
         Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-        if (useEveryNDays) {
-            DayIntervalSelector(interval = dayInterval, onIntervalChange = { dayInterval = it })
-        } else {
-            WeekdaySelector(selectedDays = reminderDays, onDaysChanged = { reminderDays = it })
+        when (recurrenceMode) {
+            ReminderType.EVERY_N_DAYS -> DayIntervalSelector(interval = dayInterval, onIntervalChange = { dayInterval = it })
+            ReminderType.SPECIFIC_DAYS -> WeekdaySelector(selectedDays = reminderDays, onDaysChanged = { reminderDays = it })
+            ReminderType.ONE_TIME -> {} // single date picked below, nothing to select here
         }
         Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
@@ -195,35 +196,48 @@ private fun ReminderForm(
             modifier = Modifier.fillMaxWidth(),
             shape = MaterialTheme.appShapes.medium
         ) {
-            Text("Start Date: ${startDate.format(DateTimeFormatter.ofPattern("MMM dd, yyyy"))}")
+            val label = if (recurrenceMode == ReminderType.ONE_TIME) "Date" else "Start Date"
+            Text("$label: ${startDate.format(DateTimeFormatter.ofPattern("MMM dd, yyyy"))}")
         }
         Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            OutlinedButton(
-                onClick = { showEndDatePicker = true },
-                modifier = Modifier.weight(1f),
-                shape = MaterialTheme.appShapes.medium
+        val endBeforeStart = recurrenceMode != ReminderType.ONE_TIME && endDate?.isBefore(startDate) == true
+        val oneTimeInPast = recurrenceMode == ReminderType.ONE_TIME &&
+            times.all { LocalDateTime.of(startDate, it) <= LocalDateTime.now() }
+        if (recurrenceMode != ReminderType.ONE_TIME) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    if (endDate != null) "End: ${endDate?.format(DateTimeFormatter.ofPattern("MMM dd"))}"
-                    else "Set End Date",
-                    maxLines = 1
-                )
-            }
-            if (endDate != null) {
-                TextButton(onClick = { endDate = null }, shape = MaterialTheme.appShapes.medium) {
-                    Text("Clear")
+                OutlinedButton(
+                    onClick = { showEndDatePicker = true },
+                    modifier = Modifier.weight(1f),
+                    shape = MaterialTheme.appShapes.medium
+                ) {
+                    Text(
+                        if (endDate != null) "End: ${endDate?.format(DateTimeFormatter.ofPattern("MMM dd"))}"
+                        else "Set End Date",
+                        maxLines = 1
+                    )
+                }
+                if (endDate != null) {
+                    TextButton(onClick = { endDate = null }, shape = MaterialTheme.appShapes.medium) {
+                        Text("Clear")
+                    }
                 }
             }
+            if (endBeforeStart) {
+                Text(
+                    "End date is before the start date, so this reminder would never fire",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
         }
-        val endBeforeStart = endDate?.isBefore(startDate) == true
-        if (endBeforeStart) {
+        if (oneTimeInPast) {
             Text(
-                "End date is before the start date, so this reminder would never fire",
+                "This date and time have already passed, so this reminder would never fire",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(top = 4.dp)
@@ -250,23 +264,24 @@ private fun ReminderForm(
                     // distinct(): the same time entered twice would create duplicate
                     // logs, leaving an orphan that always shows up as "missed"
                     val distinctTimes = times.distinct()
+                    val isOneTime = recurrenceMode == ReminderType.ONE_TIME
                     onSave(
                         base.copy(
                             title = title.ifBlank { "Reminder" },
                             reminderTimes = distinctTimes,
                             startDate = startDate,
-                            endDate = endDate,
-                            reminderDays = reminderDays,
+                            endDate = if (isOneTime) startDate else endDate,
+                            reminderDays = if (isOneTime) setOf(startDate.dayOfWeek.value) else reminderDays,
                             notes = notes.ifBlank { null },
                             icon = selectedIcon,
-                            dayInterval = if (useEveryNDays) dayInterval else null,
-                            reminderType = if (useEveryNDays) ReminderType.EVERY_N_DAYS else ReminderType.SPECIFIC_DAYS
+                            dayInterval = if (recurrenceMode == ReminderType.EVERY_N_DAYS) dayInterval else null,
+                            reminderType = recurrenceMode
                         )
                     )
                 },
                 modifier = Modifier.weight(1f),
                 shape = MaterialTheme.appShapes.medium,
-                enabled = !endBeforeStart
+                enabled = !endBeforeStart && !oneTimeInPast
             ) {
                 Text(if (initial == null) "Add Reminder" else "Save")
             }
