@@ -46,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderLog
+import com.davidp.simpleweeklyreminders.data.model.ReminderType
 import com.davidp.simpleweeklyreminders.data.model.iconFromKey
 import com.davidp.simpleweeklyreminders.data.model.isScheduledOn
 import com.davidp.simpleweeklyreminders.ui.theme.appShapes
@@ -64,13 +65,16 @@ private val TIME_CHIP_SPACING = 8.dp
 
 /** Human-readable recurrence line, e.g. "Mon, Wed, Fri", "Every 2 days", "Weekdays". */
 fun scheduleSummary(reminder: Reminder): String {
-    val base = when {
-        reminder.dayInterval != null ->
+    val base = when (reminder.reminderType) {
+        ReminderType.EVERY_N_DAYS ->
             if (reminder.dayInterval == 1) "Every day" else "Every ${reminder.dayInterval} days"
-        reminder.reminderDays.size == 7 -> "Every day"
-        reminder.reminderDays == setOf(1, 2, 3, 4, 5) -> "Weekdays"
-        reminder.reminderDays == setOf(6, 7) -> "Weekends"
-        else -> reminder.reminderDays.sorted().joinToString(", ") { WEEKDAY_ABBREVIATIONS[it - 1] }
+        ReminderType.ONE_TIME -> "One-time"
+        ReminderType.SPECIFIC_DAYS -> when {
+            reminder.reminderDays.size == 7 -> "Every day"
+            reminder.reminderDays == setOf(1, 2, 3, 4, 5) -> "Weekdays"
+            reminder.reminderDays == setOf(6, 7) -> "Weekends"
+            else -> reminder.reminderDays.sorted().joinToString(", ") { WEEKDAY_ABBREVIATIONS[it - 1] }
+        }
     }
 
     val today = LocalDate.now()

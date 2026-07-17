@@ -14,7 +14,7 @@ import com.davidp.simpleweeklyreminders.data.model.ReminderLog
 
 @Database(
     entities = [Reminder::class, ReminderLog::class],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -34,6 +34,17 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // reminderType replaces dayInterval-nullness as the recurrence-mode discriminant
+        // (dayInterval remains the interval payload, only meaningful when EVERY_N_DAYS).
+        // frequency is dropped: it only ever stored distinctTimes.size and was never read back.
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE reminders ADD COLUMN reminderType TEXT NOT NULL DEFAULT 'SPECIFIC_DAYS'")
+                db.execSQL("UPDATE reminders SET reminderType = 'EVERY_N_DAYS' WHERE dayInterval IS NOT NULL")
+                db.execSQL("ALTER TABLE reminders DROP COLUMN frequency")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -41,7 +52,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "app_database"
                 )
-                    .addMigrations(MIGRATION_4_5)
+                    .addMigrations(MIGRATION_4_5, MIGRATION_5_6)
                     .fallbackToDestructiveMigration(dropAllTables = true)
                     .build()
                 INSTANCE = instance

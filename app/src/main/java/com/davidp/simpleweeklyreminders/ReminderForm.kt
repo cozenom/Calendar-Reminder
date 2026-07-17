@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.davidp.simpleweeklyreminders.data.model.DEFAULT_ICON_KEY
 import com.davidp.simpleweeklyreminders.data.model.Reminder
+import com.davidp.simpleweeklyreminders.data.model.ReminderType
 import com.davidp.simpleweeklyreminders.data.model.iconFromKey
 import com.davidp.simpleweeklyreminders.ui.theme.appShapes
 import com.davidp.simpleweeklyreminders.ui.theme.dimensions
@@ -89,7 +90,7 @@ private fun ReminderForm(
     var startDate by remember { mutableStateOf(initial?.startDate ?: LocalDate.now()) }
     var endDate by remember { mutableStateOf(initial?.endDate) }
     var reminderDays by remember { mutableStateOf(initial?.reminderDays ?: setOf(1, 2, 3, 4, 5, 6, 7)) }
-    var useEveryNDays by remember { mutableStateOf(initial?.dayInterval != null) }
+    var useEveryNDays by remember { mutableStateOf(initial?.reminderType == ReminderType.EVERY_N_DAYS) }
     var dayInterval by remember { mutableIntStateOf(initial?.dayInterval ?: 1) }
     var notes by remember { mutableStateOf(initial?.notes ?: "") }
     var selectedIcon by remember { mutableStateOf(initial?.icon ?: DEFAULT_ICON_KEY) }
@@ -245,7 +246,7 @@ private fun ReminderForm(
         ) {
             Button(
                 onClick = {
-                    val base = initial ?: Reminder(title = "", reminderTimes = emptyList(), frequency = 0)
+                    val base = initial ?: Reminder(title = "", reminderTimes = emptyList())
                     // distinct(): the same time entered twice would create duplicate
                     // logs, leaving an orphan that always shows up as "missed"
                     val distinctTimes = times.distinct()
@@ -253,13 +254,13 @@ private fun ReminderForm(
                         base.copy(
                             title = title.ifBlank { "Reminder" },
                             reminderTimes = distinctTimes,
-                            frequency = distinctTimes.size,
                             startDate = startDate,
                             endDate = endDate,
                             reminderDays = reminderDays,
                             notes = notes.ifBlank { null },
                             icon = selectedIcon,
-                            dayInterval = if (useEveryNDays) dayInterval else null
+                            dayInterval = if (useEveryNDays) dayInterval else null,
+                            reminderType = if (useEveryNDays) ReminderType.EVERY_N_DAYS else ReminderType.SPECIFIC_DAYS
                         )
                     )
                 },

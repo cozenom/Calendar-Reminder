@@ -22,15 +22,16 @@ class ReminderScheduleTest {
         startDate: LocalDate = monday,
         endDate: LocalDate? = null,
         reminderDays: Set<Int> = setOf(1, 2, 3, 4, 5, 6, 7),
-        dayInterval: Int? = null
+        dayInterval: Int? = null,
+        reminderType: ReminderType = if (dayInterval != null) ReminderType.EVERY_N_DAYS else ReminderType.SPECIFIC_DAYS
     ) = Reminder(
         title = "Test",
         reminderTimes = listOf(LocalTime.of(9, 0)),
-        frequency = 1,
         startDate = startDate,
         endDate = endDate,
         reminderDays = reminderDays,
-        dayInterval = dayInterval
+        dayInterval = dayInterval,
+        reminderType = reminderType
     )
 
     // --- Weekly (specific weekdays) mode ---
@@ -121,5 +122,20 @@ class ReminderScheduleTest {
         assertFalse(r.isScheduledOn(monday.minusDays(3)))
         assertTrue(r.isScheduledOn(monday.plusDays(6)))
         assertFalse(r.isScheduledOn(monday.plusDays(9)))
+    }
+
+    // --- One-time (single date) mode ---
+
+    @Test
+    fun `one-time reminder fires only on its single date`() {
+        val r = reminder(
+            startDate = monday,
+            endDate = monday,
+            reminderDays = setOf(1),
+            reminderType = ReminderType.ONE_TIME
+        )
+        assertTrue(r.isScheduledOn(monday))
+        assertFalse(r.isScheduledOn(monday.plusWeeks(1)))
+        assertFalse(r.isScheduledOn(monday.minusDays(1)))
     }
 }

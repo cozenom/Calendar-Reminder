@@ -1,5 +1,6 @@
 package com.davidp.simpleweeklyreminders.data.database
 
+import com.davidp.simpleweeklyreminders.data.model.ReminderType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -93,5 +94,14 @@ class ConvertersTest {
     @Test
     fun `null time string becomes empty list`() {
         assertEquals(emptyList<LocalTime>(), converters.toListLocalTime(null))
+    }
+
+    // --- ReminderType ---
+
+    @Test
+    fun `reminderType round trips for every value`() {
+        ReminderType.entries.forEach { value ->
+            assertEquals(value, converters.toReminderType(converters.fromReminderType(value)))
+        }
     }
 }

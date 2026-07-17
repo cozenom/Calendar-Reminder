@@ -4,6 +4,7 @@ import com.davidp.simpleweeklyreminders.data.dao.ReminderDao
 import com.davidp.simpleweeklyreminders.data.dao.ReminderLogDao
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderLog
+import com.davidp.simpleweeklyreminders.data.model.ReminderType
 import com.davidp.simpleweeklyreminders.data.model.isScheduledOn
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
@@ -114,10 +115,11 @@ class ReminderRepository(
             .getExistingLogDateTimesForReminder(reminder.id, loopStart.atStartOfDay())
             .toHashSet()
 
-        if (reminder.dayInterval != null) {
+        if (reminder.reminderType == ReminderType.EVERY_N_DAYS) {
+            val interval = reminder.dayInterval ?: 1
             val daysSinceStart = ChronoUnit.DAYS.between(reminder.startDate, loopStart)
-            val offset = daysSinceStart % reminder.dayInterval
-            var date = if (offset == 0L) loopStart else loopStart.plusDays(reminder.dayInterval - offset)
+            val offset = daysSinceStart % interval
+            var date = if (offset == 0L) loopStart else loopStart.plusDays(interval - offset)
             while (date <= endDate) {
                 for (time in times) {
                     val logDateTime = LocalDateTime.of(date, time)
@@ -131,7 +133,7 @@ class ReminderRepository(
                         ))
                     }
                 }
-                date = date.plusDays(reminder.dayInterval.toLong())
+                date = date.plusDays(interval.toLong())
             }
         } else {
             var date = loopStart
