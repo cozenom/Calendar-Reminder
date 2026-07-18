@@ -95,8 +95,9 @@ class BootReceiver : BroadcastReceiver() {
         private const val MISSED_CHANNEL_ID = "MissedRemindersChannel"
         private const val MISSED_NOTIFICATION_ID = 9999
         const val PREFS_NAME = "missed_notification_prefs"
-        // Baseline for "missed" reports: bumped on every app open and when the
-        // missed notification is dismissed
+        // Baseline for "missed" reports: bumped on every app open, when the missed
+        // notification is dismissed, and when a reminder notification is completed
+        // or snoozed (see NotificationActionReceiver) — whichever happened last wins
         const val KEY_LAST_SEEN = "last_seen_at"
         const val ACTION_MISSED_DISMISSED = "com.davidp.simpleweeklyreminders.ACTION_MISSED_DISMISSED"
 

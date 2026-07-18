@@ -206,6 +206,10 @@ class NotificationActionReceiver : BroadcastReceiver() {
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancel(logId)
+
+        // Acting on a notification is as much evidence of engagement as opening
+        // the app — advances the missed-reminders baseline the same way
+        BootReceiver.markSeenNow(context)
     }
 
     private suspend fun snooze(context: Context, logId: Int) {
@@ -222,6 +226,10 @@ class NotificationActionReceiver : BroadcastReceiver() {
         // DB first so the snooze survives reboot/force-stop; the alarm is re-derivable
         database.reminderLogDao().updateSnoozedUntil(logId, snoozedUntil)
         ReminderWorker.scheduleSnoozeAlarm(context, log.id, snoozedUntil)
+
+        // Same reasoning as markAsCompleted: snoozing (button tap or swipe) still
+        // means the user saw this notification
+        BootReceiver.markSeenNow(context)
 
         Log.d("NotificationActionReceiver", "Snoozed log $logId until $snoozedUntil")
     }
