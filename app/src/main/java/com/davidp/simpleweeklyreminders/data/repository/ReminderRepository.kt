@@ -18,22 +18,21 @@ class ReminderRepository(
     private val reminderLogDao: ReminderLogDao
 ) {
     val allReminders: Flow<List<Reminder>> =
-        reminderDao.getAllReminders().map { it.filterNot(Reminder::isArchived) }
+        reminderDao.getAllReminders().map { it.filterNot { r -> r.isArchived() } }
     val archivedReminders: Flow<List<Reminder>> =
-        reminderDao.getAllReminders().map { it.filter(Reminder::isArchived).sortedByDescending { r -> r.endDate } }
+        reminderDao.getAllReminders().map { it.filter { r -> r.isArchived() }.sortedByDescending { r -> r.endDate } }
 
-    suspend fun insert(reminder: Reminder): Long {
+    suspend fun insert(reminder: Reminder, now: LocalDateTime = LocalDateTime.now()): Long {
         val id = reminderDao.insertReminder(reminder)
-        generateLogsForReminder(reminder.copy(id = id.toInt()))
+        generateLogsForReminder(reminder.copy(id = id.toInt()), now)
         return id
     }
 
-    suspend fun update(reminder: Reminder) {
+    suspend fun update(reminder: Reminder, now: LocalDateTime = LocalDateTime.now()) {
         reminderDao.updateReminder(reminder)
         // Keep historical log snapshots in sync with the new title
         reminderLogDao.updateTitleForReminder(reminder.id, reminder.title)
 
-        val now = LocalDateTime.now()
         if (!reminder.isActive) {
             // Paused: nothing gets regenerated, so keep completed-early logs —
             // the carry-over below handles them when the reminder is reactivated
@@ -63,7 +62,7 @@ class ReminderRepository(
         if (staleTodayLogIds.isNotEmpty()) reminderLogDao.deleteLogsByIds(staleTodayLogIds)
 
         // Regenerate logs with updated schedule
-        generateLogsForReminder(reminder)
+        generateLogsForReminder(reminder, now)
 
         if (completedOldLogs.isEmpty()) return
 
@@ -104,11 +103,10 @@ class ReminderRepository(
         return reminderDao.getActiveReminders(date)
     }
 
-    private suspend fun generateLogsForReminder(reminder: Reminder) {
+    private suspend fun generateLogsForReminder(reminder: Reminder, now: LocalDateTime = LocalDateTime.now()) {
         if (!reminder.isActive) return
 
-        val now = LocalDateTime.now()
-        val currentDate = LocalDate.now()
+        val currentDate = now.toLocalDate()
         val endDate = reminder.endDate ?: currentDate.plusYears(1)
         val loopStart = if (reminder.startDate > currentDate) reminder.startDate else currentDate
         // distinct(): reminders saved before the form deduped times may still hold
