@@ -56,6 +56,8 @@ import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -76,6 +78,10 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -94,6 +100,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -105,9 +112,11 @@ import androidx.lifecycle.ViewModelProvider
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderLog
 import com.davidp.simpleweeklyreminders.data.model.ReminderType
+import com.davidp.simpleweeklyreminders.data.model.archivedSince
 import com.davidp.simpleweeklyreminders.data.model.iconFromKey
 import com.davidp.simpleweeklyreminders.data.notification.BootReceiver
 import com.davidp.simpleweeklyreminders.data.notification.ReminderWorker
+import com.davidp.simpleweeklyreminders.data.settings.ArchiveSettings
 import com.davidp.simpleweeklyreminders.ui.theme.CalendarAppTheme
 import com.davidp.simpleweeklyreminders.ui.theme.appShapes
 import com.davidp.simpleweeklyreminders.ui.theme.dimensions
@@ -177,14 +186,40 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/** Reminders that lapsed into the Archive after the user last viewed it. */
+private fun newlyArchivedCount(archived: List<Reminder>, context: android.content.Context): Int {
+    val lastViewed = ArchiveSettings.getLastViewed(context)
+    return archived.count { it.archivedSince()?.isAfter(lastViewed) == true }
+}
+
 @Composable
 fun ReminderApp(viewModel: ReminderViewModel) {
     // Tab 0 = Calendar (home, leftmost, start tab), tab 1 = Reminders
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     var showAddReminderDialog by remember { mutableStateOf(false) }
     var showArchive by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
 
-    Scaffold(bottomBar = {
+    // One-shot per app session: if reminders auto-lapsed into the Archive since the
+    // user last viewed it, surface a heads-up notice (the badge on the Archive icon
+    // persists the same information until they actually open it).
+    var hasShownArchiveNotice by rememberSaveable { mutableStateOf(false) }
+    val archivedReminders by viewModel.archivedReminders.collectAsState(initial = null)
+    LaunchedEffect(archivedReminders) {
+        if (hasShownArchiveNotice) return@LaunchedEffect
+        val archived = archivedReminders ?: return@LaunchedEffect
+        val newCount = newlyArchivedCount(archived, context)
+        if (newCount > 0) {
+            hasShownArchiveNotice = true
+            snackbarHostState.showSnackbar(
+                message = "$newCount reminder${if (newCount > 1) "s" else ""} archived since you last checked",
+                duration = SnackbarDuration.Long
+            )
+        }
+    }
+
+    Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }, bottomBar = {
         NavigationBar {
             NavigationBarItem(
                 selected = selectedTab == 0,
@@ -231,7 +266,7 @@ fun ReminderApp(viewModel: ReminderViewModel) {
                 else -> if (showArchive) {
                     ArchiveScreen(viewModel, onBack = { showArchive = false })
                 } else {
-                    RemindersTab(viewModel, onOpenArchive = { showArchive = true })
+                    RemindersTab(viewModel, onOpenArchive = { showArchive = true }, snackbarHostState = snackbarHostState)
                 }
             }
         }
@@ -260,14 +295,18 @@ fun ReminderApp(viewModel: ReminderViewModel) {
 }
 
 @Composable
-fun RemindersTab(viewModel: ReminderViewModel, onOpenArchive: () -> Unit) {
+fun RemindersTab(viewModel: ReminderViewModel, onOpenArchive: () -> Unit, snackbarHostState: SnackbarHostState) {
     // null = first DB emission hasn't arrived yet — show nothing rather than
     // flashing the empty state on every switch to this tab
     val reminders by viewModel.allReminders.collectAsState(initial = null)
+    val archived by viewModel.archivedReminders.collectAsState(initial = null)
     val today = LocalDate.now()
     val todayLogs by remember(today) { viewModel.getLogsForDate(today) }.collectAsState(initial = emptyList())
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     val loadedReminders = reminders ?: return
+    val badgeCount = newlyArchivedCount(archived ?: emptyList(), context)
 
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         Row(
@@ -277,7 +316,11 @@ fun RemindersTab(viewModel: ReminderViewModel, onOpenArchive: () -> Unit) {
         ) {
             Text("Reminders", style = MaterialTheme.typography.titleLarge)
             IconButton(onClick = onOpenArchive) {
-                Icon(Icons.Outlined.Archive, contentDescription = "Archive")
+                BadgedBox(badge = {
+                    if (badgeCount > 0) Badge { Text(badgeCount.toString()) }
+                }) {
+                    Icon(Icons.Outlined.Archive, contentDescription = "Archive")
+                }
             }
         }
 
@@ -311,7 +354,19 @@ fun RemindersTab(viewModel: ReminderViewModel, onOpenArchive: () -> Unit) {
             ReminderList(
                 reminders = loadedReminders,
                 todayLogsByReminder = todayLogs.groupBy { it.reminderId },
-                onDeleteReminder = { viewModel.delete(it) },
+                onArchiveReminder = { reminder ->
+                    viewModel.archive(reminder)
+                    scope.launch {
+                        val result = snackbarHostState.showSnackbar(
+                            message = "\"${reminder.title}\" archived",
+                            actionLabel = "Undo",
+                            duration = SnackbarDuration.Short
+                        )
+                        if (result == SnackbarResult.ActionPerformed) {
+                            viewModel.restore(reminder)
+                        }
+                    }
+                },
                 viewModel = viewModel
             )
         }
@@ -322,6 +377,9 @@ fun RemindersTab(viewModel: ReminderViewModel, onOpenArchive: () -> Unit) {
 fun ArchiveScreen(viewModel: ReminderViewModel, onBack: () -> Unit) {
     val archived by viewModel.archivedReminders.collectAsState(initial = null)
     val loadedArchived = archived ?: return
+    val context = LocalContext.current
+    // Viewing this screen clears the "new since last checked" badge/notice.
+    LaunchedEffect(Unit) { ArchiveSettings.markViewedNow(context) }
 
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         Row(
@@ -439,7 +497,7 @@ fun ArchivedReminderItem(reminder: Reminder, onRestore: () -> Unit, onDelete: ()
 fun ReminderList(
     reminders: List<Reminder>,
     todayLogsByReminder: Map<Int, List<ReminderLog>>,
-    onDeleteReminder: (Reminder) -> Unit,
+    onArchiveReminder: (Reminder) -> Unit,
     viewModel: ReminderViewModel
 ) {
     var list by remember { mutableStateOf(reminders) }
@@ -474,7 +532,7 @@ fun ReminderList(
                 ReminderItem(
                     reminder = reminder,
                     todayLogs = todayLogsByReminder[reminder.id] ?: emptyList(),
-                    onDelete = { onDeleteReminder(reminder) },
+                    onArchive = { onArchiveReminder(reminder) },
                     viewModel = viewModel,
                     dragHandleModifier = Modifier.draggableHandle(
                         onDragStarted = {

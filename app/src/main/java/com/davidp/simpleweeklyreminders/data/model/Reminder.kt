@@ -40,3 +40,6 @@ fun Reminder.isScheduledOn(date: LocalDate): Boolean {
 
 /** True once this reminder's schedule has fully elapsed — the day after endDate, calendar-date based. */
 fun Reminder.isArchived(today: LocalDate = LocalDate.now()): Boolean = endDate != null && endDate < today
+
+/** The moment this reminder became archived (day after endDate), or null if it isn't archived. */
+fun Reminder.archivedSince(): LocalDateTime? = endDate?.plusDays(1)?.atStartOfDay()

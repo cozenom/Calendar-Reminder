@@ -19,9 +19,6 @@ import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Snooze
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -123,11 +120,10 @@ private fun formatNextOccurrence(dateTime: LocalDateTime, now: LocalDateTime, ti
 fun ReminderItem(
     reminder: Reminder,
     todayLogs: List<ReminderLog>,
-    onDelete: () -> Unit,
+    onArchive: () -> Unit,
     viewModel: ReminderViewModel,
     dragHandleModifier: Modifier = Modifier
 ) {
-    var showDeleteConfirm by remember { mutableStateOf(false) }
     var showEditSheet by remember { mutableStateOf(false) }
     var showNotes by remember { mutableStateOf(false) }
 
@@ -272,16 +268,10 @@ fun ReminderItem(
                     Text("Edit")
                 }
                 TextButton(
-                    onClick = { viewModel.archive(reminder) },
+                    onClick = onArchive,
                     shape = MaterialTheme.appShapes.medium
                 ) {
                     Text("Archive")
-                }
-                TextButton(
-                    onClick = { showDeleteConfirm = true },
-                    shape = MaterialTheme.appShapes.medium
-                ) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
                 }
             }
         }
@@ -294,34 +284,6 @@ fun ReminderItem(
             onSave = { updated ->
                 viewModel.update(updated)
                 showEditSheet = false
-            }
-        )
-    }
-
-    if (showDeleteConfirm) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Delete Reminder") },
-            text = { Text("Are you sure you want to delete \"${reminder.title}\"?") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showDeleteConfirm = false
-                        onDelete()
-                    },
-                    shape = MaterialTheme.appShapes.medium,
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) {
-                    Text("Delete")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showDeleteConfirm = false },
-                    shape = MaterialTheme.appShapes.medium
-                ) {
-                    Text("Cancel")
-                }
             }
         )
     }
