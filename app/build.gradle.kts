@@ -17,14 +17,14 @@ val releaseStoreFile = localProperties.getProperty("RELEASE_STORE_FILE")
 
 android {
     namespace = "com.davidp.simpleweeklyreminders"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.davidp.simpleweeklyreminders"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 3
-        versionName = "1.1"
+        targetSdk = 36
+        versionCode = 4
+        versionName = "1.11"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
