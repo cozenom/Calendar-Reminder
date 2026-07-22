@@ -1,9 +1,12 @@
 package com.davidp.simpleweeklyreminders.data.model
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 
 /**
@@ -23,7 +26,8 @@ class ReminderScheduleTest {
         endDate: LocalDate? = null,
         reminderDays: Set<Int> = setOf(1, 2, 3, 4, 5, 6, 7),
         dayInterval: Int? = null,
-        reminderType: ReminderType = if (dayInterval != null) ReminderType.EVERY_N_DAYS else ReminderType.SPECIFIC_DAYS
+        reminderType: ReminderType = if (dayInterval != null) ReminderType.EVERY_N_DAYS else ReminderType.SPECIFIC_DAYS,
+        archivedAt: LocalDateTime? = null
     ) = Reminder(
         title = "Test",
         reminderTimes = listOf(LocalTime.of(9, 0)),
@@ -31,7 +35,8 @@ class ReminderScheduleTest {
         endDate = endDate,
         reminderDays = reminderDays,
         dayInterval = dayInterval,
-        reminderType = reminderType
+        reminderType = reminderType,
+        archivedAt = archivedAt
     )
 
     // --- Weekly (specific weekdays) mode ---
@@ -163,5 +168,33 @@ class ReminderScheduleTest {
     fun `past end date is archived`() {
         val r = reminder(endDate = monday.minusDays(1))
         assertTrue(r.isArchived(today = monday))
+    }
+
+    // --- archivedSince ---
+
+    @Test
+    fun `not archived means no archivedSince`() {
+        val r = reminder(endDate = null)
+        assertNull(r.archivedSince(today = monday))
+    }
+
+    @Test
+    fun `auto-lapsed reminder falls back to day after endDate at midnight`() {
+        val r = reminder(endDate = monday.minusDays(1)) // archived as of `monday`
+        assertEquals(monday.atStartOfDay(), r.archivedSince(today = monday))
+    }
+
+    @Test
+    fun `manually archived reminder prefers the precise archivedAt timestamp`() {
+        val preciseInstant = monday.minusDays(1).atTime(14, 30)
+        val r = reminder(endDate = monday.minusDays(1), archivedAt = preciseInstant)
+        assertEquals(preciseInstant, r.archivedSince(today = monday))
+    }
+
+    @Test
+    fun `archivedAt on a not-yet-archived reminder is ignored`() {
+        // Guards against a stale archivedAt surviving a restore()-then-re-edit path
+        val r = reminder(endDate = monday.plusDays(1), archivedAt = monday.atTime(9, 0))
+        assertNull(r.archivedSince(today = monday))
     }
 }

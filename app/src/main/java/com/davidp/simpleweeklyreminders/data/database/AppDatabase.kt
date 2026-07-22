@@ -14,7 +14,7 @@ import com.davidp.simpleweeklyreminders.data.model.ReminderLog
 
 @Database(
     entities = [Reminder::class, ReminderLog::class],
-    version = 6,
+    version = 7,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -45,6 +45,22 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // archivedAt: precise archive timestamp for manual archive() — lets the archive
+        // badge/notice tell same-day archives apart from ones already seen (endDate alone
+        // is day-only). Null for pre-existing rows and for auto-lapsed reminders, which
+        // fall back to endDate-derived, day-granularity timing (see Reminder.archivedSince()).
+        //
+        // importance: schema only for now (2026-07-21) — Low/Medium/High, stored as TEXT
+        // via Converters (matching reminderType), defaulting existing rows to HIGH so
+        // nothing's behavior changes until the importance-driven notification work (2.2)
+        // actually ships.
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE reminders ADD COLUMN archivedAt TEXT")
+                db.execSQL("ALTER TABLE reminders ADD COLUMN importance TEXT NOT NULL DEFAULT 'HIGH'")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -52,7 +68,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "app_database"
                 )
-                    .addMigrations(MIGRATION_4_5, MIGRATION_5_6)
+                    .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                     .fallbackToDestructiveMigration(dropAllTables = true)
                     .build()
                 INSTANCE = instance

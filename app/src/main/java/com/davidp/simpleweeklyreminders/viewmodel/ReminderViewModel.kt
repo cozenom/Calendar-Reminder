@@ -47,12 +47,14 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun archive(reminder: Reminder) = viewModelScope.launch {
-        repository.update(reminder.copy(isActive = false, endDate = LocalDate.now().minusDays(1)))
+        repository.update(
+            reminder.copy(isActive = false, endDate = LocalDate.now().minusDays(1), archivedAt = LocalDateTime.now())
+        )
         ReminderWorker.rescheduleNotifications(getApplication())
     }
 
     fun restore(reminder: Reminder) = viewModelScope.launch {
-        repository.update(reminder.copy(isActive = true, endDate = null))
+        repository.update(reminder.copy(isActive = true, endDate = null, archivedAt = null))
         ReminderWorker.rescheduleNotifications(getApplication())
     }
 

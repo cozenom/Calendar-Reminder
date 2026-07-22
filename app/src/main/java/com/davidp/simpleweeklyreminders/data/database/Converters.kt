@@ -1,6 +1,7 @@
 package com.davidp.simpleweeklyreminders.data.database
 
 import androidx.room.TypeConverter
+import com.davidp.simpleweeklyreminders.data.model.Importance
 import com.davidp.simpleweeklyreminders.data.model.ReminderType
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -61,4 +62,10 @@ class Converters {
 
     @TypeConverter
     fun toReminderType(value: String): ReminderType = ReminderType.valueOf(value)
+
+    @TypeConverter
+    fun fromImportance(value: Importance): String = value.name
+
+    @TypeConverter
+    fun toImportance(value: String): Importance = Importance.valueOf(value)
 }
