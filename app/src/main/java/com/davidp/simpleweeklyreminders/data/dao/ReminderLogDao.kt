@@ -12,7 +12,7 @@ interface ReminderLogDao {
     @Insert
     suspend fun insert(log: ReminderLog)
 
-    @Query("SELECT * FROM reminder_logs WHERE logDateTime BETWEEN :start AND :end")
+    @Query("SELECT * FROM reminder_logs WHERE logDateTime BETWEEN :start AND :end ORDER BY logDateTime ASC")
     fun getLogsForDateRange(start: LocalDateTime, end: LocalDateTime): Flow<List<ReminderLog>>
 
     @Query("UPDATE reminder_logs SET completed = :completed WHERE id = :logId")

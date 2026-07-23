@@ -855,18 +855,16 @@ fun CalendarTab(viewModel: ReminderViewModel) {
                     Text("No reminders scheduled for this day")
                 } else {
                     LazyColumn {
-                        items(selectedDateLogs.groupBy { it.title }.values.toList()) { titleLogs ->
-                            titleLogs.forEachIndexed { _, log ->
-                                ReminderEventItem(
-                                    log = log,
-                                    iconKey = activeReminders.find { it.id == log.reminderId }?.icon,
-                                    importance = activeReminders.find { it.id == log.reminderId }?.importance ?: Importance.HIGH,
-                                    onToggle = {
-                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        viewModel.updateLogCompletedStatus(log.id, !log.completed)
-                                    }
-                                )
-                            }
+                        items(selectedDateLogs, key = { it.id }) { log ->
+                            ReminderEventItem(
+                                log = log,
+                                iconKey = activeReminders.find { it.id == log.reminderId }?.icon,
+                                importance = activeReminders.find { it.id == log.reminderId }?.importance ?: Importance.HIGH,
+                                onToggle = {
+                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    viewModel.updateLogCompletedStatus(log.id, !log.completed)
+                                }
+                            )
                         }
                     }
                 }
