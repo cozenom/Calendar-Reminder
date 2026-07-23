@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -43,6 +44,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -50,7 +53,11 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Snooze
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.CalendarMonth
@@ -68,16 +75,23 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.InputChip
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -85,6 +99,7 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -103,8 +118,10 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -114,7 +131,10 @@ import com.davidp.simpleweeklyreminders.data.model.Importance
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderLog
 import com.davidp.simpleweeklyreminders.data.model.ReminderType
+import com.davidp.simpleweeklyreminders.data.model.SortDirection
+import com.davidp.simpleweeklyreminders.data.model.SortMode
 import com.davidp.simpleweeklyreminders.data.model.archivedSince
+import com.davidp.simpleweeklyreminders.data.model.defaultDirection
 import com.davidp.simpleweeklyreminders.data.model.iconFromKey
 import com.davidp.simpleweeklyreminders.data.notification.BootReceiver
 import com.davidp.simpleweeklyreminders.data.notification.ReminderWorker
@@ -296,6 +316,7 @@ fun ReminderApp(viewModel: ReminderViewModel) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RemindersTab(viewModel: ReminderViewModel, onOpenArchive: () -> Unit, snackbarHostState: SnackbarHostState) {
     // null = first DB emission hasn't arrived yet — show nothing rather than
@@ -310,18 +331,73 @@ fun RemindersTab(viewModel: ReminderViewModel, onOpenArchive: () -> Unit, snackb
     val loadedReminders = reminders ?: return
     val badgeCount = newlyArchivedCount(archived ?: emptyList(), context)
 
+    // Sort mode, direction, search text, and the importance filter reset on a real relaunch
+    // (fresh process, so this composable starts over) but survive a background-and-resume
+    // recreation via rememberSaveable, so switching apps for a second doesn't silently drop them.
+    var sortMode by rememberSaveable { mutableStateOf(SortMode.MANUAL) }
+    var sortDirection by rememberSaveable { mutableStateOf(SortMode.MANUAL.defaultDirection()) }
+    var selectedImportances by rememberSaveable { mutableStateOf(setOf(Importance.LOW, Importance.MEDIUM, Importance.HIGH)) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var showSortFilterSheet by remember { mutableStateOf(false) }
+    val isFilterActive = sortMode != SortMode.MANUAL || selectedImportances.size < 3 || searchQuery.isNotBlank()
+
+    val visibleReminders = remember(loadedReminders, sortMode, sortDirection, selectedImportances, searchQuery) {
+        loadedReminders
+            .filter { selectedImportances.contains(it.importance) }
+            .filter { searchQuery.isBlank() || it.title.contains(searchQuery, ignoreCase = true) }
+            .sortedFor(sortMode, sortDirection)
+    }
+
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Reminders", style = MaterialTheme.typography.titleLarge)
-            IconButton(onClick = onOpenArchive) {
-                BadgedBox(badge = {
-                    if (badgeCount > 0) Badge { Text(badgeCount.toString()) }
-                }) {
-                    Icon(Icons.Outlined.Archive, contentDescription = "Archive")
+            Text(
+                "Reminders",
+                style = MaterialTheme.typography.titleLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Quick way to drop the search without reopening the sheet — tapping the
+                // chip itself (rather than the x) reopens the sheet to edit it instead.
+                if (searchQuery.isNotBlank()) {
+                    InputChip(
+                        selected = false,
+                        onClick = { showSortFilterSheet = true },
+                        label = {
+                            Text("“$searchQuery”", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        },
+                        trailingIcon = {
+                            Icon(
+                                Icons.Filled.Clear,
+                                contentDescription = "Clear search",
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .clickable { searchQuery = "" }
+                            )
+                        },
+                        modifier = Modifier
+                            .padding(end = 4.dp)
+                            .widthIn(max = 140.dp)
+                    )
+                }
+                IconButton(onClick = { showSortFilterSheet = true }) {
+                    BadgedBox(badge = {
+                        if (isFilterActive) Badge()
+                    }) {
+                        Icon(Icons.Filled.FilterList, contentDescription = "Sort & filter")
+                    }
+                }
+                IconButton(onClick = onOpenArchive) {
+                    BadgedBox(badge = {
+                        if (badgeCount > 0) Badge { Text(badgeCount.toString()) }
+                    }) {
+                        Icon(Icons.Outlined.Archive, contentDescription = "Archive")
+                    }
                 }
             }
         }
@@ -352,9 +428,29 @@ fun RemindersTab(viewModel: ReminderViewModel, onOpenArchive: () -> Unit, snackb
                     )
                 }
             }
+        } else if (visibleReminders.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        imageVector = Icons.Filled.FilterList,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                    Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
+                    Text(
+                        "No reminders match your filters",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         } else {
             ReminderList(
-                reminders = loadedReminders,
+                reminders = visibleReminders,
                 todayLogsByReminder = todayLogs.groupBy { it.reminderId },
                 onArchiveReminder = { reminder ->
                     viewModel.archive(reminder)
@@ -369,9 +465,29 @@ fun RemindersTab(viewModel: ReminderViewModel, onOpenArchive: () -> Unit, snackb
                         }
                     }
                 },
-                viewModel = viewModel
+                viewModel = viewModel,
+                sortMode = sortMode
             )
         }
+    }
+
+    if (showSortFilterSheet) {
+        SortFilterSheet(
+            sortMode = sortMode,
+            onSortModeChange = { mode ->
+                sortMode = mode
+                // Reset to that mode's natural direction rather than carrying over
+                // whatever was toggled for the previously selected mode.
+                sortDirection = mode.defaultDirection()
+            },
+            sortDirection = sortDirection,
+            onSortDirectionChange = { sortDirection = it },
+            selectedImportances = selectedImportances,
+            onImportancesChange = { selectedImportances = it },
+            searchQuery = searchQuery,
+            onSearchQueryChange = { searchQuery = it },
+            onDismiss = { showSortFilterSheet = false }
+        )
     }
 }
 
@@ -500,11 +616,15 @@ fun ReminderList(
     reminders: List<Reminder>,
     todayLogsByReminder: Map<Int, List<ReminderLog>>,
     onArchiveReminder: (Reminder) -> Unit,
-    viewModel: ReminderViewModel
+    viewModel: ReminderViewModel,
+    sortMode: SortMode = SortMode.MANUAL
 ) {
     var list by remember { mutableStateOf(reminders) }
     var isDraggingActive by remember { mutableStateOf(false) }
     val haptics = LocalHapticFeedback.current
+    // Drag-reorder only means something in Manual mode — under a computed sort the
+    // list would just re-sort itself back on the next recomposition.
+    val dragEnabled = sortMode == SortMode.MANUAL
 
     LaunchedEffect(reminders) {
         if (!isDraggingActive) list = reminders
@@ -536,14 +656,146 @@ fun ReminderList(
                     todayLogs = todayLogsByReminder[reminder.id] ?: emptyList(),
                     onArchive = { onArchiveReminder(reminder) },
                     viewModel = viewModel,
-                    modifier = Modifier.draggableHandle(
+                    dragEnabled = dragEnabled,
+                    modifier = if (dragEnabled) Modifier.draggableHandle(
                         onDragStarted = {
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                             isDraggingActive = true
                         },
                         onDragStopped = { isDraggingActive = false }
-                    )
+                    ) else Modifier
                 )
+            }
+        }
+    }
+}
+
+/** Sort-order + importance-filter + title-search bottom sheet for the Reminders tab. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SortFilterSheet(
+    sortMode: SortMode,
+    onSortModeChange: (SortMode) -> Unit,
+    sortDirection: SortDirection,
+    onSortDirectionChange: (SortDirection) -> Unit,
+    selectedImportances: Set<Importance>,
+    onImportancesChange: (Set<Importance>) -> Unit,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val sortOptions = listOf(
+        SortMode.MANUAL to "Manual (drag)",
+        SortMode.NEXT_OCCURRENCE to "Next occurrence",
+        SortMode.IMPORTANCE to "Importance",
+        SortMode.DATE_ADDED to "Date added"
+    )
+    val importanceOptions = listOf(
+        Importance.HIGH to "High",
+        Importance.MEDIUM to "Medium",
+        Importance.LOW to "Low"
+    )
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 24.dp)
+        ) {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = onSearchQueryChange,
+                label = { Text("Search title") },
+                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { onSearchQueryChange("") }) {
+                            Icon(Icons.Filled.Clear, contentDescription = "Clear search")
+                        }
+                    }
+                },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
+            Text("Sort by", style = MaterialTheme.typography.titleSmall)
+            Column(Modifier.selectableGroup()) {
+                sortOptions.forEach { (mode, label) ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .selectable(
+                                selected = sortMode == mode,
+                                onClick = { onSortModeChange(mode) },
+                                role = Role.RadioButton
+                            )
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = sortMode == mode, onClick = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(label, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            }
+
+            // Direction has no meaning for drag order — disabled (not hidden) for Manual so
+            // the sheet's height stays constant across every sort mode.
+            val directionEnabled = sortMode != SortMode.MANUAL
+            val (ascendingLabel, descendingLabel) = when (sortMode) {
+                SortMode.IMPORTANCE -> "Low first" to "High first"
+                SortMode.NEXT_OCCURRENCE -> "Soonest first" to "Latest first"
+                SortMode.DATE_ADDED -> "Oldest first" to "Newest first"
+                SortMode.MANUAL -> "Ascending" to "Descending"
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                SegmentedButton(
+                    selected = directionEnabled && sortDirection == SortDirection.ASCENDING,
+                    onClick = { onSortDirectionChange(SortDirection.ASCENDING) },
+                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                    enabled = directionEnabled,
+                    icon = {}
+                ) {
+                    Text(ascendingLabel)
+                }
+                SegmentedButton(
+                    selected = directionEnabled && sortDirection == SortDirection.DESCENDING,
+                    onClick = { onSortDirectionChange(SortDirection.DESCENDING) },
+                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                    enabled = directionEnabled,
+                    icon = {}
+                ) {
+                    Text(descendingLabel)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
+            Text("Filter by importance", style = MaterialTheme.typography.titleSmall)
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                importanceOptions.forEach { (importance, label) ->
+                    val selected = selectedImportances.contains(importance)
+                    FilterChip(
+                        selected = selected,
+                        onClick = {
+                            val updated = if (selected) selectedImportances - importance else selectedImportances + importance
+                            // Never allow an empty selection — that would just show "no matches"
+                            // for no clear reason, so treat it the same as "all selected".
+                            onImportancesChange(
+                                if (updated.isEmpty()) setOf(Importance.LOW, Importance.MEDIUM, Importance.HIGH) else updated
+                            )
+                        },
+                        label = { Text(label) },
+                        leadingIcon = if (selected) {
+                            { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                        } else null
+                    )
+                }
             }
         }
     }

@@ -14,6 +14,17 @@ enum class ReminderType { SPECIFIC_DAYS, EVERY_N_DAYS, ONE_TIME }
 // between MEDIUM and HIGH) needs a new case here, not a data migration.
 enum class Importance { LOW, MEDIUM, HIGH }
 
+/** How the Reminders tab list is ordered. MANUAL is the drag-reorderable default. */
+enum class SortMode { MANUAL, DATE_ADDED, IMPORTANCE, NEXT_OCCURRENCE }
+
+enum class SortDirection { ASCENDING, DESCENDING }
+
+/** Sensible starting direction when a sort mode is first selected (still user-toggleable). */
+fun SortMode.defaultDirection(): SortDirection = when (this) {
+    SortMode.IMPORTANCE -> SortDirection.DESCENDING // High first reads as "most important on top"
+    SortMode.MANUAL, SortMode.DATE_ADDED, SortMode.NEXT_OCCURRENCE -> SortDirection.ASCENDING
+}
+
 @Entity(tableName = "reminders")
 data class Reminder(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,

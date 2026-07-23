@@ -53,6 +53,9 @@ import com.davidp.simpleweeklyreminders.data.model.Importance
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderLog
 import com.davidp.simpleweeklyreminders.data.model.ReminderType
+import com.davidp.simpleweeklyreminders.data.model.SortDirection
+import com.davidp.simpleweeklyreminders.data.model.SortMode
+import com.davidp.simpleweeklyreminders.data.model.defaultDirection
 import com.davidp.simpleweeklyreminders.data.model.iconFromKey
 import com.davidp.simpleweeklyreminders.data.model.isScheduledOn
 import com.davidp.simpleweeklyreminders.ui.theme.appShapes
@@ -111,6 +114,38 @@ fun nextOccurrence(reminder: Reminder, now: LocalDateTime = LocalDateTime.now())
         date = date.plusDays(1)
     }
     return null
+}
+
+/**
+ * Orders reminders for the given [SortMode] and [direction]. MANUAL ignores direction — the
+ * list is already in `sortOrder ASC, createdAt ASC` order from the DB query, and drag order
+ * has no "reverse". IMPORTANCE and NEXT_OCCURRENCE use a stable sort so MANUAL order still
+ * breaks ties (e.g. same importance, or both paused).
+ */
+fun List<Reminder>.sortedFor(
+    mode: SortMode,
+    direction: SortDirection = mode.defaultDirection(),
+    now: LocalDateTime = LocalDateTime.now()
+): List<Reminder> {
+    if (mode == SortMode.MANUAL) return this
+
+    val ascending = when (mode) {
+        SortMode.DATE_ADDED -> sortedBy { it.createdAt }
+        SortMode.IMPORTANCE -> sortedBy { it.importance.ordinal }
+        SortMode.NEXT_OCCURRENCE -> sortedWith(compareBy(nullsLast()) { nextOccurrence(it, now) })
+        SortMode.MANUAL -> this
+    }
+    if (direction == SortDirection.ASCENDING) return ascending
+
+    // Descending: reverse, but keep "no next occurrence" (paused/lapsed) pinned at the end
+    // rather than flipping to the front — those reminders aren't meaningfully "latest",
+    // they're just not applicable to this sort.
+    return if (mode == SortMode.NEXT_OCCURRENCE) {
+        val (withOccurrence, without) = ascending.partition { nextOccurrence(it, now) != null }
+        withOccurrence.reversed() + without
+    } else {
+        ascending.reversed()
+    }
 }
 
 private fun formatNextOccurrence(dateTime: LocalDateTime, now: LocalDateTime, timePattern: String): String {
@@ -187,6 +222,7 @@ fun ReminderItem(
     todayLogs: List<ReminderLog>,
     onArchive: () -> Unit,
     viewModel: ReminderViewModel,
+    dragEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     var showEditSheet by remember { mutableStateOf(false) }
@@ -201,14 +237,18 @@ fun ReminderItem(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.DragIndicator,
-                    contentDescription = "Drag to reorder",
-                    modifier = modifier
-                        .size(20.dp)
-                        .padding(end = 4.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                )
+                // Only meaningful in Manual sort mode — dragging under a computed sort
+                // (importance/next-occurrence/date-added) would just snap back.
+                if (dragEnabled) {
+                    Icon(
+                        imageVector = Icons.Default.DragIndicator,
+                        contentDescription = "Drag to reorder",
+                        modifier = modifier
+                            .size(20.dp)
+                            .padding(end = 4.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                    )
+                }
                 Icon(
                     imageVector = iconFromKey(reminder.icon).icon,
                     contentDescription = null,
