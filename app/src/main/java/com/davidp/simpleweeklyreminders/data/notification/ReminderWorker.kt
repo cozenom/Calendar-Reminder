@@ -55,6 +55,7 @@ class ReminderWorker(
         const val ACTION_SHOW_NOTIFICATION = "com.davidp.simpleweeklyreminders.ACTION_SHOW_NOTIFICATION"
         const val ACTION_COMPLETED = "com.davidp.simpleweeklyreminders.ACTION_COMPLETED"
         const val ACTION_SNOOZE = "com.davidp.simpleweeklyreminders.ACTION_SNOOZE"
+        const val ACTION_DISMISS = "com.davidp.simpleweeklyreminders.ACTION_DISMISS"
         const val EXTRA_LOG_ID = "log_id"
         const val EXTRA_REMINDER_ID = "reminder_id"
         const val EXTRA_IS_SNOOZE = "is_snooze"

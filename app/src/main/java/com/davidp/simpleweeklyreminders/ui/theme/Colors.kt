@@ -18,6 +18,14 @@ data class ReminderColors(
     // Calendar indicator dots
     val completedIndicator: Color,
     val pendingIndicator: Color,
+
+    // Importance chevrons (list row, calendar pip, calendar list) — blue/amber/red
+    // rather than green/amber/red: green-red is the hardest pair to distinguish
+    // for red-green color blindness, so the chevron *count* carries the primary
+    // signal and color reinforces it rather than being relied on alone.
+    val importanceLow: Color,
+    val importanceMedium: Color,
+    val importanceHigh: Color,
 )
 
 val LightReminderColors = ReminderColors(
@@ -31,6 +39,11 @@ val LightReminderColors = ReminderColors(
     // Calendar indicators - light mode
     completedIndicator = Color(0xFF4CAF50),  // Standard Material green
     pendingIndicator = Color(0xFFF44336),    // Standard Material red
+
+    // Importance chevrons - light mode
+    importanceLow = Color(0xFF1976D2),       // Blue 700
+    importanceMedium = Color(0xFFF9A825),    // Amber 800
+    importanceHigh = Color(0xFFD32F2F),      // Red 700
 )
 
 val DarkReminderColors = ReminderColors(
@@ -44,6 +57,11 @@ val DarkReminderColors = ReminderColors(
     // Calendar indicators - dark mode
     completedIndicator = Color(0xFF4CAF50),  // Standard Material green
     pendingIndicator = Color(0xFFF44336),    // Standard Material red
+
+    // Importance chevrons - dark mode
+    importanceLow = Color(0xFF64B5F6),       // Blue 300
+    importanceMedium = Color(0xFFFFD54F),    // Amber 300
+    importanceHigh = Color(0xFFEF9A9A),      // Red 300
 )
 
 val LocalReminderColors = staticCompositionLocalOf { LightReminderColors }

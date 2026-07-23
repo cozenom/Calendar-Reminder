@@ -46,6 +46,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.davidp.simpleweeklyreminders.data.model.DEFAULT_ICON_KEY
+import com.davidp.simpleweeklyreminders.data.model.Importance
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderType
 import com.davidp.simpleweeklyreminders.data.model.iconFromKey
@@ -95,6 +96,10 @@ private fun ReminderForm(
     var dayInterval by remember { mutableIntStateOf(initial?.dayInterval ?: 1) }
     var notes by remember { mutableStateOf(initial?.notes ?: "") }
     var selectedIcon by remember { mutableStateOf(initial?.icon ?: DEFAULT_ICON_KEY) }
+    // Null (no pre-selection) for a brand-new reminder — HIGH is a migration-only
+    // default (see Reminder.kt), not something a new reminder should silently
+    // inherit, so choosing a level here is mandatory rather than defaulted.
+    var importance by remember { mutableStateOf(initial?.importance) }
     var showStartDatePicker by remember { mutableStateOf(false) }
     var showEndDatePicker by remember { mutableStateOf(false) }
     var showIconPicker by remember { mutableStateOf(false) }
@@ -153,6 +158,17 @@ private fun ReminderForm(
             ReminderType.EVERY_N_DAYS -> DayIntervalSelector(interval = dayInterval, onIntervalChange = { dayInterval = it })
             ReminderType.SPECIFIC_DAYS -> WeekdaySelector(selectedDays = reminderDays, onDaysChanged = { reminderDays = it })
             ReminderType.ONE_TIME -> {} // single date picked below, nothing to select here
+        }
+        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
+
+        ImportanceSelector(importance = importance, onChanged = { importance = it })
+        if (importance == null) {
+            Text(
+                "Choose an importance level",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = 4.dp)
+            )
         }
         Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
 
@@ -275,13 +291,14 @@ private fun ReminderForm(
                             notes = notes.ifBlank { null },
                             icon = selectedIcon,
                             dayInterval = if (recurrenceMode == ReminderType.EVERY_N_DAYS) dayInterval else null,
-                            reminderType = recurrenceMode
+                            reminderType = recurrenceMode,
+                            importance = requireNotNull(importance)
                         )
                     )
                 },
                 modifier = Modifier.weight(1f),
                 shape = MaterialTheme.appShapes.medium,
-                enabled = !endBeforeStart && !oneTimeInPast
+                enabled = !endBeforeStart && !oneTimeInPast && importance != null
             ) {
                 Text(if (initial == null) "Add Reminder" else "Save")
             }

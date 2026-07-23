@@ -99,6 +99,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -109,6 +110,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModelProvider
+import com.davidp.simpleweeklyreminders.data.model.Importance
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderLog
 import com.davidp.simpleweeklyreminders.data.model.ReminderType
@@ -589,6 +591,78 @@ fun RecurrenceToggle(mode: ReminderType, onChanged: (ReminderType) -> Unit) {
     }
 }
 
+/**
+ * Tap-to-select segmented control — same interaction pattern as WeekdaySelector's
+ * day buttons (filled when selected, outlined otherwise) rather than a radio
+ * group, styled with each level's own color instead of the theme primary so the
+ * selector previews all three colors even before a choice is made. No level is
+ * pre-selected — [importance] is null until the user picks one, since HIGH is
+ * only ever a migration-compatibility default (see Reminder.kt), not something
+ * a brand-new reminder should silently inherit.
+ */
+@Composable
+fun ImportanceSelector(importance: Importance?, onChanged: (Importance) -> Unit) {
+    val reminderColors = MaterialTheme.reminderColors
+    val options = listOf(
+        Triple(Importance.LOW, "Low", reminderColors.importanceLow),
+        Triple(Importance.MEDIUM, "Medium", reminderColors.importanceMedium),
+        Triple(Importance.HIGH, "High", reminderColors.importanceHigh)
+    )
+
+    Column {
+        Text(
+            "Importance",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            options.forEach { (level, label, color) ->
+                ImportanceButton(
+                    label = label,
+                    color = color,
+                    isSelected = importance == level,
+                    onClick = { onChanged(level) },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ImportanceButton(
+    label: String,
+    color: Color,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val backgroundColor = if (isSelected) color else Color.Transparent
+    // Picked from the fill's own luminance rather than a fixed onSurface/surface
+    // token: the dark-theme tints (e.g. amber 300) are just as light as their
+    // light-theme counterparts are dark, so a theme-fixed choice would read fine
+    // in one theme and wash out in the other for the same color
+    val contentColor = if (isSelected) {
+        if (color.luminance() > 0.5f) Color.Black else Color.White
+    } else color
+
+    Box(
+        modifier = modifier
+            .clip(MaterialTheme.appShapes.medium)
+            .background(backgroundColor)
+            .border(width = 1.dp, color = color, shape = MaterialTheme.appShapes.medium)
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text = label, color = contentColor, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
 @Composable
 fun DayIntervalSelector(interval: Int, onIntervalChange: (Int) -> Unit) {
     var inputText by remember { mutableStateOf(interval.toString()) }
@@ -786,6 +860,7 @@ fun CalendarTab(viewModel: ReminderViewModel) {
                                 ReminderEventItem(
                                     log = log,
                                     iconKey = activeReminders.find { it.id == log.reminderId }?.icon,
+                                    importance = activeReminders.find { it.id == log.reminderId }?.importance ?: Importance.HIGH,
                                     onToggle = {
                                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                         viewModel.updateLogCompletedStatus(log.id, !log.completed)
@@ -961,7 +1036,7 @@ fun CalendarDialog(
 }
 
 @Composable
-fun ReminderEventItem(log: ReminderLog, iconKey: String?, onToggle: () -> Unit) {
+fun ReminderEventItem(log: ReminderLog, iconKey: String?, importance: Importance, onToggle: () -> Unit) {
     val reminderColors = MaterialTheme.reminderColors
     val containerColor by animateColorAsState(
         if (log.completed) reminderColors.completedContainer else reminderColors.pendingContainer,
@@ -996,7 +1071,11 @@ fun ReminderEventItem(log: ReminderLog, iconKey: String?, onToggle: () -> Unit) 
                 color = contentColor
             )
             Spacer(modifier = Modifier.width(12.dp))
-            Text(text = log.title, style = MaterialTheme.typography.bodyLarge, color = contentColor, modifier = Modifier.weight(1f))
+            Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                Text(text = log.title, style = MaterialTheme.typography.bodyLarge, color = contentColor)
+                Spacer(modifier = Modifier.width(6.dp))
+                ImportanceChevrons(importance = importance)
+            }
             val snoozedUntil = log.snoozedUntil
             if (snoozedUntil != null && !log.completed) {
                 Icon(

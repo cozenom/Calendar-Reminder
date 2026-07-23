@@ -2,6 +2,7 @@ package com.davidp.simpleweeklyreminders
 
 import android.text.format.DateFormat
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -37,10 +38,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.davidp.simpleweeklyreminders.data.model.Importance
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderLog
 import com.davidp.simpleweeklyreminders.data.model.ReminderType
@@ -116,6 +125,62 @@ private fun formatNextOccurrence(dateTime: LocalDateTime, now: LocalDateTime, ti
     return "$day at $time"
 }
 
+/**
+ * Shared importance marker for every surface that shows a reminder (list row,
+ * calendar list, notification icon tint): military-style rank chevrons — one
+ * stacked stripe per level (1x/2x/3x for Low/Medium/High), always shown rather
+ * than only on outliers. Custom-drawn rather than a repurposed arrow icon so
+ * the stripes actually interlock like rank insignia instead of just overlapping
+ * glyphs. Color reinforces the count but isn't relied on alone (see [ReminderColors]).
+ */
+@Composable
+fun ImportanceChevrons(
+    importance: Importance,
+    modifier: Modifier = Modifier,
+    chevronWidth: Dp = 16.dp,
+    chevronHeight: Dp = 6.dp,
+    strokeWidth: Dp = 2.dp
+) {
+    val color = with(MaterialTheme.reminderColors) {
+        when (importance) {
+            Importance.LOW -> importanceLow
+            Importance.MEDIUM -> importanceMedium
+            Importance.HIGH -> importanceHigh
+        }
+    }
+    val count = when (importance) {
+        Importance.LOW -> 1
+        Importance.MEDIUM -> 2
+        Importance.HIGH -> 3
+    }
+    val label = when (importance) {
+        Importance.LOW -> "Low importance"
+        Importance.MEDIUM -> "Medium importance"
+        Importance.HIGH -> "High importance"
+    }
+
+    Column(
+        modifier = modifier.semantics { contentDescription = label },
+        verticalArrangement = Arrangement.spacedBy(-(strokeWidth))
+    ) {
+        repeat(count) {
+            Canvas(modifier = Modifier.size(width = chevronWidth, height = chevronHeight)) {
+                val strokePx = strokeWidth.toPx()
+                val path = Path().apply {
+                    moveTo(0f, size.height)
+                    lineTo(size.width / 2f, 0f)
+                    lineTo(size.width, size.height)
+                }
+                drawPath(
+                    path = path,
+                    color = color,
+                    style = Stroke(width = strokePx, cap = StrokeCap.Round, join = StrokeJoin.Round)
+                )
+            }
+        }
+    }
+}
+
 @Composable
 fun ReminderItem(
     reminder: Reminder,
@@ -153,13 +218,17 @@ fun ReminderItem(
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        reminder.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (reminder.isActive) MaterialTheme.colorScheme.onSurface
-                        else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            reminder.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (reminder.isActive) MaterialTheme.colorScheme.onSurface
+                            else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        ImportanceChevrons(importance = reminder.importance)
+                    }
                     Text(
                         if (reminder.isActive) scheduleSummary(reminder) else "Paused",
                         style = MaterialTheme.typography.bodySmall,
