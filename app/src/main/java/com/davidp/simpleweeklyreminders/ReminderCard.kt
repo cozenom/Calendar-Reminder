@@ -187,7 +187,7 @@ fun ReminderItem(
     todayLogs: List<ReminderLog>,
     onArchive: () -> Unit,
     viewModel: ReminderViewModel,
-    dragHandleModifier: Modifier = Modifier
+    modifier: Modifier = Modifier
 ) {
     var showEditSheet by remember { mutableStateOf(false) }
     var showNotes by remember { mutableStateOf(false) }
@@ -204,7 +204,7 @@ fun ReminderItem(
                 Icon(
                     imageVector = Icons.Default.DragIndicator,
                     contentDescription = "Drag to reorder",
-                    modifier = dragHandleModifier
+                    modifier = modifier
                         .size(20.dp)
                         .padding(end = 4.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)

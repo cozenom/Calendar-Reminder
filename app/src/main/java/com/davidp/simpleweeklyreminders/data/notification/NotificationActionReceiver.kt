@@ -177,10 +177,13 @@ class NotificationActionReceiver : BroadcastReceiver() {
             .setAutoCancel(false)
             .setDeleteIntent(swipePendingIntent)
             // Dismiss, Snooze, Completed — increasing commitment left to right,
-            // same 3 actions at every importance level
-            .addAction(R.drawable.ic_dismiss, "Dismiss", dismissPendingIntent)
-            .addAction(R.drawable.ic_snooze, "Snooze", snoozePendingIntent)
-            .addAction(R.drawable.ic_check, "Completed", completedPendingIntent)
+            // same 3 actions at every importance level. Action icons render on
+            // Wear OS / some OEM skins but not on stock Android phone notifications,
+            // so one shared icon (rather than a distinct one per action) avoids
+            // maintaining art nobody sees on the common path.
+            .addAction(R.drawable.ic_notification, "Dismiss", dismissPendingIntent)
+            .addAction(R.drawable.ic_notification, "Snooze", snoozePendingIntent)
+            .addAction(R.drawable.ic_notification, "Completed", completedPendingIntent)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setSound(soundUri)
             .setVibrate(longArrayOf(0, 250))
