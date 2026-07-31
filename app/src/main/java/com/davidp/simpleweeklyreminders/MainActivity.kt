@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -47,6 +48,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
@@ -1188,7 +1190,7 @@ fun CalendarView(
                             }
                         )
                         Spacer(modifier = Modifier.height(2.dp))
-                        FlexibleDotRow(logs = dayLogs, maxDots = 4)
+                        DayReminderStrip(logs = dayLogs)
                     }
                 } else {
                     Text("")
@@ -1199,29 +1201,25 @@ fun CalendarView(
 }
 
 @Composable
-fun FlexibleDotRow(logs: List<ReminderLog>, maxDots: Int) {
+fun DayReminderStrip(logs: List<ReminderLog>) {
     val reminderColors = MaterialTheme.reminderColors
-    // One dot per unique reminder: green if all occurrences done, red if any pending
-    val reminderDotColors = logs.groupBy { it.reminderId }.values.map { group ->
-        if (group.all { it.completed }) reminderColors.completedIndicator else reminderColors.pendingIndicator
+    // One tick per occurrence (logs are already ordered by time), so a reminder
+    // with multiple times gets a mark per time instead of one merged segment.
+    val segmentColors = logs.map { log ->
+        if (log.completed) reminderColors.completedIndicator else reminderColors.pendingIndicator
     }
     Row(
-        modifier = Modifier.height(6.dp),
-        horizontalArrangement = Arrangement.spacedBy(3.dp),
-        verticalAlignment = Alignment.CenterVertically
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(1.dp)
     ) {
-        reminderDotColors.take(maxDots).forEach { dotColor ->
-            Box(modifier = Modifier.size(5.dp).background(dotColor, CircleShape))
-        }
-        if (reminderDotColors.size > maxDots) {
-            // Wider pill hints there are more reminders than dots shown
+        segmentColors.forEach { segmentColor ->
             Box(
                 modifier = Modifier
-                    .size(width = 9.dp, height = 5.dp)
-                    .background(
-                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        CircleShape
-                    )
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .background(segmentColor, RoundedCornerShape(1.dp))
             )
         }
     }
