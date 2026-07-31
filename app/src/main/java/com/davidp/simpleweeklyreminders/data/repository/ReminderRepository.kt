@@ -5,10 +5,8 @@ import com.davidp.simpleweeklyreminders.data.dao.ReminderLogDao
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderLog
 import com.davidp.simpleweeklyreminders.data.model.ReminderType
-import com.davidp.simpleweeklyreminders.data.model.isArchived
 import com.davidp.simpleweeklyreminders.data.model.isScheduledOn
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
@@ -17,10 +15,12 @@ class ReminderRepository(
     private val reminderDao: ReminderDao,
     private val reminderLogDao: ReminderLogDao
 ) {
-    val allReminders: Flow<List<Reminder>> =
-        reminderDao.getAllReminders().map { it.filterNot { r -> r.isArchived() } }
-    val archivedReminders: Flow<List<Reminder>> =
-        reminderDao.getAllReminders().map { it.filter { r -> r.isArchived() }.sortedByDescending { r -> r.endDate } }
+    /**
+     * Every row in the reminders table, ordered by the user's manual sort. This is the
+     * only query on this table — the active/archived/covers-a-date lists the UI needs are
+     * all filters of it, derived in ReminderViewModel so they share one observer.
+     */
+    val allReminders: Flow<List<Reminder>> = reminderDao.getAllReminders()
 
     suspend fun insert(reminder: Reminder, now: LocalDateTime = LocalDateTime.now()): Long {
         val id = reminderDao.insertReminder(reminder)
@@ -97,10 +97,6 @@ class ReminderRepository(
 
     suspend fun delete(reminder: Reminder) {
         reminderDao.deleteReminder(reminder)
-    }
-
-    fun getActiveReminders(date: LocalDate): Flow<List<Reminder>> {
-        return reminderDao.getActiveReminders(date)
     }
 
     private suspend fun generateLogsForReminder(reminder: Reminder, now: LocalDateTime = LocalDateTime.now()) {

@@ -136,6 +136,7 @@ import com.davidp.simpleweeklyreminders.data.model.ReminderType
 import com.davidp.simpleweeklyreminders.data.model.SortDirection
 import com.davidp.simpleweeklyreminders.data.model.SortMode
 import com.davidp.simpleweeklyreminders.data.model.archivedSince
+import com.davidp.simpleweeklyreminders.data.model.coversDate
 import com.davidp.simpleweeklyreminders.data.model.defaultDirection
 import com.davidp.simpleweeklyreminders.data.model.iconFromKey
 import com.davidp.simpleweeklyreminders.data.notification.BootReceiver
@@ -229,7 +230,7 @@ fun ReminderApp(viewModel: ReminderViewModel) {
     // user last viewed it, surface a heads-up notice (the badge on the Archive icon
     // persists the same information until they actually open it).
     var hasShownArchiveNotice by rememberSaveable { mutableStateOf(false) }
-    val archivedReminders by viewModel.archivedReminders.collectAsState(initial = null)
+    val archivedReminders by viewModel.archivedReminders.collectAsState()
     LaunchedEffect(archivedReminders) {
         if (hasShownArchiveNotice) return@LaunchedEffect
         val archived = archivedReminders ?: return@LaunchedEffect
@@ -323,10 +324,12 @@ fun ReminderApp(viewModel: ReminderViewModel) {
 fun RemindersTab(viewModel: ReminderViewModel, onOpenArchive: () -> Unit, snackbarHostState: SnackbarHostState) {
     // null = first DB emission hasn't arrived yet — show nothing rather than
     // flashing the empty state on every switch to this tab
-    val reminders by viewModel.allReminders.collectAsState(initial = null)
-    val archived by viewModel.archivedReminders.collectAsState(initial = null)
+    val reminders by viewModel.allReminders.collectAsState()
+    val archived by viewModel.archivedReminders.collectAsState()
     val today = LocalDate.now()
-    val todayLogs by remember(today) { viewModel.getLogsForDate(today) }.collectAsState(initial = emptyList())
+    // Re-points the shared today's-logs flow if the date rolls over while the app is open
+    LaunchedEffect(today) { viewModel.setToday(today) }
+    val todayLogs by viewModel.todayLogs.collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -495,7 +498,7 @@ fun RemindersTab(viewModel: ReminderViewModel, onOpenArchive: () -> Unit, snackb
 
 @Composable
 fun ArchiveScreen(viewModel: ReminderViewModel, onBack: () -> Unit) {
-    val archived by viewModel.archivedReminders.collectAsState(initial = null)
+    val archived by viewModel.archivedReminders.collectAsState()
     val loadedArchived = archived ?: return
     val context = LocalContext.current
     // Viewing this screen clears the "new since last checked" badge/notice.
@@ -1020,10 +1023,21 @@ fun CalendarTab(viewModel: ReminderViewModel) {
         baseYearMonth.plusMonths((pagerState.currentPage - initialPage).toLong())
     }
 
-    // remember the flows so recomposition doesn't recreate them and reset
-    // collectAsState back to emptyList (visible as flicker)
-    val activeReminders by remember(selectedDate) { viewModel.getActiveReminders(selectedDate) }.collectAsState(initial = emptyList())
-    val selectedDateLogs by remember(selectedDate) { viewModel.getLogsForDate(selectedDate) }.collectAsState(initial = emptyList())
+    // Both the month grid's pips and the day list below read this one logs emission, so
+    // they always agree about a day's completed state; separate flows per page and per
+    // selected day were two independent observers of the same rows and could disagree.
+    LaunchedEffect(currentMonth, selectedDate) { viewModel.setCalendarWindow(currentMonth, selectedDate) }
+    val calendarLogs by viewModel.calendarLogs.collectAsState()
+    val allReminders by viewModel.reminders.collectAsState()
+
+    val selectedDateLogs = remember(calendarLogs, selectedDate) {
+        calendarLogs.filter { it.logDateTime.toLocalDate() == selectedDate }
+    }
+    // Includes archived reminders on purpose — a past day's logs still need their icon
+    // and importance, and the reminder behind them may have lapsed since.
+    val remindersOnSelectedDate = remember(allReminders, selectedDate) {
+        allReminders.orEmpty().filter { it.coversDate(selectedDate) }
+    }
 
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         // Calendar card: month navigation + swipeable grid in one container
@@ -1060,7 +1074,11 @@ fun CalendarTab(viewModel: ReminderViewModel) {
                     modifier = Modifier.fillMaxWidth()
                 ) { page ->
                     val monthForPage = baseYearMonth.plusMonths((page - initialPage).toLong())
-                    val logsForPage by remember(monthForPage) { viewModel.getLogsForMonth(monthForPage) }.collectAsState(initial = emptyList())
+                    // Slice of the shared window rather than a query per composed page —
+                    // the window spans the neighbouring months a swipe can reach
+                    val logsForPage = remember(calendarLogs, monthForPage) {
+                        calendarLogs.filter { YearMonth.from(it.logDateTime) == monthForPage }
+                    }
 
                     CalendarView(
                         currentMonth = monthForPage,
@@ -1112,8 +1130,8 @@ fun CalendarTab(viewModel: ReminderViewModel) {
                         items(selectedDateLogs, key = { it.id }) { log ->
                             ReminderEventItem(
                                 log = log,
-                                iconKey = activeReminders.find { it.id == log.reminderId }?.icon,
-                                importance = activeReminders.find { it.id == log.reminderId }?.importance ?: Importance.HIGH,
+                                iconKey = remindersOnSelectedDate.find { it.id == log.reminderId }?.icon,
+                                importance = remindersOnSelectedDate.find { it.id == log.reminderId }?.importance ?: Importance.HIGH,
                                 onToggle = {
                                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                     viewModel.updateLogCompletedStatus(log.id, !log.completed)

@@ -8,7 +8,6 @@ import androidx.room.Query
 import androidx.room.Update
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import kotlinx.coroutines.flow.Flow
-import java.time.LocalDate
 
 @Dao
 interface ReminderDao {
@@ -23,9 +22,6 @@ interface ReminderDao {
 
     @Delete
     suspend fun deleteReminder(reminder: Reminder)
-
-    @Query("SELECT * FROM reminders WHERE startDate <= :date AND (endDate IS NULL OR endDate >= :date)")
-    fun getActiveReminders(date: LocalDate): Flow<List<Reminder>>
 
     @Query("SELECT * FROM reminders WHERE id = :id")
     suspend fun getReminderByIdOnce(id: Int): Reminder?

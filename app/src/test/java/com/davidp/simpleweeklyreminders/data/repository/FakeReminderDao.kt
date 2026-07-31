@@ -5,7 +5,6 @@ import com.davidp.simpleweeklyreminders.data.model.Reminder
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
-import java.time.LocalDate
 
 /** In-memory stand-in for Room's generated ReminderDao, for JVM repository tests. */
 class FakeReminderDao : ReminderDao {
@@ -29,11 +28,6 @@ class FakeReminderDao : ReminderDao {
     override suspend fun deleteReminder(reminder: Reminder) {
         reminders.value = reminders.value.filterNot { it.id == reminder.id }
     }
-
-    override fun getActiveReminders(date: LocalDate): Flow<List<Reminder>> =
-        reminders.map { list ->
-            list.filter { it.startDate <= date && (it.endDate == null || it.endDate >= date) }
-        }
 
     override suspend fun getReminderByIdOnce(id: Int): Reminder? =
         reminders.value.find { it.id == id }

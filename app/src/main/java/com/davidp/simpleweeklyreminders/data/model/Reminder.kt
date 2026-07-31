@@ -58,6 +58,15 @@ fun Reminder.isScheduledOn(date: LocalDate): Boolean {
     }
 }
 
+/**
+ * Whether this reminder's date range covers the given date. Unlike [isScheduledOn] this
+ * ignores the day-of-week/interval cadence — it answers "did this reminder exist on that
+ * day", which is what looking up a log's icon/importance needs (including for reminders
+ * that have since been archived).
+ */
+fun Reminder.coversDate(date: LocalDate): Boolean =
+    startDate <= date && (endDate == null || endDate >= date)
+
 /** True once this reminder's schedule has fully elapsed — the day after endDate, calendar-date based. */
 fun Reminder.isArchived(today: LocalDate = LocalDate.now()): Boolean = endDate != null && endDate < today
 

@@ -144,6 +144,52 @@ class ReminderScheduleTest {
         assertFalse(r.isScheduledOn(monday.minusDays(1)))
     }
 
+    // --- coversDate (date range only, ignores cadence) ---
+
+    @Test
+    fun `coversDate ignores the weekday cadence`() {
+        // Mondays only, but Tuesday still falls inside the reminder's date range —
+        // a log on that day needs its icon and importance either way
+        val r = reminder(startDate = monday, reminderDays = setOf(1))
+        assertFalse(r.isScheduledOn(tuesday))
+        assertTrue(r.coversDate(tuesday))
+    }
+
+    @Test
+    fun `coversDate ignores the every-N-days cadence`() {
+        val r = reminder(startDate = monday, dayInterval = 3)
+        assertFalse(r.isScheduledOn(tuesday))
+        assertTrue(r.coversDate(tuesday))
+    }
+
+    @Test
+    fun `coversDate includes both boundary dates`() {
+        val r = reminder(startDate = monday, endDate = sunday)
+        assertTrue(r.coversDate(monday))
+        assertTrue(r.coversDate(sunday))
+    }
+
+    @Test
+    fun `coversDate excludes days outside the range`() {
+        val r = reminder(startDate = monday, endDate = sunday)
+        assertFalse(r.coversDate(monday.minusDays(1)))
+        assertFalse(r.coversDate(sunday.plusDays(1)))
+    }
+
+    @Test
+    fun `coversDate with no end date runs indefinitely`() {
+        val r = reminder(startDate = monday, endDate = null)
+        assertTrue(r.coversDate(monday.plusYears(10)))
+    }
+
+    @Test
+    fun `coversDate still covers an archived reminder's own past days`() {
+        // The calendar looks up icon/importance for old logs whose reminder has lapsed
+        val r = reminder(startDate = monday, endDate = monday.plusDays(2))
+        assertTrue(r.isArchived(today = monday.plusDays(10)))
+        assertTrue(r.coversDate(monday.plusDays(1)))
+    }
+
     // --- isArchived ---
 
     @Test
