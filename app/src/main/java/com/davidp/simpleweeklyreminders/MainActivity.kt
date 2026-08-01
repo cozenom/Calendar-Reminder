@@ -39,8 +39,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
@@ -1156,22 +1154,39 @@ fun CalendarView(
     val firstDayOfMonth = currentMonth.atDay(1).dayOfWeek.value
     val totalDays = daysInMonth + firstDayOfMonth - 1
 
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(7),
-        content = {
-            items(7) { index ->
+    // A plain grid, not a LazyVerticalGrid: a month is at most 42 cells and they're
+    // all on screen at once, so laziness saves no work. It also cost correctness —
+    // a lazy layout reaches its items through an item provider rather than a direct
+    // state read, which left the day cells drawing a stale log list after a
+    // completion toggle (pips lagged behind the day list's checkboxes until some
+    // unrelated action forced the cells to recompose).
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            listOf("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su").forEach { label ->
                 Text(
-                    text = listOf("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su")[index],
+                    text = label,
                     textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(8.dp)
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(8.dp)
                 )
             }
-            items(totalDays) { index ->
-                if (index >= firstDayOfMonth - 1) {
+        }
+        // Leading blanks pad the first week out to the month's starting weekday;
+        // trailing blanks keep the last week's columns aligned with the rest.
+        val weeks = (totalDays + 6) / 7
+        for (week in 0 until weeks) {
+            Row(modifier = Modifier.fillMaxWidth()) {
+                for (dayOfWeek in 0 until 7) {
+                    val index = week * 7 + dayOfWeek
                     val day = index - firstDayOfMonth + 2
+                    if (index < firstDayOfMonth - 1 || day > daysInMonth) {
+                        Spacer(modifier = Modifier.weight(1f))
+                        continue
+                    }
                     val date = currentMonth.atDay(day)
                     val isSelected = date == selectedDate
                     val isToday = date == LocalDate.now()
@@ -1179,6 +1194,7 @@ fun CalendarView(
 
                     Column(
                         modifier = Modifier
+                            .weight(1f)
                             .padding(2.dp)
                             .clip(MaterialTheme.appShapes.small)
                             .clickable { onDateSelected(date) }
@@ -1210,12 +1226,10 @@ fun CalendarView(
                         Spacer(modifier = Modifier.height(2.dp))
                         DayReminderStrip(logs = dayLogs)
                     }
-                } else {
-                    Text("")
                 }
             }
         }
-    )
+    }
 }
 
 @Composable
