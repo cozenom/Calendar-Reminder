@@ -60,7 +60,6 @@ class ReminderRepository(
             .map { it.id }
         if (staleTodayLogIds.isNotEmpty()) reminderLogDao.deleteLogsByIds(staleTodayLogIds)
 
-        // Regenerate logs with updated schedule
         generateLogsForReminder(reminder, now)
 
         if (completedOldLogs.isEmpty()) return

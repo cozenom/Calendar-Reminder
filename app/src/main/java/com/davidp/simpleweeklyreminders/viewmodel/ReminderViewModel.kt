@@ -25,10 +25,8 @@ import java.time.YearMonth
 
 /**
  * Owns the app's three database observers. Room flows are cold, so every extra collector
- * is another query on the same rows — two observers of the same data re-query independently
- * and can hand the UI different snapshots (this is what made the calendar pip disagree with
- * the day-list checkbox). Everything the UI needs is derived from the flows below rather
- * than opening a new one; add a query here only for rows none of them already cover.
+ * re-queries independently and can hand the UI a different snapshot. Derive from the flows
+ * below; add a query only for rows none of them already cover.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ReminderViewModel(application: Application) : AndroidViewModel(application) {

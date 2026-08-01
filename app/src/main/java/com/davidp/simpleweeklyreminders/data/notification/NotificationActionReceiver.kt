@@ -313,12 +313,11 @@ class NotificationActionReceiver : BroadcastReceiver() {
         val bitmap = createBitmap(size, size)
         val canvas = Canvas(bitmap)
 
-        // Draw colored circle background
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         paint.color = ReminderWorker.ACCENT_COLOR.toColorInt()
         canvas.drawCircle(size / 2f, size / 2f, size / 2f, paint)
 
-        // Draw icon in white, inset so it fits inside the circle
+        // Inset so the icon fits inside the circle
         val inset = size / 5
         val drawable = ContextCompat.getDrawable(context, resId) ?: return bitmap
         drawable.colorFilter = PorterDuffColorFilter(Color.WHITE, PorterDuff.Mode.SRC_IN)

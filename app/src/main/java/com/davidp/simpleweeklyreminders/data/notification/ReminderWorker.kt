@@ -31,7 +31,6 @@ class ReminderWorker(
         val now = LocalDateTime.now()
         val reminders = reminderDao.getAllRemindersList()
 
-        // Cancel existing alarm for each reminder, then schedule the next one
         reminders.forEach { reminder ->
             cancelAlarm(applicationContext, reminder.id)
             val nextLog = reminderLogDao.getNextLogForReminder(reminder.id, now)

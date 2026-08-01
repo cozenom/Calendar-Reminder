@@ -15,9 +15,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 
-/**
- * Standard shapes used throughout the app.
- */
 object AppShapes {
     val small = RoundedCornerShape(8.dp)        // Small cards, indicators
     val medium = RoundedCornerShape(12.dp)      // Buttons, dialogs (most common)
@@ -25,9 +22,6 @@ object AppShapes {
     val extraLarge = RoundedCornerShape(28.dp)  // Time picker
 }
 
-/**
- * Standard dimensions and spacing used throughout the app.
- */
 object AppDimensions {
     // Spacing
     val spacingSmall = 8.dp
@@ -40,13 +34,7 @@ object AppDimensions {
     val frequencyButtonWidth = 48.dp
 }
 
-/**
- * Extension properties to access custom theme values from MaterialTheme.
- * Usage:
- *   MaterialTheme.reminderColors.completedIndicator
- *   MaterialTheme.appShapes.medium
- *   MaterialTheme.dimensions.spacingSmall
- */
+/** Custom theme values off MaterialTheme, e.g. `MaterialTheme.appShapes.medium`. */
 val MaterialTheme.appShapes: AppShapes
     @Composable
     @ReadOnlyComposable

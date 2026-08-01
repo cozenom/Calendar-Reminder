@@ -33,7 +33,6 @@ class Converters {
         return date?.format(dateFormatter)
     }
 
-    // New converters for Set<Int>
     @TypeConverter
     fun fromSetInt(value: Set<Int>?): String? {
         return value?.joinToString(",")

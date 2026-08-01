@@ -14,11 +14,9 @@ object ArchiveSettings {
     private const val KEY_LAST_VIEWED = "last_viewed_at"
 
     /**
-     * No baseline yet (never opened Archive): seed one at "now" and persist it, so
-     * pre-existing archived reminders don't flood in as new but anything archived
-     * after this point does. Must persist rather than just returning "now" each call
-     * — a recomputed-every-time fallback would always sit later than any archive
-     * event, so nothing could ever be "after" it and the badge would never move.
+     * Seeds a baseline at "now" on first call so pre-existing archives don't flood in as
+     * new. Must persist — a recomputed "now" would always postdate every archive event,
+     * so the badge could never move.
      */
     fun getLastViewed(context: Context): LocalDateTime {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
