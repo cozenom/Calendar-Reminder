@@ -625,8 +625,7 @@ fun ReminderList(
     var list by remember { mutableStateOf(reminders) }
     var isDraggingActive by remember { mutableStateOf(false) }
     val haptics = LocalHapticFeedback.current
-    // Drag-reorder only means something in Manual mode — under a computed sort the
-    // list would just re-sort itself back on the next recomposition.
+    // Manual only — a computed sort would re-sort the list back on the next recomposition
     val dragEnabled = sortMode == SortMode.MANUAL
 
     LaunchedEffect(reminders) {
@@ -847,13 +846,9 @@ fun RecurrenceToggle(mode: ReminderType, onChanged: (ReminderType) -> Unit) {
 }
 
 /**
- * Tap-to-select segmented control — same interaction pattern as WeekdaySelector's
- * day buttons (filled when selected, outlined otherwise) rather than a radio
- * group, styled with each level's own color instead of the theme primary so the
- * selector previews all three colors even before a choice is made. No level is
- * pre-selected — [importance] is null until the user picks one, since HIGH is
- * only ever a migration-compatibility default (see Reminder.kt), not something
- * a brand-new reminder should silently inherit.
+ * Tap-to-select segmented control, styled like WeekdaySelector's day buttons but in each
+ * level's own color so all three preview before a choice is made. [importance] starts null
+ * — HIGH is a migration default (see Reminder.kt), not one to inherit silently.
  */
 @Composable
 fun ImportanceSelector(importance: Importance?, onChanged: (Importance) -> Unit) {
@@ -1021,9 +1016,7 @@ fun CalendarTab(viewModel: ReminderViewModel) {
         baseYearMonth.plusMonths((pagerState.currentPage - initialPage).toLong())
     }
 
-    // Both the month grid's pips and the day list below read this one logs emission, so
-    // they always agree about a day's completed state; separate flows per page and per
-    // selected day were two independent observers of the same rows and could disagree.
+    // Pips and the day list slice one emission, so they can't disagree about a day
     LaunchedEffect(currentMonth, selectedDate) { viewModel.setCalendarWindow(currentMonth, selectedDate) }
     val calendarLogs by viewModel.calendarLogs.collectAsState()
     val allReminders by viewModel.reminders.collectAsState()
@@ -1154,12 +1147,9 @@ fun CalendarView(
     val firstDayOfMonth = currentMonth.atDay(1).dayOfWeek.value
     val totalDays = daysInMonth + firstDayOfMonth - 1
 
-    // A plain grid, not a LazyVerticalGrid: a month is at most 42 cells and they're
-    // all on screen at once, so laziness saves no work. It also cost correctness —
-    // a lazy layout reaches its items through an item provider rather than a direct
-    // state read, which left the day cells drawing a stale log list after a
-    // completion toggle (pips lagged behind the day list's checkboxes until some
-    // unrelated action forced the cells to recompose).
+    // Plain grid, not LazyVerticalGrid: ≤42 cells, all on screen, so laziness saves
+    // nothing. Its item provider also defers state reads, leaving cells stale after
+    // a completion toggle.
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(modifier = Modifier.fillMaxWidth()) {
             listOf("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su").forEach { label ->
@@ -1351,8 +1341,7 @@ fun ReminderEventItem(log: ReminderLog, iconKey: String?, importance: Importance
                 color = contentColor
             )
             Spacer(modifier = Modifier.width(12.dp))
-            // Chevrons lead the title so they line up in a single column down the
-            // day list instead of floating at each title's end.
+            // Chevrons lead the title so they align in one column (as in ReminderCard)
             Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                 ImportanceChevrons(importance = importance)
                 Spacer(modifier = Modifier.width(6.dp))

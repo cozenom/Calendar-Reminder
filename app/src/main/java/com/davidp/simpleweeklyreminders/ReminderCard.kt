@@ -161,12 +161,9 @@ private fun formatNextOccurrence(dateTime: LocalDateTime, now: LocalDateTime, ti
 }
 
 /**
- * Shared importance marker for every surface that shows a reminder (list row,
- * calendar day list): military-style rank chevrons — one
- * stacked stripe per level (1x/2x/3x for Low/Medium/High), always shown rather
- * than only on outliers. Custom-drawn rather than a repurposed arrow icon so
- * the stripes actually interlock like rank insignia instead of just overlapping
- * glyphs. Color reinforces the count but isn't relied on alone (see [ReminderColors]).
+ * Shared importance marker (list row, calendar day list): rank chevrons, one stripe per
+ * level. Custom-drawn rather than a repurposed arrow icon so the stripes interlock like
+ * rank insignia. Count is the primary signal, color reinforces it (see [ReminderColors]).
  */
 @Composable
 fun ImportanceChevrons(
@@ -237,8 +234,6 @@ fun ReminderItem(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Only meaningful in Manual sort mode — dragging under a computed sort
-                // (importance/next-occurrence/date-added) would just snap back.
                 if (dragEnabled) {
                     Icon(
                         imageVector = Icons.Default.DragIndicator,
@@ -258,8 +253,7 @@ fun ReminderItem(
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    // Chevrons lead the title so they line up in a single column
-                    // down the list instead of floating at each title's end.
+                    // Chevrons lead the title so they align in one column down the list
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         ImportanceChevrons(importance = reminder.importance)
                         Spacer(modifier = Modifier.width(6.dp))

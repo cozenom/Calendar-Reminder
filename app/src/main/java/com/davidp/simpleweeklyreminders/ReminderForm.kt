@@ -96,9 +96,8 @@ private fun ReminderForm(
     var dayInterval by remember { mutableIntStateOf(initial?.dayInterval ?: 1) }
     var notes by remember { mutableStateOf(initial?.notes ?: "") }
     var selectedIcon by remember { mutableStateOf(initial?.icon ?: DEFAULT_ICON_KEY) }
-    // Null (no pre-selection) for a brand-new reminder — HIGH is a migration-only
-    // default (see Reminder.kt), not something a new reminder should silently
-    // inherit, so choosing a level here is mandatory rather than defaulted.
+    // Null for a new reminder — HIGH is a migration default (see Reminder.kt), so picking
+    // a level is mandatory here
     var importance by remember { mutableStateOf(initial?.importance) }
     var showStartDatePicker by remember { mutableStateOf(false) }
     var showEndDatePicker by remember { mutableStateOf(false) }

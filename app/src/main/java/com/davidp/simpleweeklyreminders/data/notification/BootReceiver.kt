@@ -22,8 +22,7 @@ class BootReceiver : BroadcastReceiver() {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
             ReminderWorker.schedule(context)
 
-            // goAsync keeps the process alive (with a wakelock) until finish() —
-            // without it the coroutine can be killed as soon as onReceive returns
+            // goAsync holds a wakelock until finish() (see NotificationActionReceiver)
             val pendingResult = goAsync()
             CoroutineScope(Dispatchers.IO).launch {
                 try {

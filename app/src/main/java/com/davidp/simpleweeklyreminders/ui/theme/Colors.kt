@@ -19,11 +19,9 @@ data class ReminderColors(
     val completedIndicator: Color,
     val pendingIndicator: Color,
 
-    // Importance chevrons (list row, calendar day list) and the form's importance
-    // selector buttons — blue/amber/red
-    // rather than green/amber/red: green-red is the hardest pair to distinguish
-    // for red-green color blindness, so the chevron *count* carries the primary
-    // signal and color reinforces it rather than being relied on alone.
+    // Importance chevrons and the form's selector buttons. Blue/amber/red, not
+    // green/amber/red — green-red is the hardest pair for red-green color blindness.
+    // Chevron count is the primary signal (see ImportanceChevrons).
     val importanceLow: Color,
     val importanceMedium: Color,
     val importanceHigh: Color,

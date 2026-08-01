@@ -8,12 +8,9 @@ import java.time.YearMonth
 internal data class LogRange(val start: LocalDateTime, val end: LocalDateTime)
 
 /**
- * The range of logs the Calendar tab needs while showing [month] with [selectedDate]
- * selected. Padded by one month either side so swiping to a neighbouring page slices logs
- * already in memory instead of opening a query per page, and widened to reach
- * [selectedDate] when the user has swiped away from their selection — that keeps the day
- * list populated without giving it a second observer of the same rows, which is what let
- * the day list and the month grid's pips disagree.
+ * Log range for the Calendar tab: [month] padded a month either side so a swipe slices
+ * logs already in memory, widened to reach [selectedDate] when the user has swiped away
+ * from their selection. One observer for both the grid and the day list.
  */
 internal fun calendarLogRange(month: YearMonth, selectedDate: LocalDate): LogRange {
     val selectedMonth = YearMonth.from(selectedDate)

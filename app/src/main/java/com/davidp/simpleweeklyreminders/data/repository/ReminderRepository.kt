@@ -16,9 +16,8 @@ class ReminderRepository(
     private val reminderLogDao: ReminderLogDao
 ) {
     /**
-     * Every row in the reminders table, ordered by the user's manual sort. This is the
-     * only query on this table — the active/archived/covers-a-date lists the UI needs are
-     * all filters of it, derived in ReminderViewModel so they share one observer.
+     * Every row, in manual sort order. The only query on this table — active/archived/
+     * covers-a-date are filters of it in ReminderViewModel.
      */
     val allReminders: Flow<List<Reminder>> = reminderDao.getAllReminders()
 

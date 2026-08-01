@@ -45,8 +45,8 @@ class NotificationActionReceiver : BroadcastReceiver() {
         if (logId == -1) return
         val isSnooze = intent.getBooleanExtra(ReminderWorker.EXTRA_IS_SNOOZE, false)
 
-        // goAsync keeps the process alive (with a wakelock) until finish() —
-        // without it the coroutine can be killed as soon as onReceive returns
+        // goAsync holds a wakelock until finish() — without it the coroutine can be
+        // killed as soon as onReceive returns
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -92,8 +92,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
         if (log.completed) return
 
         val reminder = database.reminderDao().getReminderByIdOnce(log.reminderId)
-        // Fallback matches Reminder.importance's own default — preserves the old
-        // sticky/swipe-snoozes behavior if the reminder row is somehow gone
+        // Matches Reminder.importance's default if the reminder row is somehow gone
         val importance = reminder?.importance ?: Importance.HIGH
 
         val intent = Intent(context, MainActivity::class.java).apply {
@@ -269,8 +268,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancel(logId)
 
-        // Acting on a notification is as much evidence of engagement as opening
-        // the app — advances the missed-reminders baseline the same way
+        // Acting on a notification counts as seeing it — advances the missed baseline
         BootReceiver.markSeenNow(context)
     }
 
@@ -289,8 +287,6 @@ class NotificationActionReceiver : BroadcastReceiver() {
         database.reminderLogDao().updateSnoozedUntil(logId, snoozedUntil)
         ReminderWorker.scheduleSnoozeAlarm(context, log.id, snoozedUntil)
 
-        // Same reasoning as markAsCompleted: snoozing (button tap or swipe) still
-        // means the user saw this notification
         BootReceiver.markSeenNow(context)
 
         Log.d("NotificationActionReceiver", "Snoozed log $logId until $snoozedUntil")
@@ -307,8 +303,6 @@ class NotificationActionReceiver : BroadcastReceiver() {
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancel(logId)
 
-        // Same reasoning as markAsCompleted/snooze: a deliberate Dismiss still
-        // means the user saw this notification
         BootReceiver.markSeenNow(context)
 
         Log.d("NotificationActionReceiver", "Dismissed log $logId")
