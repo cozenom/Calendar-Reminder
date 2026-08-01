@@ -1351,10 +1351,12 @@ fun ReminderEventItem(log: ReminderLog, iconKey: String?, importance: Importance
                 color = contentColor
             )
             Spacer(modifier = Modifier.width(12.dp))
+            // Chevrons lead the title so they line up in a single column down the
+            // day list instead of floating at each title's end.
             Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                Text(text = log.title, style = MaterialTheme.typography.bodyLarge, color = contentColor)
-                Spacer(modifier = Modifier.width(6.dp))
                 ImportanceChevrons(importance = importance)
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(text = log.title, style = MaterialTheme.typography.bodyLarge, color = contentColor)
             }
             val snoozedUntil = log.snoozedUntil
             if (snoozedUntil != null && !log.completed) {

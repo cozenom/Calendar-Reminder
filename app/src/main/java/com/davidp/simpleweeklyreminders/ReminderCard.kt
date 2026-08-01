@@ -162,7 +162,7 @@ private fun formatNextOccurrence(dateTime: LocalDateTime, now: LocalDateTime, ti
 
 /**
  * Shared importance marker for every surface that shows a reminder (list row,
- * calendar list, notification icon tint): military-style rank chevrons — one
+ * calendar day list): military-style rank chevrons — one
  * stacked stripe per level (1x/2x/3x for Low/Medium/High), always shown rather
  * than only on outliers. Custom-drawn rather than a repurposed arrow icon so
  * the stripes actually interlock like rank insignia instead of just overlapping
@@ -258,7 +258,11 @@ fun ReminderItem(
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
+                    // Chevrons lead the title so they line up in a single column
+                    // down the list instead of floating at each title's end.
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        ImportanceChevrons(importance = reminder.importance)
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             reminder.title,
                             style = MaterialTheme.typography.titleMedium,
@@ -266,8 +270,6 @@ fun ReminderItem(
                             color = if (reminder.isActive) MaterialTheme.colorScheme.onSurface
                             else MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        ImportanceChevrons(importance = reminder.importance)
                     }
                     Text(
                         if (reminder.isActive) scheduleSummary(reminder) else "Paused",
