@@ -49,6 +49,8 @@ import com.davidp.simpleweeklyreminders.data.model.Importance
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderType
 import com.davidp.simpleweeklyreminders.data.model.iconFromKey
+import com.davidp.simpleweeklyreminders.data.settings.datePattern
+import com.davidp.simpleweeklyreminders.data.settings.dateNoYearPattern
 import com.davidp.simpleweeklyreminders.data.settings.is24Hour
 import com.davidp.simpleweeklyreminders.data.settings.timePattern
 import com.davidp.simpleweeklyreminders.ui.theme.LocalAppSettings
@@ -208,13 +210,17 @@ private fun ReminderForm(
         }
         Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
+        val dateFormat = LocalAppSettings.current.dateFormat
+        val datePattern = dateFormat.datePattern(LocalContext.current)
+        val dateNoYearPattern = dateFormat.dateNoYearPattern(LocalContext.current)
+
         OutlinedButton(
             onClick = { showStartDatePicker = true },
             modifier = Modifier.fillMaxWidth(),
             shape = MaterialTheme.appShapes.medium
         ) {
             val label = if (recurrenceMode == ReminderType.ONE_TIME) "Date" else "Start Date"
-            Text("$label: ${startDate.format(DateTimeFormatter.ofPattern("MMM dd, yyyy"))}")
+            Text("$label: ${startDate.format(DateTimeFormatter.ofPattern(datePattern))}")
         }
         Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
 
@@ -232,7 +238,7 @@ private fun ReminderForm(
                     shape = MaterialTheme.appShapes.medium
                 ) {
                     Text(
-                        if (endDate != null) "End: ${endDate?.format(DateTimeFormatter.ofPattern("MMM dd"))}"
+                        if (endDate != null) "End: ${endDate?.format(DateTimeFormatter.ofPattern(dateNoYearPattern))}"
                         else "Set End Date",
                         maxLines = 1
                     )

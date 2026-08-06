@@ -44,9 +44,11 @@ import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import com.davidp.simpleweeklyreminders.data.settings.DateFormatPref
 import com.davidp.simpleweeklyreminders.data.settings.SettingsRepository
 import com.davidp.simpleweeklyreminders.data.settings.ThemeMode
 import com.davidp.simpleweeklyreminders.data.settings.TimeFormatPref
+import com.davidp.simpleweeklyreminders.data.settings.WeekStart
 import com.davidp.simpleweeklyreminders.ui.theme.LocalAppSettings
 import com.davidp.simpleweeklyreminders.ui.theme.appShapes
 import kotlinx.coroutines.launch
@@ -102,7 +104,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             }
         }
 
-        SettingsSection("Time") {
+        SettingsSection("Time & date") {
             SegmentedRow(
                 label = "Clock format",
                 options = listOf(
@@ -112,6 +114,27 @@ fun SettingsScreen(onBack: () -> Unit) {
                 ),
                 selected = settings.timeFormat,
                 onSelect = { scope.launch { repo.setTimeFormat(it) } }
+            )
+            Spacer(Modifier.height(12.dp))
+            SegmentedRow(
+                label = "Date format",
+                options = listOf(
+                    DateFormatPref.SYSTEM to "Auto",
+                    DateFormatPref.MONTH_FIRST to "Month 1st",
+                    DateFormatPref.DAY_FIRST to "Day 1st"
+                ),
+                selected = settings.dateFormat,
+                onSelect = { scope.launch { repo.setDateFormat(it) } }
+            )
+            Spacer(Modifier.height(12.dp))
+            SegmentedRow(
+                label = "Week starts on",
+                options = listOf(
+                    WeekStart.SUNDAY to "Sunday",
+                    WeekStart.MONDAY to "Monday"
+                ),
+                selected = settings.weekStart,
+                onSelect = { scope.launch { repo.setWeekStart(it) } }
             )
         }
 

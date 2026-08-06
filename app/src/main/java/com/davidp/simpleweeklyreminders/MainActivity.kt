@@ -144,6 +144,9 @@ import com.davidp.simpleweeklyreminders.data.notification.BootReceiver
 import com.davidp.simpleweeklyreminders.data.notification.ReminderWorker
 import com.davidp.simpleweeklyreminders.data.settings.ArchiveSettings
 import com.davidp.simpleweeklyreminders.data.settings.SettingsRepository
+import com.davidp.simpleweeklyreminders.data.settings.WeekStart
+import com.davidp.simpleweeklyreminders.data.settings.datePattern
+import com.davidp.simpleweeklyreminders.data.settings.fullDatePattern
 import com.davidp.simpleweeklyreminders.data.settings.timePattern
 import com.davidp.simpleweeklyreminders.ui.theme.CalendarAppTheme
 import com.davidp.simpleweeklyreminders.ui.theme.LocalAppSettings
@@ -601,8 +604,9 @@ fun ArchivedReminderItem(reminder: Reminder, onRestore: () -> Unit, onDelete: ()
                 fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
             )
             reminder.endDate?.let {
+                val datePattern = LocalAppSettings.current.dateFormat.datePattern(LocalContext.current)
                 Text(
-                    "Ended ${it.format(DateTimeFormatter.ofPattern("MMM d, yyyy"))}",
+                    "Ended ${it.format(DateTimeFormatter.ofPattern(datePattern))}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1143,8 +1147,9 @@ fun CalendarTab(viewModel: ReminderViewModel) {
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
+                val fullDatePattern = LocalAppSettings.current.dateFormat.fullDatePattern(LocalContext.current)
                 Text(
-                    text = selectedDate.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")),
+                    text = selectedDate.format(DateTimeFormatter.ofPattern(fullDatePattern)),
                     style = MaterialTheme.typography.titleMedium
                 )
                 Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
@@ -1179,15 +1184,25 @@ fun CalendarView(
     logs: List<ReminderLog>
 ) {
     val daysInMonth = currentMonth.lengthOfMonth()
-    val firstDayOfMonth = currentMonth.atDay(1).dayOfWeek.value
-    val totalDays = daysInMonth + firstDayOfMonth - 1
+    val firstDow = currentMonth.atDay(1).dayOfWeek.value // Mon=1 .. Sun=7
+    val weekStart = LocalAppSettings.current.weekStart
+    // Blank cells before day 1, counted from the chosen first column.
+    val leadingBlanks = when (weekStart) {
+        WeekStart.MONDAY -> firstDow - 1  // Mon->0 .. Sun->6
+        WeekStart.SUNDAY -> firstDow % 7  // Sun->0, Mon->1 .. Sat->6
+    }
+    val totalCells = daysInMonth + leadingBlanks
+    val weekdayLabels = when (weekStart) {
+        WeekStart.MONDAY -> listOf("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su")
+        WeekStart.SUNDAY -> listOf("Su", "Mo", "Tu", "We", "Th", "Fr", "Sa")
+    }
 
     // Plain grid, not LazyVerticalGrid: ≤42 cells, all on screen, so laziness saves
     // nothing. Its item provider also defers state reads, leaving cells stale after
     // a completion toggle.
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(modifier = Modifier.fillMaxWidth()) {
-            listOf("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su").forEach { label ->
+            weekdayLabels.forEach { label ->
                 Text(
                     text = label,
                     textAlign = TextAlign.Center,
@@ -1202,13 +1217,13 @@ fun CalendarView(
         }
         // Leading blanks pad the first week out to the month's starting weekday;
         // trailing blanks keep the last week's columns aligned with the rest.
-        val weeks = (totalDays + 6) / 7
+        val weeks = (totalCells + 6) / 7
         for (week in 0 until weeks) {
             Row(modifier = Modifier.fillMaxWidth()) {
                 for (dayOfWeek in 0 until 7) {
                     val index = week * 7 + dayOfWeek
-                    val day = index - firstDayOfMonth + 2
-                    if (index < firstDayOfMonth - 1 || day > daysInMonth) {
+                    val day = index - leadingBlanks + 1
+                    if (index < leadingBlanks || day > daysInMonth) {
                         Spacer(modifier = Modifier.weight(1f))
                         continue
                     }

@@ -57,6 +57,8 @@ import com.davidp.simpleweeklyreminders.data.model.SortMode
 import com.davidp.simpleweeklyreminders.data.model.defaultDirection
 import com.davidp.simpleweeklyreminders.data.model.iconFromKey
 import com.davidp.simpleweeklyreminders.data.model.isScheduledOn
+import com.davidp.simpleweeklyreminders.data.settings.datePattern
+import com.davidp.simpleweeklyreminders.data.settings.dateNoYearPattern
 import com.davidp.simpleweeklyreminders.data.settings.timePattern
 import com.davidp.simpleweeklyreminders.ui.theme.LocalAppSettings
 import com.davidp.simpleweeklyreminders.ui.theme.appShapes
@@ -74,7 +76,7 @@ private val TIME_CHIP_MIN_WIDTH = 90.dp
 private val TIME_CHIP_SPACING = 8.dp
 
 /** Human-readable recurrence line, e.g. "Mon, Wed, Fri", "Every 2 days", "Weekdays". */
-fun scheduleSummary(reminder: Reminder): String {
+fun scheduleSummary(reminder: Reminder, datePattern: String, dateNoYearPattern: String): String {
     val base = when (reminder.reminderType) {
         ReminderType.EVERY_N_DAYS ->
             if (reminder.dayInterval == 1) "Every day" else "Every ${reminder.dayInterval} days"
@@ -90,9 +92,9 @@ fun scheduleSummary(reminder: Reminder): String {
     val today = LocalDate.now()
     val qualifiers = buildList {
         if (reminder.startDate > today) {
-            add("starts ${reminder.startDate.format(DateTimeFormatter.ofPattern("MMM d"))}")
+            add("starts ${reminder.startDate.format(DateTimeFormatter.ofPattern(dateNoYearPattern))}")
         }
-        reminder.endDate?.let { add("until ${it.format(DateTimeFormatter.ofPattern("MMM d, yyyy"))}") }
+        reminder.endDate?.let { add("until ${it.format(DateTimeFormatter.ofPattern(datePattern))}") }
     }
     return (listOf(base) + qualifiers).joinToString(" · ")
 }
@@ -149,14 +151,19 @@ fun List<Reminder>.sortedFor(
     }
 }
 
-private fun formatNextOccurrence(dateTime: LocalDateTime, now: LocalDateTime, timePattern: String): String {
+private fun formatNextOccurrence(
+    dateTime: LocalDateTime,
+    now: LocalDateTime,
+    timePattern: String,
+    dateNoYearPattern: String
+): String {
     val time = dateTime.format(DateTimeFormatter.ofPattern(timePattern))
     val daysAway = ChronoUnit.DAYS.between(now.toLocalDate(), dateTime.toLocalDate())
     val day = when {
         daysAway == 0L -> "Today"
         daysAway == 1L -> "Tomorrow"
         daysAway < 7L -> dateTime.format(DateTimeFormatter.ofPattern("EEEE"))
-        else -> dateTime.format(DateTimeFormatter.ofPattern("MMM d"))
+        else -> dateTime.format(DateTimeFormatter.ofPattern(dateNoYearPattern))
     }
     return "$day at $time"
 }
@@ -234,6 +241,12 @@ fun ReminderItem(
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            val context = LocalContext.current
+            val settings = LocalAppSettings.current
+            val timePattern = settings.timeFormat.timePattern(context)
+            val datePattern = settings.dateFormat.datePattern(context)
+            val dateNoYearPattern = settings.dateFormat.dateNoYearPattern(context)
+
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (dragEnabled) {
                     Icon(
@@ -267,7 +280,7 @@ fun ReminderItem(
                         )
                     }
                     Text(
-                        if (reminder.isActive) scheduleSummary(reminder) else "Paused",
+                        if (reminder.isActive) scheduleSummary(reminder, datePattern, dateNoYearPattern) else "Paused",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -277,8 +290,6 @@ fun ReminderItem(
                     onCheckedChange = { viewModel.update(reminder.copy(isActive = it)) }
                 )
             }
-
-            val timePattern = LocalAppSettings.current.timeFormat.timePattern(LocalContext.current)
 
             Spacer(modifier = Modifier.height(12.dp))
             val today = LocalDate.now()
@@ -330,7 +341,7 @@ fun ReminderItem(
                 nextOccurrence(reminder, now)?.let { next ->
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "Next: ${formatNextOccurrence(next, now, timePattern)}",
+                        "Next: ${formatNextOccurrence(next, now, timePattern, dateNoYearPattern)}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Medium

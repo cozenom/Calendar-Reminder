@@ -108,3 +108,23 @@ fun TimeFormatPref.is24Hour(context: Context): Boolean = when (this) {
 /** The single display pattern all time text goes through. */
 fun TimeFormatPref.timePattern(context: Context): String =
     if (is24Hour(context)) "HH:mm" else "h:mm a"
+
+/** SYSTEM reads the device locale's day/month order; the others force it. */
+fun DateFormatPref.isDayFirst(context: Context): Boolean = when (this) {
+    DateFormatPref.DAY_FIRST -> true
+    DateFormatPref.MONTH_FIRST -> false
+    DateFormatPref.SYSTEM -> {
+        val order = DateFormat.getDateFormatOrder(context)
+        order.indexOf('d') < order.indexOf('M')
+    }
+}
+
+// Three granularities used across the app; ordering flips with the day-first setting.
+fun DateFormatPref.fullDatePattern(context: Context): String =
+    if (isDayFirst(context)) "EEEE, d MMMM yyyy" else "EEEE, MMMM d, yyyy"
+
+fun DateFormatPref.datePattern(context: Context): String =
+    if (isDayFirst(context)) "d MMM yyyy" else "MMM d, yyyy"
+
+fun DateFormatPref.dateNoYearPattern(context: Context): String =
+    if (isDayFirst(context)) "d MMM" else "MMM d"
