@@ -5,8 +5,6 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
-import androidx.room.migration.Migration
-import androidx.sqlite.db.SupportSQLiteDatabase
 import com.davidp.simpleweeklyreminders.data.dao.ReminderDao
 import com.davidp.simpleweeklyreminders.data.dao.ReminderLogDao
 import com.davidp.simpleweeklyreminders.data.model.Reminder
@@ -26,37 +24,16 @@ abstract class AppDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
-        // Published apps must migrate, never fall back destructively — the fallback
-        // below wipes user data on any version bump without a matching Migration
-        private val MIGRATION_4_5 = object : Migration(4, 5) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE reminder_logs ADD COLUMN snoozedUntil TEXT")
-            }
-        }
-
-        // reminderType replaces dayInterval-nullness as the recurrence-mode discriminant
-        // (dayInterval remains the interval payload, only meaningful when EVERY_N_DAYS).
-        // frequency is dropped: it only ever stored distinctTimes.size and was never read back.
-        private val MIGRATION_5_6 = object : Migration(5, 6) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE reminders ADD COLUMN reminderType TEXT NOT NULL DEFAULT 'SPECIFIC_DAYS'")
-                db.execSQL("UPDATE reminders SET reminderType = 'EVERY_N_DAYS' WHERE dayInterval IS NOT NULL")
-                db.execSQL("ALTER TABLE reminders DROP COLUMN frequency")
-            }
-        }
-
-        // archivedAt: manual-archive timestamp, so same-day archives are distinguishable
-        // (endDate is day-only). Null for pre-existing and auto-lapsed rows, which fall
-        // back to endDate (see Reminder.archivedSince()).
-        // importance: TEXT via Converters; existing rows default to HIGH to keep their
-        // current notification behavior.
-        private val MIGRATION_6_7 = object : Migration(6, 7) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE reminders ADD COLUMN archivedAt TEXT")
-                db.execSQL("ALTER TABLE reminders ADD COLUMN importance TEXT NOT NULL DEFAULT 'HIGH'")
-            }
-        }
-
+        // No Migrations by design, pre-launch: the app is unpublished, so no device
+        // is on an older schema and every install builds v7 straight from the
+        // entities. A schema change wipes local data instead — see todo.txt
+        // PRE-LAUNCH before publishing, where this reverses:
+        //   - the launch schema becomes a permanent floor (no retroactive path
+        //     from a version already on someone's device)
+        //   - so fallbackToDestructiveMigration comes off, and every change from
+        //     then on needs a real Migration + a migration test
+        // exportSchema stays on meanwhile: app/schemas/*.json is the prerequisite
+        // for writing those migrations later, and can't be reconstructed after the fact.
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -64,7 +41,6 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "app_database"
                 )
-                    .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                     .fallbackToDestructiveMigration(dropAllTables = true)
                     .build()
                 INSTANCE = instance

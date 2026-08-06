@@ -34,6 +34,6 @@ All data is stored locally using SQLite. No cloud sync, no analytics, no externa
 ## Tech Stack
 
 - Kotlin + Jetpack Compose (Material 3)
-- Room (SQLite) for local storage with tracked schema migrations
+- Room (SQLite) for local storage, with schema history exported per version
 - AlarmManager + WorkManager for reliable scheduling
 - MVVM architecture
