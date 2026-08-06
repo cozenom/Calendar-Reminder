@@ -58,6 +58,7 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Snooze
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.CalendarMonth
@@ -99,8 +100,10 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -140,13 +143,17 @@ import com.davidp.simpleweeklyreminders.data.model.iconFromKey
 import com.davidp.simpleweeklyreminders.data.notification.BootReceiver
 import com.davidp.simpleweeklyreminders.data.notification.ReminderWorker
 import com.davidp.simpleweeklyreminders.data.settings.ArchiveSettings
+import com.davidp.simpleweeklyreminders.data.settings.SettingsRepository
+import com.davidp.simpleweeklyreminders.data.settings.timePattern
 import com.davidp.simpleweeklyreminders.ui.theme.CalendarAppTheme
+import com.davidp.simpleweeklyreminders.ui.theme.LocalAppSettings
 import com.davidp.simpleweeklyreminders.ui.theme.appShapes
 import com.davidp.simpleweeklyreminders.ui.theme.dimensions
 import com.davidp.simpleweeklyreminders.ui.theme.reminderColors
 import com.davidp.simpleweeklyreminders.viewmodel.ReminderViewModel
 import com.davidp.simpleweeklyreminders.viewmodel.ReminderViewModelFactory
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import java.time.LocalDate
@@ -175,9 +182,18 @@ class MainActivity : ComponentActivity() {
             this, ReminderViewModelFactory(application)
         )[ReminderViewModel::class.java]
 
+        val settingsRepository = SettingsRepository(applicationContext)
+        // Read once, blocking, before the first frame so the stored theme applies with
+        // no flash to the default. Only this cold-start read blocks; the flow below is
+        // reactive from then on.
+        val initialSettings = runBlocking { settingsRepository.read() }
+
         setContent {
-            CalendarAppTheme {
-                ReminderApp(viewModel)
+            val settings by settingsRepository.flow.collectAsState(initial = initialSettings)
+            CalendarAppTheme(themeMode = settings.themeMode, dynamicColor = settings.dynamicColor) {
+                CompositionLocalProvider(LocalAppSettings provides settings) {
+                    ReminderApp(viewModel)
+                }
             }
         }
     }
@@ -215,12 +231,14 @@ private fun newlyArchivedCount(archived: List<Reminder>, context: android.conten
     return archived.count { it.archivedSince()?.isAfter(lastViewed) == true }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReminderApp(viewModel: ReminderViewModel) {
     // Tab 0 = Calendar (home, leftmost, start tab), tab 1 = Reminders
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     var showAddReminderDialog by remember { mutableStateOf(false) }
     var showArchive by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
 
@@ -242,11 +260,24 @@ fun ReminderApp(viewModel: ReminderViewModel) {
         }
     }
 
-    Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }, bottomBar = {
+    Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }, topBar = {
+        // Slim bar just for the settings entry; hidden on the full-screen overlays,
+        // which carry their own back headers. Restyle pass will flesh this out.
+        if (!showArchive && !showSettings) {
+            TopAppBar(
+                title = { Text(if (selectedTab == 0) "Calendar" else "Reminders") },
+                actions = {
+                    IconButton(onClick = { showSettings = true }) {
+                        Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                    }
+                }
+            )
+        }
+    }, bottomBar = {
         NavigationBar {
             NavigationBarItem(
-                selected = selectedTab == 0,
-                onClick = { selectedTab = 0; showArchive = false },
+                selected = selectedTab == 0 && !showSettings,
+                onClick = { selectedTab = 0; showArchive = false; showSettings = false },
                 icon = {
                     Icon(
                         if (selectedTab == 0) Icons.Filled.CalendarMonth else Icons.Outlined.CalendarMonth,
@@ -256,8 +287,8 @@ fun ReminderApp(viewModel: ReminderViewModel) {
                 label = { Text("Calendar") }
             )
             NavigationBarItem(
-                selected = selectedTab == 1,
-                onClick = { selectedTab = 1 },
+                selected = selectedTab == 1 && !showSettings,
+                onClick = { selectedTab = 1; showSettings = false },
                 icon = {
                     Icon(
                         if (selectedTab == 1) Icons.Filled.Notifications else Icons.Outlined.Notifications,
@@ -268,28 +299,34 @@ fun ReminderApp(viewModel: ReminderViewModel) {
             )
         }
     }, floatingActionButton = {
-        if (selectedTab == 1 && !showArchive) {
+        if (selectedTab == 1 && !showArchive && !showSettings) {
             FloatingActionButton(onClick = { showAddReminderDialog = true }) {
                 Icon(Icons.Filled.Add, contentDescription = "Add Reminder")
             }
         }
     }) { paddingValues ->
-        AnimatedContent(
-            targetState = selectedTab,
-            modifier = Modifier.padding(paddingValues),
-            transitionSpec = {
-                val direction = if (targetState > initialState) 1 else -1
-                (slideInHorizontally { direction * it / 4 } + fadeIn()) togetherWith
-                        (slideOutHorizontally { -direction * it / 4 } + fadeOut())
-            },
-            label = "tabSwitch"
-        ) { tab ->
-            when (tab) {
-                0 -> CalendarTab(viewModel)
-                else -> if (showArchive) {
-                    ArchiveScreen(viewModel, onBack = { showArchive = false })
-                } else {
-                    RemindersTab(viewModel, onOpenArchive = { showArchive = true }, snackbarHostState = snackbarHostState)
+        if (showSettings) {
+            Box(modifier = Modifier.padding(paddingValues)) {
+                SettingsScreen(onBack = { showSettings = false })
+            }
+        } else {
+            AnimatedContent(
+                targetState = selectedTab,
+                modifier = Modifier.padding(paddingValues),
+                transitionSpec = {
+                    val direction = if (targetState > initialState) 1 else -1
+                    (slideInHorizontally { direction * it / 4 } + fadeIn()) togetherWith
+                            (slideOutHorizontally { -direction * it / 4 } + fadeOut())
+                },
+                label = "tabSwitch"
+            ) { tab ->
+                when (tab) {
+                    0 -> CalendarTab(viewModel)
+                    else -> if (showArchive) {
+                        ArchiveScreen(viewModel, onBack = { showArchive = false })
+                    } else {
+                        RemindersTab(viewModel, onOpenArchive = { showArchive = true }, snackbarHostState = snackbarHostState)
+                    }
                 }
             }
         }
@@ -298,10 +335,13 @@ fun ReminderApp(viewModel: ReminderViewModel) {
     // Back closes the Archive screen first, then returns Reminders to the
     // Calendar (home) tab; back on Calendar is unhandled so the system exits
     // the app (keeps predictive back working)
+    BackHandler(enabled = showSettings) {
+        showSettings = false
+    }
     BackHandler(enabled = showArchive) {
         showArchive = false
     }
-    BackHandler(enabled = selectedTab == 1 && !showArchive) {
+    BackHandler(enabled = selectedTab == 1 && !showArchive && !showSettings) {
         selectedTab = 0
     }
 
@@ -357,13 +397,8 @@ fun RemindersTab(viewModel: ReminderViewModel, onOpenArchive: () -> Unit, snackb
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                "Reminders",
-                style = MaterialTheme.typography.titleLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f, fill = false)
-            )
+            // Title now lives in the top app bar; this row keeps only the actions.
+            Spacer(modifier = Modifier.weight(1f))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 // Quick way to drop the search without reopening the sheet — tapping the
                 // chip itself (rather than the x) reopens the sheet to edit it instead.
@@ -1308,6 +1343,7 @@ fun CalendarDialog(
 @Composable
 fun ReminderEventItem(log: ReminderLog, iconKey: String?, importance: Importance, onToggle: () -> Unit) {
     val reminderColors = MaterialTheme.reminderColors
+    val timePattern = LocalAppSettings.current.timeFormat.timePattern(LocalContext.current)
     val containerColor by animateColorAsState(
         if (log.completed) reminderColors.completedContainer else reminderColors.pendingContainer,
         label = "eventContainerColor"
@@ -1334,7 +1370,7 @@ fun ReminderEventItem(log: ReminderLog, iconKey: String?, importance: Importance
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(
-                text = log.logDateTime.format(DateTimeFormatter.ofPattern("HH:mm")),
+                text = log.logDateTime.format(DateTimeFormatter.ofPattern(timePattern)),
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
                 modifier = Modifier.width(60.dp),
@@ -1357,7 +1393,7 @@ fun ReminderEventItem(log: ReminderLog, iconKey: String?, importance: Importance
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = snoozedUntil.format(DateTimeFormatter.ofPattern("HH:mm")),
+                    text = snoozedUntil.format(DateTimeFormatter.ofPattern(timePattern)),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.tertiary
                 )

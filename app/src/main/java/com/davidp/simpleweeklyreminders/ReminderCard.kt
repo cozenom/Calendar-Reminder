@@ -1,6 +1,5 @@
 package com.davidp.simpleweeklyreminders
 
-import android.text.format.DateFormat
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
@@ -58,6 +57,8 @@ import com.davidp.simpleweeklyreminders.data.model.SortMode
 import com.davidp.simpleweeklyreminders.data.model.defaultDirection
 import com.davidp.simpleweeklyreminders.data.model.iconFromKey
 import com.davidp.simpleweeklyreminders.data.model.isScheduledOn
+import com.davidp.simpleweeklyreminders.data.settings.timePattern
+import com.davidp.simpleweeklyreminders.ui.theme.LocalAppSettings
 import com.davidp.simpleweeklyreminders.ui.theme.appShapes
 import com.davidp.simpleweeklyreminders.ui.theme.reminderColors
 import com.davidp.simpleweeklyreminders.viewmodel.ReminderViewModel
@@ -277,8 +278,7 @@ fun ReminderItem(
                 )
             }
 
-            val is24Hour = DateFormat.is24HourFormat(LocalContext.current)
-            val timePattern = if (is24Hour) "HH:mm" else "h:mm a"
+            val timePattern = LocalAppSettings.current.timeFormat.timePattern(LocalContext.current)
 
             Spacer(modifier = Modifier.height(12.dp))
             val today = LocalDate.now()

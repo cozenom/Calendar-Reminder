@@ -108,6 +108,9 @@ dependencies {
     // WorkManager
     implementation(libs.androidx.work.runtime.ktx)
 
+    // Settings storage
+    implementation(libs.androidx.datastore.preferences)
+
     // Drag to reorder
     implementation("sh.calvin.reorderable:reorderable:2.4.0")
 }

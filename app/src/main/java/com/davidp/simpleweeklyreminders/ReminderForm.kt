@@ -1,6 +1,5 @@
 package com.davidp.simpleweeklyreminders
 
-import android.text.format.DateFormat
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -50,6 +49,9 @@ import com.davidp.simpleweeklyreminders.data.model.Importance
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderType
 import com.davidp.simpleweeklyreminders.data.model.iconFromKey
+import com.davidp.simpleweeklyreminders.data.settings.is24Hour
+import com.davidp.simpleweeklyreminders.data.settings.timePattern
+import com.davidp.simpleweeklyreminders.ui.theme.LocalAppSettings
 import com.davidp.simpleweeklyreminders.ui.theme.appShapes
 import com.davidp.simpleweeklyreminders.ui.theme.dimensions
 import java.time.LocalDate
@@ -348,16 +350,16 @@ fun TimePickerField(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val is24HourFormat = remember { DateFormat.is24HourFormat(context) }
+    val timePref = LocalAppSettings.current.timeFormat
+    val is24HourFormat = timePref.is24Hour(context)
     var showTimePicker by remember { mutableStateOf(false) }
-    val timeFormat = if (is24HourFormat) "HH:mm" else "hh:mm a"
 
     OutlinedButton(
         onClick = { showTimePicker = true },
         modifier = modifier,
         shape = MaterialTheme.appShapes.medium
     ) {
-        Text("Time: ${time.format(DateTimeFormatter.ofPattern(timeFormat))}")
+        Text("Time: ${time.format(DateTimeFormatter.ofPattern(timePref.timePattern(context)))}")
     }
 
     if (showTimePicker) {

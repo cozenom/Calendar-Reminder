@@ -11,9 +11,12 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.davidp.simpleweeklyreminders.data.settings.AppSettingsState
+import com.davidp.simpleweeklyreminders.data.settings.ThemeMode
 
 object AppShapes {
     val small = RoundedCornerShape(8.dp)        // Small cards, indicators
@@ -50,6 +53,9 @@ val MaterialTheme.reminderColors: ReminderColors
     @ReadOnlyComposable
     get() = LocalReminderColors.current
 
+/** Reactive settings snapshot for any composable that formats times/dates. */
+val LocalAppSettings = staticCompositionLocalOf { AppSettingsState() }
+
 private val DarkColorScheme = darkColorScheme(
     primary = Color(0xFF2196F3),
     secondary = Color(0xFF03A9F4),
@@ -64,11 +70,16 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun CalendarAppTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    themeMode: ThemeMode = ThemeMode.SYSTEM,
     // Dynamic color is available on Android 12+
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
+    val darkTheme = when (themeMode) {
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+    }
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current

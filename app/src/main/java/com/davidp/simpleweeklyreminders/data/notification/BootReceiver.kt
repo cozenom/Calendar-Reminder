@@ -12,6 +12,7 @@ import androidx.core.graphics.toColorInt
 import com.davidp.simpleweeklyreminders.MainActivity
 import com.davidp.simpleweeklyreminders.R
 import com.davidp.simpleweeklyreminders.data.database.AppDatabase
+import com.davidp.simpleweeklyreminders.data.settings.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -35,6 +36,9 @@ class BootReceiver : BroadcastReceiver() {
     }
 
     private suspend fun showMissedNotification(context: Context) {
+        // Opt-out: user turned the missed-reminder summary off in Settings
+        if (!SettingsRepository(context).read().missedSummaryEnabled) return
+
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         // No baseline yet (first run before the app was ever opened): report nothing
         val since = prefs.getString(KEY_LAST_SEEN, null)

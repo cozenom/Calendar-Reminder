@@ -15,7 +15,6 @@ import android.graphics.PorterDuff
 import android.graphics.PorterDuffColorFilter
 import android.media.AudioAttributes
 import android.media.RingtoneManager
-import android.text.format.DateFormat
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
@@ -24,7 +23,8 @@ import com.davidp.simpleweeklyreminders.R
 import com.davidp.simpleweeklyreminders.data.database.AppDatabase
 import com.davidp.simpleweeklyreminders.data.model.Importance
 import com.davidp.simpleweeklyreminders.data.model.iconDrawableRes
-import com.davidp.simpleweeklyreminders.data.settings.SnoozeSettings
+import com.davidp.simpleweeklyreminders.data.settings.SettingsRepository
+import com.davidp.simpleweeklyreminders.data.settings.timePattern
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -148,9 +148,9 @@ class NotificationActionReceiver : BroadcastReceiver() {
         // Status bar shows the reminder's own icon; generic bell when it has none
         val smallIconRes = reminder?.icon?.let { iconDrawableRes(it) } ?: R.drawable.ic_notification
 
-        val is24Hour = DateFormat.is24HourFormat(context)
+        val timePattern = SettingsRepository(context).read().timeFormat.timePattern(context)
         val timeText = log.logDateTime.toLocalTime()
-            .format(DateTimeFormatter.ofPattern(if (is24Hour) "HH:mm" else "h:mm a"))
+            .format(DateTimeFormatter.ofPattern(timePattern))
         val contentText =
             if (isSnooze) "Snoozed · scheduled for $timeText" else "Scheduled for $timeText"
 
@@ -281,8 +281,8 @@ class NotificationActionReceiver : BroadcastReceiver() {
         val database = AppDatabase.getDatabase(context)
         val log = database.reminderLogDao().getLogById(logId) ?: return
 
-        val snoozedUntil = LocalDateTime.now()
-            .plusMinutes(SnoozeSettings.getSnoozeMinutes(context).toLong())
+        val snoozeMinutes = SettingsRepository(context).read().snoozeMinutes
+        val snoozedUntil = LocalDateTime.now().plusMinutes(snoozeMinutes.toLong())
         // DB first so the snooze survives reboot/force-stop; the alarm is re-derivable
         database.reminderLogDao().updateSnoozedUntil(logId, snoozedUntil)
         ReminderWorker.scheduleSnoozeAlarm(context, log.id, snoozedUntil)
