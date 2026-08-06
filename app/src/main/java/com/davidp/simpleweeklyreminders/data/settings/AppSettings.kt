@@ -44,58 +44,60 @@ private val Context.settingsDataStore by preferencesDataStore(name = "settings")
  */
 class SettingsRepository(private val context: Context) {
 
-    val flow: Flow<AppSettingsState> = context.settingsDataStore.data.map { it.toState() }
+    val flow: Flow<AppSettingsState> = context.settingsDataStore.data.map { it.toAppSettingsState() }
 
-    suspend fun read(): AppSettingsState = context.settingsDataStore.data.first().toState()
+    suspend fun read(): AppSettingsState = context.settingsDataStore.data.first().toAppSettingsState()
 
     suspend fun setThemeMode(mode: ThemeMode) =
-        edit { it[Keys.THEME_MODE] = mode.name }
+        edit { it[SettingsKeys.THEME_MODE] = mode.name }
 
     suspend fun setDynamicColor(enabled: Boolean) =
-        edit { it[Keys.DYNAMIC_COLOR] = enabled }
+        edit { it[SettingsKeys.DYNAMIC_COLOR] = enabled }
 
     suspend fun setTimeFormat(pref: TimeFormatPref) =
-        edit { it[Keys.TIME_FORMAT] = pref.name }
+        edit { it[SettingsKeys.TIME_FORMAT] = pref.name }
 
     suspend fun setDateFormat(pref: DateFormatPref) =
-        edit { it[Keys.DATE_FORMAT] = pref.name }
+        edit { it[SettingsKeys.DATE_FORMAT] = pref.name }
 
     suspend fun setWeekStart(start: WeekStart) =
-        edit { it[Keys.WEEK_START] = start.name }
+        edit { it[SettingsKeys.WEEK_START] = start.name }
 
     suspend fun setSnoozeMinutes(minutes: Int) =
-        edit { it[Keys.SNOOZE_MINUTES] = minutes }
+        edit { it[SettingsKeys.SNOOZE_MINUTES] = minutes }
 
     suspend fun setMissedSummaryEnabled(enabled: Boolean) =
-        edit { it[Keys.MISSED_SUMMARY] = enabled }
+        edit { it[SettingsKeys.MISSED_SUMMARY] = enabled }
 
     private suspend fun edit(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
         context.settingsDataStore.edit(block)
     }
-
-    private object Keys {
-        val THEME_MODE = stringPreferencesKey("theme_mode")
-        val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
-        val TIME_FORMAT = stringPreferencesKey("time_format")
-        val DATE_FORMAT = stringPreferencesKey("date_format")
-        val WEEK_START = stringPreferencesKey("week_start")
-        val SNOOZE_MINUTES = intPreferencesKey("snooze_minutes")
-        val MISSED_SUMMARY = booleanPreferencesKey("missed_summary_enabled")
-    }
-
-    private fun Preferences.toState() = AppSettingsState(
-        themeMode = parseEnum(this[Keys.THEME_MODE], ThemeMode.SYSTEM),
-        dynamicColor = this[Keys.DYNAMIC_COLOR] ?: true,
-        timeFormat = parseEnum(this[Keys.TIME_FORMAT], TimeFormatPref.SYSTEM),
-        dateFormat = parseEnum(this[Keys.DATE_FORMAT], DateFormatPref.SYSTEM),
-        weekStart = parseEnum(this[Keys.WEEK_START], WeekStart.MONDAY),
-        snoozeMinutes = this[Keys.SNOOZE_MINUTES] ?: AppSettingsState.DEFAULT_SNOOZE_MINUTES,
-        missedSummaryEnabled = this[Keys.MISSED_SUMMARY] ?: true,
-    )
 }
 
+// internal (not private) so the mapping + fallback can be unit-tested without a Context —
+// Preferences itself is pure and buildable in a JVM test via mutablePreferencesOf(...).
+internal object SettingsKeys {
+    val THEME_MODE = stringPreferencesKey("theme_mode")
+    val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
+    val TIME_FORMAT = stringPreferencesKey("time_format")
+    val DATE_FORMAT = stringPreferencesKey("date_format")
+    val WEEK_START = stringPreferencesKey("week_start")
+    val SNOOZE_MINUTES = intPreferencesKey("snooze_minutes")
+    val MISSED_SUMMARY = booleanPreferencesKey("missed_summary_enabled")
+}
+
+internal fun Preferences.toAppSettingsState() = AppSettingsState(
+    themeMode = parseEnum(this[SettingsKeys.THEME_MODE], ThemeMode.SYSTEM),
+    dynamicColor = this[SettingsKeys.DYNAMIC_COLOR] ?: true,
+    timeFormat = parseEnum(this[SettingsKeys.TIME_FORMAT], TimeFormatPref.SYSTEM),
+    dateFormat = parseEnum(this[SettingsKeys.DATE_FORMAT], DateFormatPref.SYSTEM),
+    weekStart = parseEnum(this[SettingsKeys.WEEK_START], WeekStart.MONDAY),
+    snoozeMinutes = this[SettingsKeys.SNOOZE_MINUTES] ?: AppSettingsState.DEFAULT_SNOOZE_MINUTES,
+    missedSummaryEnabled = this[SettingsKeys.MISSED_SUMMARY] ?: true,
+)
+
 // Fall back to the default if the stored string is missing or no longer a valid constant.
-private inline fun <reified T : Enum<T>> parseEnum(value: String?, default: T): T =
+internal inline fun <reified T : Enum<T>> parseEnum(value: String?, default: T): T =
     value?.let { runCatching { enumValueOf<T>(it) }.getOrNull() } ?: default
 
 /** SYSTEM defers to the device 12/24h setting; H12/H24 force it. */

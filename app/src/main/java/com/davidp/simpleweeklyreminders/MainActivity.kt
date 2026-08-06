@@ -1187,10 +1187,7 @@ fun CalendarView(
     val firstDow = currentMonth.atDay(1).dayOfWeek.value // Mon=1 .. Sun=7
     val weekStart = LocalAppSettings.current.weekStart
     // Blank cells before day 1, counted from the chosen first column.
-    val leadingBlanks = when (weekStart) {
-        WeekStart.MONDAY -> firstDow - 1  // Mon->0 .. Sun->6
-        WeekStart.SUNDAY -> firstDow % 7  // Sun->0, Mon->1 .. Sat->6
-    }
+    val leadingBlanks = leadingBlankCount(firstDow, weekStart)
     val totalCells = daysInMonth + leadingBlanks
     val weekdayLabels = when (weekStart) {
         WeekStart.MONDAY -> listOf("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su")
