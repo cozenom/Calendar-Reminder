@@ -24,8 +24,13 @@ interface ReminderLogDao {
     @Query("SELECT * FROM reminder_logs WHERE reminderId = :reminderId AND logDateTime > :after ORDER BY logDateTime ASC LIMIT 1")
     suspend fun getNextLogForReminder(reminderId: Int, after: LocalDateTime): ReminderLog?
 
+    /**
+     * Candidates for "missed" — uncompleted and already elapsed. Not the final answer: a log
+     * with a snooze still pending is deferred, not missed. Filter the result through
+     * `statusOf()` rather than counting these rows directly, so this agrees with the calendar.
+     */
     @Query("SELECT * FROM reminder_logs WHERE logDateTime > :since AND logDateTime < :now AND completed = 0")
-    suspend fun getMissedLogsList(since: LocalDateTime, now: LocalDateTime): List<ReminderLog>
+    suspend fun getElapsedIncompleteLogs(since: LocalDateTime, now: LocalDateTime): List<ReminderLog>
 
     @Query("DELETE FROM reminder_logs WHERE reminderId = :reminderId AND logDateTime > :fromDateTime")
     suspend fun deleteFutureLogsForReminder(reminderId: Int, fromDateTime: LocalDateTime)

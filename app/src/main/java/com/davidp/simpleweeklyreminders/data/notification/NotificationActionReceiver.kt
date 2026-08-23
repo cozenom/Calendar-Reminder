@@ -302,7 +302,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
      * Deliberate "leave this honestly missed" action — clears the notification
      * without completing or rescheduling it. The log stays `completed = false`,
      * which already reads as "missed" once its time is past (see
-     * ReminderLogDao.getMissedLogsList) — no separate status needed.
+     * data/model/OccurrenceStatus.kt) — no separate status column needed.
      */
     private suspend fun dismiss(context: Context, logId: Int) {
         val notificationManager =

@@ -12,6 +12,8 @@ import androidx.core.graphics.toColorInt
 import com.davidp.simpleweeklyreminders.MainActivity
 import com.davidp.simpleweeklyreminders.R
 import com.davidp.simpleweeklyreminders.data.database.AppDatabase
+import com.davidp.simpleweeklyreminders.data.model.OccurrenceStatus
+import com.davidp.simpleweeklyreminders.data.model.statusOf
 import com.davidp.simpleweeklyreminders.data.settings.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -47,7 +49,11 @@ class BootReceiver : BroadcastReceiver() {
 
         val now = LocalDateTime.now()
         val database = AppDatabase.getDatabase(context)
-        val missedLogs = database.reminderLogDao().getMissedLogsList(since, now)
+        // Same statusOf() the calendar uses, so a snoozed reminder isn't counted here while
+        // the calendar still shows it as pending.
+        val missedLogs = database.reminderLogDao()
+            .getElapsedIncompleteLogs(since, now)
+            .filter { statusOf(it, now) == OccurrenceStatus.MISSED }
         if (missedLogs.isEmpty()) return
 
         val notificationManager =

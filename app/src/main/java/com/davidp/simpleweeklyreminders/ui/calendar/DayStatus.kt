@@ -1,16 +1,10 @@
 package com.davidp.simpleweeklyreminders.ui.calendar
 
+import com.davidp.simpleweeklyreminders.data.model.OccurrenceStatus
 import com.davidp.simpleweeklyreminders.data.model.ReminderLog
+import com.davidp.simpleweeklyreminders.data.model.statusOf
 import java.time.LocalDate
 import java.time.LocalDateTime
-
-/**
- * How one scheduled occurrence stands right now.
- *
- * Derived, never stored — a log row only carries `completed` and `snoozedUntil`. See
- * docs/architecture.md.
- */
-enum class OccurrenceStatus { DONE, PENDING, MISSED }
 
 /** One day's occurrences, in time order, plus the two counts the calendar renders. */
 data class DayStatus(
@@ -19,21 +13,6 @@ data class DayStatus(
     val hasMissed: Boolean
 ) {
     val total: Int get() = segments.size
-}
-
-/**
- * A pending snooze counts as PENDING, not MISSED: the user deferred it on purpose and the
- * notification will fire again, so flagging the day as missed would be wrong. Once
- * `snoozedUntil` itself passes without completion, it becomes MISSED like anything else.
- */
-fun statusOf(log: ReminderLog, now: LocalDateTime): OccurrenceStatus {
-    val snoozedUntil = log.snoozedUntil
-    return when {
-        log.completed -> OccurrenceStatus.DONE
-        snoozedUntil != null && snoozedUntil.isAfter(now) -> OccurrenceStatus.PENDING
-        log.logDateTime.isBefore(now) -> OccurrenceStatus.MISSED
-        else -> OccurrenceStatus.PENDING
-    }
 }
 
 /**

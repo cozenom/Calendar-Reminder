@@ -32,7 +32,7 @@ class FakeReminderLogDao : ReminderLogDao {
         logs.value.filter { it.reminderId == reminderId && it.logDateTime > after }
             .minByOrNull { it.logDateTime }
 
-    override suspend fun getMissedLogsList(since: LocalDateTime, now: LocalDateTime): List<ReminderLog> =
+    override suspend fun getElapsedIncompleteLogs(since: LocalDateTime, now: LocalDateTime): List<ReminderLog> =
         logs.value.filter { it.logDateTime > since && it.logDateTime < now && !it.completed }
 
     override suspend fun deleteFutureLogsForReminder(reminderId: Int, fromDateTime: LocalDateTime) {

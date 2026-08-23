@@ -1,6 +1,8 @@
 package com.davidp.simpleweeklyreminders.ui.calendar
 
+import com.davidp.simpleweeklyreminders.data.model.OccurrenceStatus
 import com.davidp.simpleweeklyreminders.data.model.ReminderLog
+import com.davidp.simpleweeklyreminders.data.model.statusOf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull

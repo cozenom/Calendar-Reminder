@@ -46,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.davidp.simpleweeklyreminders.data.model.Importance
 import com.davidp.simpleweeklyreminders.data.model.coversDate
+import com.davidp.simpleweeklyreminders.data.model.statusOf
 import com.davidp.simpleweeklyreminders.data.settings.fullDatePattern
 import com.davidp.simpleweeklyreminders.ui.theme.LocalAppSettings
 import com.davidp.simpleweeklyreminders.ui.theme.reminderColors
