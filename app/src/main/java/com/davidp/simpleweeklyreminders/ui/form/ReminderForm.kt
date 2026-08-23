@@ -108,9 +108,9 @@ private fun ReminderForm(
     var notes by remember { mutableStateOf(initial?.notes ?: "") }
     var selectedIcon by remember { mutableStateOf(initial?.icon ?: DEFAULT_ICON_KEY) }
     var selectedColor by remember { mutableStateOf(initial?.color) }
-    // Null for a new reminder — HIGH is a migration default (see Reminder.kt), so picking
-    // a level is mandatory here
-    var importance by remember { mutableStateOf(initial?.importance) }
+    // MEDIUM for a new reminder — the middle level is the safe assumption, and HIGH is
+    // only a migration default (see Reminder.kt), not one to inherit silently
+    var importance by remember { mutableStateOf(initial?.importance ?: Importance.MEDIUM) }
     var showStartDatePicker by remember { mutableStateOf(false) }
     var showEndDatePicker by remember { mutableStateOf(false) }
     var showIconPicker by remember { mutableStateOf(false) }
@@ -232,14 +232,6 @@ private fun ReminderForm(
 
         FormSectionLabel("Importance")
         ImportanceSelector(importance = importance, onChanged = { importance = it })
-        if (importance == null) {
-            Text(
-                "Choose an importance level",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(top = 6.dp, start = 4.dp)
-            )
-        }
 
         val dateFormat = LocalAppSettings.current.dateFormat
         val datePattern = dateFormat.datePattern(LocalContext.current)
@@ -328,14 +320,14 @@ private fun ReminderForm(
                             color = selectedColor,
                             dayInterval = if (recurrenceMode == ReminderType.EVERY_N_DAYS) dayInterval else null,
                             reminderType = recurrenceMode,
-                            importance = requireNotNull(importance)
+                            importance = importance
                         )
                     )
                 },
                 // Save is the wider of the two, as in the design
                 modifier = Modifier.weight(1.4f),
                 shape = MaterialTheme.appShapes.medium,
-                enabled = !endBeforeStart && !oneTimeInPast && importance != null
+                enabled = !endBeforeStart && !oneTimeInPast
             ) {
                 Text("Save", modifier = Modifier.padding(vertical = 6.dp))
             }

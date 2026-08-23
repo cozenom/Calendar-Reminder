@@ -25,11 +25,10 @@ import com.davidp.simpleweeklyreminders.ui.theme.reminderColors
 
 /**
  * Tap-to-select segmented control, styled like WeekdaySelector's day buttons but in each
- * level's own color so all three preview before a choice is made. [importance] starts null
- * — HIGH is a migration default (see Reminder.kt), not one to inherit silently.
+ * level's own color so all three read at a glance.
  */
 @Composable
-fun ImportanceSelector(importance: Importance?, onChanged: (Importance) -> Unit) {
+fun ImportanceSelector(importance: Importance, onChanged: (Importance) -> Unit) {
     val reminderColors = MaterialTheme.reminderColors
     val options = listOf(
         Triple(Importance.LOW, "Low", reminderColors.importanceLow),

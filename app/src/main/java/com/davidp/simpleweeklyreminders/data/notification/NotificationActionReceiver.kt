@@ -179,7 +179,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
             .setOngoing(false)
             .setAutoCancel(false)
             .setDeleteIntent(swipePendingIntent)
-            // Dismiss, Snooze, Done — increasing commitment left to right, same 3 actions
+            // Dismiss, Snooze, Complete — increasing commitment left to right, same 3 actions
             // at every importance level. Snooze names its own duration so the length is
             // visible without opening Settings. Action icons render on Wear OS / some OEM
             // skins but not on stock Android phone notifications, so one shared icon
@@ -191,7 +191,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
                 "Snooze ${settings.snoozeMinutes}m",
                 snoozePendingIntent
             )
-            .addAction(R.drawable.ic_notification, "Done", completedPendingIntent)
+            .addAction(R.drawable.ic_notification, "Complete", completedPendingIntent)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setSound(soundUri)
             .setVibrate(longArrayOf(0, 250))
