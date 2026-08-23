@@ -81,6 +81,12 @@ fun CalendarTab(viewModel: ReminderViewModel) {
     // stable remember key between recompositions instead of invalidating on every frame.
     val now = LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES)
 
+    // Logs don't carry their reminder's colour, so the grid looks it up by id. Built from the
+    // reminders flow the tab already collects — no extra query.
+    val colorKeys = remember(allReminders) {
+        allReminders.orEmpty().associate { it.id to it.color }
+    }
+
     val selectedDateLogs = remember(calendarLogs, selectedDate) {
         calendarLogs.filter { it.logDateTime.toLocalDate() == selectedDate }
     }
@@ -118,10 +124,11 @@ fun CalendarTab(viewModel: ReminderViewModel) {
             // Folded once per page rather than filtered inside each of the 42 cells. Slices
             // the shared window instead of querying per page — the window already spans the
             // neighbouring months a swipe can reach.
-            val statuses = remember(calendarLogs, monthForPage, now) {
+            val statuses = remember(calendarLogs, monthForPage, now, colorKeys) {
                 dayStatuses(
                     calendarLogs.filter { YearMonth.from(it.logDateTime) == monthForPage },
-                    now
+                    now,
+                    colorKeys
                 )
             }
 

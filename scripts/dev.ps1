@@ -2,7 +2,7 @@
 # Run with no arguments to see the command list.
 param(
     [Parameter(Position = 0)]
-    [ValidateSet('build', 'release', 'install', 'test', 'lint', 'check', 'clean', 'help')]
+    [ValidateSet('build', 'release', 'install', 'test', 'uitest', 'lint', 'check', 'clean', 'help')]
     [string]$Command = 'help',
 
     [switch]$Deep
@@ -29,8 +29,10 @@ Commands:
   release   Build release AAB, moved to app\release\app-release.aab (gradlew bundleRelease)
   install   Build & install debug APK on a connected device/emulator (gradlew installDebug)
   test      Run JVM unit tests                           (gradlew testDebugUnitTest)
+  uitest    Run Compose UI tests on a connected device/emulator
+                                              (gradlew connectedDebugAndroidTest)
   lint      Run Android Lint                              (gradlew lintDebug)
-  check     test + lint together
+  check     test + lint together (JVM only; uitest needs a device)
   clean     Remove build/ and app/build/                  (gradlew clean)
             -Deep also removes .gradle/, .kotlin/, .idea/caches/
             (safe: all regenerate on next build/sync, just slower once)
@@ -50,6 +52,7 @@ switch ($Command) {
     }
     'install' { Invoke-Gradle @('installDebug') }
     'test'    { Invoke-Gradle @('testDebugUnitTest') }
+    'uitest'  { Invoke-Gradle @('connectedDebugAndroidTest') }
     'lint'    { Invoke-Gradle @('lintDebug') }
     'check'   { Invoke-Gradle @('testDebugUnitTest', 'lintDebug') }
     'clean' {

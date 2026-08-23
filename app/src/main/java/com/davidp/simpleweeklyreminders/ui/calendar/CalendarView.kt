@@ -34,6 +34,7 @@ import com.davidp.simpleweeklyreminders.data.settings.WeekStart
 import com.davidp.simpleweeklyreminders.ui.theme.LocalAppSettings
 import com.davidp.simpleweeklyreminders.ui.theme.appShapes
 import com.davidp.simpleweeklyreminders.ui.theme.appTypography
+import com.davidp.simpleweeklyreminders.ui.theme.reminderAccent
 import com.davidp.simpleweeklyreminders.ui.theme.reminderColors
 import java.time.LocalDate
 import java.time.YearMonth
@@ -41,6 +42,10 @@ import java.time.YearMonth
 private val STRIP_HEIGHT = 4.dp
 private val STRIP_RADIUS = 2.dp
 private val NOTCH_SIZE = 5.dp
+
+/** Outline on a missed segment. Kept well under half the bar's height so it reads as a
+ *  hollow segment rather than a solid one. */
+private val MISSED_OUTLINE = 0.dp
 
 @Composable
 fun CalendarView(
@@ -209,14 +214,17 @@ fun DayReminderStrip(status: DayStatus?, modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.spacedBy(1.dp)
     ) {
         status.segments.forEach { segment ->
+            // A done segment takes its own reminder's colour when per-reminder colours are
+            // on, so a day's bar reads as which reminders were completed, not just how many.
+            val doneColor = reminderAccent(segment.colorKey)
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
                     .then(
-                        when (segment) {
-                            OccurrenceStatus.DONE -> Modifier.background(colors.done)
-                            OccurrenceStatus.MISSED -> Modifier.border(1.dp, colors.missed)
+                        when (segment.status) {
+                            OccurrenceStatus.DONE -> Modifier.background(doneColor)
+                            OccurrenceStatus.MISSED -> Modifier.border(MISSED_OUTLINE, colors.missed)
                             OccurrenceStatus.PENDING -> Modifier // track shows through
                         }
                     )

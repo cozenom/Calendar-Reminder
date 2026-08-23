@@ -24,10 +24,11 @@ class DayStatusTest {
         id: Int,
         at: LocalDateTime,
         completed: Boolean = false,
-        snoozedUntil: LocalDateTime? = null
+        snoozedUntil: LocalDateTime? = null,
+        reminderId: Int = 1
     ) = ReminderLog(
         id = id,
-        reminderId = 1,
+        reminderId = reminderId,
         title = "Meds",
         logDateTime = at,
         completed = completed,
@@ -80,7 +81,7 @@ class DayStatusTest {
         val segments = dayStatuses(logs, now).getValue(today).segments
         assertEquals(
             listOf(OccurrenceStatus.DONE, OccurrenceStatus.MISSED, OccurrenceStatus.PENDING),
-            segments
+            segments.map { it.status }
         )
     }
 
@@ -146,5 +147,37 @@ class DayStatusTest {
     @Test
     fun emptyInputGivesEmptyMap() {
         assertTrue(dayStatuses(emptyList(), now).isEmpty())
+    }
+
+    // --- per-reminder colour ---
+
+    @Test
+    fun segmentsCarryTheirOwnReminderColour() {
+        val logs = listOf(
+            log(1, today.atTime(8, 0), reminderId = 1),
+            log(2, today.atTime(9, 0), reminderId = 2)
+        )
+        val segments = dayStatuses(logs, now, mapOf(1 to "plum", 2 to "moss"))
+            .getValue(today).segments
+
+        assertEquals(listOf("plum", "moss"), segments.map { it.colorKey })
+    }
+
+    @Test
+    fun reminderWithNoColourGivesNullKey() {
+        // Null means "follow the theme accent" — the strip must not invent one
+        val logs = listOf(log(1, today.atTime(8, 0), reminderId = 7))
+        val segments = dayStatuses(logs, now, mapOf(7 to null)).getValue(today).segments
+
+        assertNull(segments.single().colorKey)
+    }
+
+    @Test
+    fun unknownReminderIdGivesNullKey() {
+        // An archived or deleted reminder can leave logs behind; they shouldn't crash
+        val logs = listOf(log(1, today.atTime(8, 0), reminderId = 99))
+        val segments = dayStatuses(logs, now, mapOf(1 to "teal")).getValue(today).segments
+
+        assertNull(segments.single().colorKey)
     }
 }

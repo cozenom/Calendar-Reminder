@@ -4,8 +4,10 @@ kotlin = "2.2.10"
 ksp = "2.3.9"
 coreKtx = "1.18.0"
 junit = "4.13.2"
-junitVersion = "1.1.5"
-espressoCore = "3.5.1"
+# Espresso < 3.6 reflects into InputManager.getInstance(), removed in recent Android —
+# every instrumented test dies at rule setup on an API 35+ device. Keep these current.
+junitVersion = "1.3.0"
+espressoCore = "3.7.0"
 lifecycleRuntimeKtx = "2.9.4"
 activityCompose = "1.12.0"
 composeBom = "2026.06.00"
