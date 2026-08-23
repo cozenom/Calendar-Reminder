@@ -101,6 +101,8 @@ dependencies {
 
     // ViewModel
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    // Compose-aware lifecycle helpers (LocalLifecycleOwner moved here from compose-ui)
+    implementation(libs.androidx.lifecycle.runtime.compose)
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)

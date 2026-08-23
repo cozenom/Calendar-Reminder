@@ -7,7 +7,9 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,8 +18,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -37,13 +39,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.davidp.simpleweeklyreminders.data.settings.DateFormatPref
 import com.davidp.simpleweeklyreminders.data.settings.SettingsRepository
 import com.davidp.simpleweeklyreminders.data.settings.ThemeMode
@@ -51,6 +54,7 @@ import com.davidp.simpleweeklyreminders.data.settings.TimeFormatPref
 import com.davidp.simpleweeklyreminders.data.settings.WeekStart
 import com.davidp.simpleweeklyreminders.ui.theme.LocalAppSettings
 import com.davidp.simpleweeklyreminders.ui.theme.appShapes
+import com.davidp.simpleweeklyreminders.ui.theme.appTypography
 import kotlinx.coroutines.launch
 
 // Set to the hosted privacy-policy URL before launch; blank hides the About row.
@@ -72,13 +76,13 @@ fun SettingsScreen(onBack: () -> Unit) {
             .padding(bottom = 24.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 16.dp),
+            modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 20.dp, top = 8.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Back")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
             }
-            Text("Settings", style = MaterialTheme.typography.titleLarge)
+            Text("Settings", style = MaterialTheme.typography.headlineSmall)
         }
 
         SettingsSection("Appearance") {
@@ -259,16 +263,24 @@ private fun PermissionsSection(context: Context) {
     }
 }
 
+/** Uppercase group heading, then the section's rows in one rounded neutral container. */
 @Composable
-private fun SettingsSection(title: String, content: @Composable () -> Unit) {
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+private fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
         Text(
-            title,
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.primary
+            text = title.uppercase(),
+            style = MaterialTheme.appTypography.sectionLabel,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 6.dp, top = 14.dp, bottom = 6.dp)
         )
-        Spacer(Modifier.height(8.dp))
-        content()
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(MaterialTheme.appShapes.large)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            content = content
+        )
     }
 }
 
@@ -340,7 +352,7 @@ private fun ActionRow(label: String, subtitle: String?, onClick: () -> Unit) {
                 )
             }
         }
-        Icon(Icons.Filled.OpenInNew, contentDescription = null)
+        Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null)
     }
 }
 
