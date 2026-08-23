@@ -15,14 +15,15 @@ enum class ReminderType { SPECIFIC_DAYS, EVERY_N_DAYS, ONE_TIME }
 enum class Importance { LOW, MEDIUM, HIGH }
 
 /** How the Reminders tab list is ordered. MANUAL is the drag-reorderable default. */
-enum class SortMode { MANUAL, DATE_ADDED, IMPORTANCE, NEXT_OCCURRENCE }
+enum class SortMode { MANUAL, DATE_ADDED, IMPORTANCE, NEXT_OCCURRENCE, TITLE }
 
 enum class SortDirection { ASCENDING, DESCENDING }
 
 /** Sensible starting direction when a sort mode is first selected (still user-toggleable). */
 fun SortMode.defaultDirection(): SortDirection = when (this) {
     SortMode.IMPORTANCE -> SortDirection.DESCENDING // High first reads as "most important on top"
-    SortMode.MANUAL, SortMode.DATE_ADDED, SortMode.NEXT_OCCURRENCE -> SortDirection.ASCENDING
+    SortMode.MANUAL, SortMode.DATE_ADDED, SortMode.NEXT_OCCURRENCE, SortMode.TITLE ->
+        SortDirection.ASCENDING
 }
 
 @Entity(tableName = "reminders")

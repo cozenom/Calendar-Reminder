@@ -179,6 +179,44 @@ class ReminderSortTest {
         )
     }
 
+    // --- TITLE ---
+
+    @Test
+    fun `title ascending sorts A to Z`() {
+        val list = listOf(reminder("Vitamins"), reminder("Meds"), reminder("Plants"))
+        assertEquals(
+            listOf("Meds", "Plants", "Vitamins"),
+            list.sortedFor(SortMode.TITLE, SortDirection.ASCENDING, now).map { it.title }
+        )
+    }
+
+    @Test
+    fun `title descending sorts Z to A`() {
+        val list = listOf(reminder("Meds"), reminder("Vitamins"), reminder("Plants"))
+        assertEquals(
+            listOf("Vitamins", "Plants", "Meds"),
+            list.sortedFor(SortMode.TITLE, SortDirection.DESCENDING, now).map { it.title }
+        )
+    }
+
+    @Test
+    fun `title sort ignores case`() {
+        // A case-sensitive sort would put every capitalised title before every lowercase one
+        val list = listOf(reminder("banana"), reminder("Apple"), reminder("cherry"), reminder("Date"))
+        assertEquals(
+            listOf("Apple", "banana", "cherry", "Date"),
+            list.sortedFor(SortMode.TITLE, SortDirection.ASCENDING, now).map { it.title }
+        )
+    }
+
+    @Test
+    fun `equal titles keep manual order`() {
+        val first = reminder("Meds", createdAt = LocalDateTime.of(2025, 1, 1, 0, 0))
+        val second = reminder("Meds", createdAt = LocalDateTime.of(2025, 6, 1, 0, 0))
+        val sorted = listOf(first, second).sortedFor(SortMode.TITLE, SortDirection.ASCENDING, now)
+        assertEquals(listOf(first, second), sorted)
+    }
+
     // --- Empty list ---
 
     @Test
@@ -197,5 +235,6 @@ class ReminderSortTest {
         assertEquals(SortDirection.ASCENDING, SortMode.MANUAL.defaultDirection())
         assertEquals(SortDirection.ASCENDING, SortMode.DATE_ADDED.defaultDirection())
         assertEquals(SortDirection.ASCENDING, SortMode.NEXT_OCCURRENCE.defaultDirection())
+        assertEquals(SortDirection.ASCENDING, SortMode.TITLE.defaultDirection())
     }
 }

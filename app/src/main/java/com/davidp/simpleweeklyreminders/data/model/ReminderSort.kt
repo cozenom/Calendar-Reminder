@@ -39,6 +39,8 @@ fun List<Reminder>.sortedFor(
         SortMode.DATE_ADDED -> sortedBy { it.createdAt }
         SortMode.IMPORTANCE -> sortedBy { it.importance.ordinal }
         SortMode.NEXT_OCCURRENCE -> sortedWith(compareBy(nullsLast()) { nextOccurrence(it, now) })
+        // Case-insensitive so "apples" and "Apples" don't land in separate blocks
+        SortMode.TITLE -> sortedBy { it.title.lowercase() }
         SortMode.MANUAL -> this
     }
     if (direction == SortDirection.ASCENDING) return ascending

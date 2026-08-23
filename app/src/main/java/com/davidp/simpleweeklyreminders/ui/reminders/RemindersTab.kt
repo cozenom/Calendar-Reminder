@@ -79,16 +79,21 @@ fun RemindersTab(viewModel: ReminderViewModel, onOpenArchive: () -> Unit, snackb
     var sortDirection by rememberSaveable { mutableStateOf(SortMode.MANUAL.defaultDirection()) }
     var selectedImportances by rememberSaveable { mutableStateOf(setOf(Importance.LOW, Importance.MEDIUM, Importance.HIGH)) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
+    var hidePaused by rememberSaveable { mutableStateOf(false) }
     var showSortFilterSheet by remember { mutableStateOf(false) }
     // The sheet is one surface with two entry points — the search icon opens it with the
     // field already focused, the sort icon opens it plainly.
     var searchOnOpen by remember { mutableStateOf(false) }
-    val isFilterActive = sortMode != SortMode.MANUAL || selectedImportances.size < 3 || searchQuery.isNotBlank()
+    val isFilterActive = sortMode != SortMode.MANUAL || selectedImportances.size < 3 ||
+        searchQuery.isNotBlank() || hidePaused
 
-    val visibleReminders = remember(loadedReminders, sortMode, sortDirection, selectedImportances, searchQuery) {
+    val visibleReminders = remember(
+        loadedReminders, sortMode, sortDirection, selectedImportances, searchQuery, hidePaused
+    ) {
         loadedReminders
             .filter { selectedImportances.contains(it.importance) }
             .filter { searchQuery.isBlank() || it.title.contains(searchQuery, ignoreCase = true) }
+            .filter { !hidePaused || it.isActive }
             .sortedFor(sortMode, sortDirection)
     }
 
@@ -221,6 +226,9 @@ fun RemindersTab(viewModel: ReminderViewModel, onOpenArchive: () -> Unit, snackb
             onImportancesChange = { selectedImportances = it },
             searchQuery = searchQuery,
             onSearchQueryChange = { searchQuery = it },
+            hidePaused = hidePaused,
+            onHidePausedChange = { hidePaused = it },
+            matchCount = visibleReminders.size,
             focusSearchOnOpen = searchOnOpen,
             onDismiss = { showSortFilterSheet = false }
         )
