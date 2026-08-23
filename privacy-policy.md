@@ -19,4 +19,4 @@ No personal data is collected. No analytics or tracking of any kind is used. No 
 
 ## Contact
 
-If you have any questions about this privacy policy, please contact: dellpcr@gmail.com
+If you have any questions about this privacy policy, please open an issue: https://github.com/cozenom/Calendar-Reminder/issues
