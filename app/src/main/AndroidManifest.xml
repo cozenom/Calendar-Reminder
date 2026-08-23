@@ -7,7 +7,13 @@
 
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <!--
+    USE_FULL_SCREEN_INTENT removed 2026-08-23: nothing ever called
+    setFullScreenIntent(). Since Android 14 it is granted automatically only to
+    calling/alarm apps and Play asks about it at review, so declaring it unused
+    was pure liability. Re-adding it means committing to the alarm-app framing.
+    -->
+
 
     <application
         android:allowBackup="true"

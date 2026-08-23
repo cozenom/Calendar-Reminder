@@ -166,6 +166,9 @@ class NotificationActionReceiver : BroadcastReceiver() {
             .setContentTitle(title)
             .setContentText(contentText)
             .setColor(ReminderWorker.accentColor(context))
+            // Bundled by the system once a second reminder is showing, so a busy 08:00
+            // arrives as one stack instead of four unrelated notifications.
+            .setGroup(GROUP_KEY)
             // Header timestamp = when this was scheduled, not when it popped up —
             // matters for snoozed re-fires and delayed inexact alarms
             .setWhen(log.logDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli())
@@ -200,6 +203,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
 
         try {
             notificationManager.notify(logId, builder.build())
+            postGroupSummary(context, notificationManager)
             Log.d("NotificationActionReceiver", "Notification shown for log $logId")
         } catch (e: Exception) {
             Log.e("NotificationActionReceiver", "Error showing notification: ${e.message}", e)
@@ -260,9 +264,68 @@ class NotificationActionReceiver : BroadcastReceiver() {
             vibrationPattern = longArrayOf(0, 250)
             setSound(urgentSound, soundAttributes)
         }
+        // The group summary spans every importance level, so it can't sit on any of the
+        // three above — a stack of Low reminders would inherit High's alarm tone. It gets a
+        // silent channel of its own; the children still alert individually.
+        val group = NotificationChannel(
+            CHANNEL_ID_GROUP,
+            "Grouped reminders",
+            NotificationManager.IMPORTANCE_LOW
+        ).apply {
+            description = "The header shown when several reminders arrive together"
+            lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            setShowBadge(false)
+            setSound(null, null)
+            enableVibration(false)
+        }
         notificationManager.createNotificationChannel(low)
         notificationManager.createNotificationChannel(medium)
         notificationManager.createNotificationChannel(high)
+        notificationManager.createNotificationChannel(group)
+    }
+
+    /**
+     * Header for the bundle Android builds once two or more reminders are showing.
+     *
+     * Posted alongside every reminder rather than only when a second one arrives: a summary
+     * with a single child is invisible (the system shows the child on its own), so there's
+     * nothing to detect and no state to keep.
+     */
+    private fun postGroupSummary(context: Context, notificationManager: NotificationManager) {
+        val tapIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            context, GROUP_SUMMARY_ID, tapIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val summary = NotificationCompat.Builder(context, CHANNEL_ID_GROUP)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setColor(ReminderWorker.accentColor(context))
+            .setGroup(GROUP_KEY)
+            .setGroupSummary(true)
+            // The children carry the sound and heads-up; the header must stay silent or
+            // every reminder would alert twice.
+            .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(false)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .build()
+
+        notificationManager.notify(GROUP_SUMMARY_ID, summary)
+    }
+
+    /**
+     * Drops the group header once its last child is gone. Android usually clears an empty
+     * summary itself, but not on every OEM build — a stranded header that can't be dismissed
+     * is worse than no grouping at all.
+     */
+    private fun cancelSummaryIfEmpty(context: Context, notificationManager: NotificationManager) {
+        val childrenLeft = notificationManager.activeNotifications.any {
+            it.id != GROUP_SUMMARY_ID && it.notification.group == GROUP_KEY
+        }
+        if (!childrenLeft) notificationManager.cancel(GROUP_SUMMARY_ID)
     }
 
     private suspend fun markAsCompleted(context: Context, logId: Int) {
@@ -273,6 +336,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancel(logId)
+        cancelSummaryIfEmpty(context, notificationManager)
 
         // Acting on a notification counts as seeing it — advances the missed baseline
         BootReceiver.markSeenNow(context)
@@ -283,6 +347,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancel(logId)
+        cancelSummaryIfEmpty(context, notificationManager)
 
         val database = AppDatabase.getDatabase(context)
         val log = database.reminderLogDao().getLogById(logId) ?: return
@@ -308,6 +373,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancel(logId)
+        cancelSummaryIfEmpty(context, notificationManager)
 
         BootReceiver.markSeenNow(context)
 
@@ -339,6 +405,16 @@ class NotificationActionReceiver : BroadcastReceiver() {
         private const val CHANNEL_ID_LOW = "ReminderChannelLow"
         private const val CHANNEL_ID_MEDIUM = "ReminderChannelMedium"
         private const val CHANNEL_ID_HIGH = "ReminderChannelHigh"
+        private const val CHANNEL_ID_GROUP = "ReminderChannelGroup"
+
+        private const val GROUP_KEY = "com.davidp.simpleweeklyreminders.REMINDERS"
+
+        /**
+         * Notification id for the group header. Children use their log id, which is a Room
+         * autoGenerate int starting at 1, so a large negative value can't collide.
+         * BootReceiver's missed summary uses 9999 and is deliberately outside this group.
+         */
+        private const val GROUP_SUMMARY_ID = -1000
 
         private fun channelIdFor(importance: Importance): String = when (importance) {
             Importance.LOW -> CHANNEL_ID_LOW
