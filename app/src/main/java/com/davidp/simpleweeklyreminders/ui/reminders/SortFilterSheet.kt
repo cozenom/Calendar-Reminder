@@ -192,9 +192,13 @@ fun SortFilterSheet(
                     enabled = directionEnabled,
                     icon = {}
                 ) {
-                    Icon(Icons.Filled.ArrowUpward, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(ascendingLabel, style = MaterialTheme.typography.labelLarge)
+                    // The label slot is a single-child container, not a Row — without this
+                    // Row the arrow draws on top of the text instead of beside it.
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.ArrowUpward, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(ascendingLabel, style = MaterialTheme.typography.labelLarge)
+                    }
                 }
                 SegmentedButton(
                     selected = directionEnabled && sortDirection == SortDirection.DESCENDING,
@@ -203,9 +207,11 @@ fun SortFilterSheet(
                     enabled = directionEnabled,
                     icon = {}
                 ) {
-                    Icon(Icons.Filled.ArrowDownward, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(descendingLabel, style = MaterialTheme.typography.labelLarge)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.ArrowDownward, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(descendingLabel, style = MaterialTheme.typography.labelLarge)
+                    }
                 }
             }
 

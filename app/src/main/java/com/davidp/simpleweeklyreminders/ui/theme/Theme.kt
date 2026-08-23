@@ -72,6 +72,17 @@ val LocalAppSettings = staticCompositionLocalOf { AppSettingsState() }
 val LocalIsDarkTheme = staticCompositionLocalOf { false }
 
 /**
+ * The single definition of "is the app dark right now": the user's setting, falling back to
+ * the system value only for SYSTEM. Shared by the theme and by MainActivity's system-bar
+ * setup, which needs the answer before composition starts.
+ */
+fun ThemeMode.resolveDark(systemDark: Boolean): Boolean = when (this) {
+    ThemeMode.LIGHT -> false
+    ThemeMode.DARK -> true
+    ThemeMode.SYSTEM -> systemDark
+}
+
+/**
  * Warm neutral paper surfaces, shared by every theme pack. Only the accent family below
  * changes per pack, so the app keeps one identity and the packs stay a six-colour swap.
  */
@@ -175,11 +186,7 @@ fun CalendarAppTheme(
     themePack: ThemePack = ThemePack.PAPER,
     content: @Composable () -> Unit
 ) {
-    val darkTheme = when (themeMode) {
-        ThemeMode.LIGHT -> false
-        ThemeMode.DARK -> true
-        ThemeMode.SYSTEM -> isSystemInDarkTheme()
-    }
+    val darkTheme = themeMode.resolveDark(isSystemInDarkTheme())
     val tones = tonesFor(themePack)
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {

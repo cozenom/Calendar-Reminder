@@ -4,12 +4,15 @@ import android.Manifest
 import android.app.AlarmManager
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Configuration
+import android.graphics.Color as AndroidColor
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
@@ -50,6 +53,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -69,10 +73,17 @@ import com.davidp.simpleweeklyreminders.ui.reminders.RemindersTab
 import com.davidp.simpleweeklyreminders.ui.settings.SettingsScreen
 import com.davidp.simpleweeklyreminders.ui.theme.CalendarAppTheme
 import com.davidp.simpleweeklyreminders.ui.theme.LocalAppSettings
+import com.davidp.simpleweeklyreminders.ui.theme.LocalIsDarkTheme
 import com.davidp.simpleweeklyreminders.ui.theme.appShapes
+import com.davidp.simpleweeklyreminders.ui.theme.resolveDark
 import com.davidp.simpleweeklyreminders.viewmodel.ReminderViewModel
 import com.davidp.simpleweeklyreminders.viewmodel.ReminderViewModelFactory
 import kotlinx.coroutines.runBlocking
+
+// androidx.activity's own defaults, which are private there: the scrim behind 3-button
+// navigation so the bar stays legible over scrolled content.
+private val NavigationBarLightScrim = AndroidColor.argb(0xe6, 0xFF, 0xFF, 0xFF)
+private val NavigationBarDarkScrim = AndroidColor.argb(0x80, 0x1b, 0x1b, 0x1b)
 
 class MainActivity : ComponentActivity() {
     private lateinit var viewModel: ReminderViewModel
@@ -81,7 +92,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         alarmManager = getSystemService(ALARM_SERVICE) as AlarmManager
 
         requestPermissionLauncher =
@@ -101,6 +111,9 @@ class MainActivity : ComponentActivity() {
         // no flash to the default. Only this cold-start read blocks; the flow below is
         // reactive from then on.
         val initialSettings = runBlocking { settingsRepository.read() }
+        // Before the first frame, so it is never drawn non-edge-to-edge or with the
+        // wrong bar icons; the SideEffect below only handles later theme changes.
+        applyEdgeToEdge(initialSettings.themeMode.resolveDark(isSystemInNightMode()))
 
         setContent {
             val settings by settingsRepository.flow.collectAsState(initial = initialSettings)
@@ -109,11 +122,36 @@ class MainActivity : ComponentActivity() {
                 dynamicColor = settings.dynamicColor,
                 themePack = settings.themePack
             ) {
+                // System bar icons follow the app's resolved theme, not the device's.
+                // Forcing Light on a dark-mode device would otherwise leave white status
+                // icons on the app's cream background. Re-applied on every theme change.
+                val darkTheme = LocalIsDarkTheme.current
+                SideEffect { applyEdgeToEdge(darkTheme) }
                 CompositionLocalProvider(LocalAppSettings provides settings) {
                     ReminderApp(viewModel)
                 }
             }
         }
+    }
+
+    /** The device's night mode — the fallback the SYSTEM theme setting defers to. */
+    private fun isSystemInNightMode(): Boolean =
+        resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
+            Configuration.UI_MODE_NIGHT_YES
+
+    /** enableEdgeToEdge with the dark/light decision taken from the app theme. */
+    private fun applyEdgeToEdge(darkTheme: Boolean) {
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.auto(
+                AndroidColor.TRANSPARENT,
+                AndroidColor.TRANSPARENT
+            ) { darkTheme },
+            // Scrims only apply to 3-button navigation; gesture nav stays transparent.
+            navigationBarStyle = SystemBarStyle.auto(
+                NavigationBarLightScrim,
+                NavigationBarDarkScrim
+            ) { darkTheme }
+        )
     }
 
     private fun requestRequiredPermissions() {
