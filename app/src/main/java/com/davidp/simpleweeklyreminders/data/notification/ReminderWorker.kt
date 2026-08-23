@@ -3,6 +3,8 @@ package com.davidp.simpleweeklyreminders.data.notification
 import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
+import android.content.res.Configuration
+import androidx.core.graphics.toColorInt
 import android.content.Intent
 import android.os.Build
 import androidx.work.CoroutineWorker
@@ -58,8 +60,18 @@ class ReminderWorker(
         const val EXTRA_LOG_ID = "log_id"
         const val EXTRA_REMINDER_ID = "reminder_id"
         const val EXTRA_IS_SNOOZE = "is_snooze"
-        // Material primary purple — notification accent shared by all notifications
-        const val ACCENT_COLOR = "#6650A4"
+        // The app's "Paper" accent, shared by every notification. Two tones because the
+        // shade follows the SYSTEM's dark mode (not the app's Theme setting), and the light
+        // tone is too dark to read against a dark shade.
+        const val ACCENT_COLOR = "#2F5D6B"
+        const val ACCENT_COLOR_DARK = "#93CEDF"
+
+        /** Notification accent for the system's current light/dark shade. */
+        fun accentColor(context: Context): Int {
+            val night = context.resources.configuration.uiMode and
+                Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
+            return (if (night) ACCENT_COLOR_DARK else ACCENT_COLOR).toColorInt()
+        }
         private const val WORKER_NAME = "ReminderWorker"
 
         fun scheduleAlarm(context: Context, log: ReminderLog) {

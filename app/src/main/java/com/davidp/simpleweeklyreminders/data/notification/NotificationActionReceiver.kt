@@ -148,7 +148,8 @@ class NotificationActionReceiver : BroadcastReceiver() {
         // Status bar shows the reminder's own icon; generic bell when it has none
         val smallIconRes = reminder?.icon?.let { iconDrawableRes(it) } ?: R.drawable.ic_notification
 
-        val timePattern = SettingsRepository(context).read().timeFormat.timePattern(context)
+        val settings = SettingsRepository(context).read()
+        val timePattern = settings.timeFormat.timePattern(context)
         val timeText = log.logDateTime.toLocalTime()
             .format(DateTimeFormatter.ofPattern(timePattern))
         val contentText =
@@ -164,7 +165,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
             .setSmallIcon(smallIconRes)
             .setContentTitle(title)
             .setContentText(contentText)
-            .setColor(ReminderWorker.ACCENT_COLOR.toColorInt())
+            .setColor(ReminderWorker.accentColor(context))
             // Header timestamp = when this was scheduled, not when it popped up —
             // matters for snoozed re-fires and delayed inexact alarms
             .setWhen(log.logDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli())
@@ -175,14 +176,19 @@ class NotificationActionReceiver : BroadcastReceiver() {
             .setOngoing(false)
             .setAutoCancel(false)
             .setDeleteIntent(swipePendingIntent)
-            // Dismiss, Snooze, Completed — increasing commitment left to right,
-            // same 3 actions at every importance level. Action icons render on
-            // Wear OS / some OEM skins but not on stock Android phone notifications,
-            // so one shared icon (rather than a distinct one per action) avoids
-            // maintaining art nobody sees on the common path.
+            // Dismiss, Snooze, Done — increasing commitment left to right, same 3 actions
+            // at every importance level. Snooze names its own duration so the length is
+            // visible without opening Settings. Action icons render on Wear OS / some OEM
+            // skins but not on stock Android phone notifications, so one shared icon
+            // (rather than a distinct one per action) avoids maintaining art nobody sees
+            // on the common path.
             .addAction(R.drawable.ic_notification, "Dismiss", dismissPendingIntent)
-            .addAction(R.drawable.ic_notification, "Snooze", snoozePendingIntent)
-            .addAction(R.drawable.ic_notification, "Completed", completedPendingIntent)
+            .addAction(
+                R.drawable.ic_notification,
+                "Snooze ${settings.snoozeMinutes}m",
+                snoozePendingIntent
+            )
+            .addAction(R.drawable.ic_notification, "Done", completedPendingIntent)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setSound(soundUri)
             .setVibrate(longArrayOf(0, 250))
@@ -314,6 +320,8 @@ class NotificationActionReceiver : BroadcastReceiver() {
         val canvas = Canvas(bitmap)
 
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        // Always the darker tone: this is a filled circle with a white glyph, so it carries
+        // its own contrast and doesn't need to follow the shade like setColor() does.
         paint.color = ReminderWorker.ACCENT_COLOR.toColorInt()
         canvas.drawCircle(size / 2f, size / 2f, size / 2f, paint)
 

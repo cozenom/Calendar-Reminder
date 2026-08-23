@@ -82,7 +82,7 @@ class BootReceiver : BroadcastReceiver() {
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("Missed Reminder${if (count > 1) "s" else ""}")
             .setContentText("You missed $count reminder${if (count > 1) "s" else ""} since you last checked")
-            .setColor(ReminderWorker.ACCENT_COLOR.toColorInt())
+            .setColor(ReminderWorker.accentColor(context))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
