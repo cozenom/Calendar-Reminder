@@ -36,14 +36,17 @@ class AppSettingsTest {
     fun storedValues_areRead() {
         val prefs = mutablePreferencesOf().apply {
             this[SettingsKeys.THEME_MODE] = ThemeMode.DARK.name
-            this[SettingsKeys.DYNAMIC_COLOR] = false
+            // Opposite of the default, so this asserts the stored value is actually read
+            this[SettingsKeys.DYNAMIC_COLOR] = true
+            this[SettingsKeys.PER_REMINDER_COLORS] = true
             this[SettingsKeys.WEEK_START] = WeekStart.SUNDAY.name
             this[SettingsKeys.SNOOZE_MINUTES] = 30
         }
         val state = prefs.toAppSettingsState()
 
         assertEquals(ThemeMode.DARK, state.themeMode)
-        assertEquals(false, state.dynamicColor)
+        assertEquals(true, state.dynamicColor)
+        assertEquals(true, state.perReminderColors)
         assertEquals(WeekStart.SUNDAY, state.weekStart)
         assertEquals(30, state.snoozeMinutes)
         // Untouched keys still default

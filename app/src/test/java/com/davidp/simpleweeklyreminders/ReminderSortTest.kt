@@ -5,6 +5,7 @@ import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.SortDirection
 import com.davidp.simpleweeklyreminders.data.model.SortMode
 import com.davidp.simpleweeklyreminders.data.model.defaultDirection
+import com.davidp.simpleweeklyreminders.data.model.sortedFor
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test

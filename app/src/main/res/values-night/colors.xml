@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches the Paper dark scheme's `background` in ui/theme/Theme.kt. -->
+    <color name="window_background">#161512</color>
+</resources>

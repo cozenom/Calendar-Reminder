@@ -1,4 +1,4 @@
-package com.davidp.simpleweeklyreminders
+package com.davidp.simpleweeklyreminders.ui.form
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable

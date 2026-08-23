@@ -1,4 +1,4 @@
-package com.davidp.simpleweeklyreminders
+package com.davidp.simpleweeklyreminders.ui.settings
 
 import android.Manifest
 import android.app.AlarmManager
@@ -102,6 +102,13 @@ fun SettingsScreen(onBack: () -> Unit) {
                     onCheckedChange = { scope.launch { repo.setDynamicColor(it) } }
                 )
             }
+            Spacer(Modifier.height(8.dp))
+            SwitchRow(
+                label = "Per-reminder colours",
+                subtitle = "Adds a colour picker to each reminder",
+                checked = settings.perReminderColors,
+                onCheckedChange = { scope.launch { repo.setPerReminderColors(it) } }
+            )
         }
 
         SettingsSection("Time & date") {

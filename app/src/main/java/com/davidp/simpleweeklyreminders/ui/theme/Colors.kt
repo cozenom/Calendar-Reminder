@@ -4,63 +4,61 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
 /**
- * Semantic colors for reminder status indicators.
- * Maintains meaning (green=completed, red=pending/missed) while
- * adapting to light/dark mode for proper readability.
+ * Status and importance colors that M3's scheme has no slot for.
+ *
+ * The palette deliberately carries no green/red pair. Completion is shown by *fill*
+ * (accent = done, faint track = pending, hollow outline = missed) so the three states stay
+ * distinguishable without relying on hue — green-red is the hardest pair for red-green color
+ * blindness, and it read as an alarm on a screen that is mostly routine.
  */
 data class ReminderColors(
-    // Reminder completion status (list items)
-    val completedContainer: Color,
-    val completedContent: Color,
-    val pendingContainer: Color,
-    val pendingContent: Color,
-
-    // Calendar indicator dots
-    val completedIndicator: Color,
-    val pendingIndicator: Color,
+    /** Filled segment / chip for a completed occurrence. */
+    val done: Color,
+    val onDone: Color,
+    /** Soft accent wash behind a completed row's icon. */
+    val doneWash: Color,
+    /** Neutral group fill for pending and missed rows, and for inert chips. */
+    val neutral: Color,
+    /** Faint bar behind the day-cell segments; also an unfilled (pending) segment. */
+    val track: Color,
+    /** Ink for a missed segment's outline, its corner notch, and the missed glyph. */
+    val missed: Color,
+    /** Hairline for chip borders and the pending glyph. */
+    val hairline: Color,
 
     // Importance chevrons and the form's selector buttons. Blue/amber/red, not
-    // green/amber/red — green-red is the hardest pair for red-green color blindness.
-    // Chevron count is the primary signal (see ImportanceChevrons).
+    // green/amber/red. Chevron count is the primary signal (see ImportanceChevrons).
     val importanceLow: Color,
     val importanceMedium: Color,
     val importanceHigh: Color,
 )
 
 val LightReminderColors = ReminderColors(
-    // Completed - light mode
-    completedContainer = Color(0xFFE8F5E9),  // Light green
-    completedContent = Color(0xFF2E7D32),    // Dark green
-    // Pending/missed - light mode
-    pendingContainer = Color(0xFFFFEBEE),    // Light red
-    pendingContent = Color(0xFFC62828),      // Dark red
+    done = Color(0xFF2F5D6B),               // accent
+    onDone = Color(0xFFFFFFFF),
+    doneWash = Color(0xFFE3EEF2),
+    neutral = Color(0xFFF2F0EA),            // group surface
+    track = Color(0x221C1B18),              // ink @ 13%
+    missed = Color(0xFF1C1B18),             // ink
+    hairline = Color(0x2E1C1B18),           // ink @ 18%
 
-    // Calendar indicators - light mode
-    completedIndicator = Color(0xFF4CAF50),  // Standard Material green
-    pendingIndicator = Color(0xFFF44336),    // Standard Material red
-
-    // Importance chevrons - light mode
-    importanceLow = Color(0xFF1976D2),       // Blue 700
-    importanceMedium = Color(0xFFF9A825),    // Amber 800
-    importanceHigh = Color(0xFFD32F2F),      // Red 700
+    importanceLow = Color(0xFF3E6E9E),
+    importanceMedium = Color(0xFF9A6714),
+    importanceHigh = Color(0xFFB3382B),
 )
 
 val DarkReminderColors = ReminderColors(
-    // Completed - dark mode
-    completedContainer = Color(0xFF1B5E20),  // Dark green
-    completedContent = Color(0xFFA5D6A7),    // Light green
-    // Pending/missed - dark mode
-    pendingContainer = Color(0xFFB71C1C),    // Dark red
-    pendingContent = Color(0xFFEF9A9A),      // Light red
+    done = Color(0xFF93CEDF),
+    onDone = Color(0xFF06333F),
+    doneWash = Color(0xFF1E3B44),
+    neutral = Color(0xFF1F1E1A),
+    track = Color(0x26EAE7DF),              // ink @ 15%
+    missed = Color(0xFFEAE7DF),
+    hairline = Color(0x38EAE7DF),           // ink @ 22%
 
-    // Calendar indicators - dark mode
-    completedIndicator = Color(0xFF4CAF50),  // Standard Material green
-    pendingIndicator = Color(0xFFF44336),    // Standard Material red
-
-    // Importance chevrons - dark mode
-    importanceLow = Color(0xFF64B5F6),       // Blue 300
-    importanceMedium = Color(0xFFFFD54F),    // Amber 300
-    importanceHigh = Color(0xFFEF9A9A),      // Red 300
+    importanceLow = Color(0xFF8FBEE0),
+    importanceMedium = Color(0xFFE5BC72),
+    importanceHigh = Color(0xFFF0958A),
 )
 
 val LocalReminderColors = staticCompositionLocalOf { LightReminderColors }

@@ -1,4 +1,4 @@
-package com.davidp.simpleweeklyreminders
+package com.davidp.simpleweeklyreminders.ui.calendar
 
 import com.davidp.simpleweeklyreminders.data.settings.WeekStart
 

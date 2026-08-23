@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.SimpleWeeklyReminders" parent="android:Theme.Material.Light.NoActionBar" />
+    <!--
+    Window background only — Compose owns everything above it. It has to track the system's
+    dark mode (via the values-night variant) or the pre-first-frame window and the area behind
+    a dismissing sheet flash light on a dark device.
+    -->
+    <style name="Theme.SimpleWeeklyReminders" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+    </style>
 </resources>

@@ -1,4 +1,4 @@
-package com.davidp.simpleweeklyreminders
+package com.davidp.simpleweeklyreminders.ui.form
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -53,9 +53,11 @@ import com.davidp.simpleweeklyreminders.data.settings.datePattern
 import com.davidp.simpleweeklyreminders.data.settings.dateNoYearPattern
 import com.davidp.simpleweeklyreminders.data.settings.is24Hour
 import com.davidp.simpleweeklyreminders.data.settings.timePattern
+import com.davidp.simpleweeklyreminders.ui.calendar.CalendarDialog
 import com.davidp.simpleweeklyreminders.ui.theme.LocalAppSettings
 import com.davidp.simpleweeklyreminders.ui.theme.appShapes
 import com.davidp.simpleweeklyreminders.ui.theme.dimensions
+import com.davidp.simpleweeklyreminders.ui.theme.reminderAccent
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -100,6 +102,7 @@ private fun ReminderForm(
     var dayInterval by remember { mutableIntStateOf(initial?.dayInterval ?: 1) }
     var notes by remember { mutableStateOf(initial?.notes ?: "") }
     var selectedIcon by remember { mutableStateOf(initial?.icon ?: DEFAULT_ICON_KEY) }
+    var selectedColor by remember { mutableStateOf(initial?.color) }
     // Null for a new reminder — HIGH is a migration default (see Reminder.kt), so picking
     // a level is mandatory here
     var importance by remember { mutableStateOf(initial?.importance) }
@@ -132,7 +135,8 @@ private fun ReminderForm(
                     Icon(
                         imageVector = iconFromKey(selectedIcon).icon,
                         contentDescription = "Change icon",
-                        tint = MaterialTheme.colorScheme.primary,
+                        // Previews the reminder's own colour as soon as one is picked
+                        tint = reminderAccent(selectedColor),
                         modifier = Modifier.size(28.dp)
                     )
                 }
@@ -152,6 +156,11 @@ private fun ReminderForm(
                 singleLine = true,
                 modifier = Modifier.weight(1f)
             )
+        }
+        // Only offered when the user has turned per-reminder colours on in Settings
+        if (LocalAppSettings.current.perReminderColors) {
+            Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
+            ColorSelector(selectedKey = selectedColor, onChanged = { selectedColor = it })
         }
         Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
 
@@ -297,6 +306,7 @@ private fun ReminderForm(
                             reminderDays = if (isOneTime) setOf(startDate.dayOfWeek.value) else reminderDays,
                             notes = notes.ifBlank { null },
                             icon = selectedIcon,
+                            color = selectedColor,
                             dayInterval = if (recurrenceMode == ReminderType.EVERY_N_DAYS) dayInterval else null,
                             reminderType = recurrenceMode,
                             importance = requireNotNull(importance)

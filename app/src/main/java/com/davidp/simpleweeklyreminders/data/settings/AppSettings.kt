@@ -22,7 +22,11 @@ enum class WeekStart { SUNDAY, MONDAY }
 /** Immutable snapshot the whole app reads; defaults are the pre-settings behaviour. */
 data class AppSettingsState(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
-    val dynamicColor: Boolean = true,
+    // Off by default so the app's own palette is what users actually see; dynamic color
+    // replaces it outright on Android 12+. Opt-in from Settings. See CalendarAppTheme.
+    val dynamicColor: Boolean = false,
+    // When on, each reminder gets a colour field in its form and draws itself in that colour.
+    val perReminderColors: Boolean = false,
     val timeFormat: TimeFormatPref = TimeFormatPref.SYSTEM,
     val dateFormat: DateFormatPref = DateFormatPref.SYSTEM,
     val weekStart: WeekStart = WeekStart.MONDAY,
@@ -54,6 +58,9 @@ class SettingsRepository(private val context: Context) {
     suspend fun setDynamicColor(enabled: Boolean) =
         edit { it[SettingsKeys.DYNAMIC_COLOR] = enabled }
 
+    suspend fun setPerReminderColors(enabled: Boolean) =
+        edit { it[SettingsKeys.PER_REMINDER_COLORS] = enabled }
+
     suspend fun setTimeFormat(pref: TimeFormatPref) =
         edit { it[SettingsKeys.TIME_FORMAT] = pref.name }
 
@@ -79,6 +86,7 @@ class SettingsRepository(private val context: Context) {
 internal object SettingsKeys {
     val THEME_MODE = stringPreferencesKey("theme_mode")
     val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
+    val PER_REMINDER_COLORS = booleanPreferencesKey("per_reminder_colors")
     val TIME_FORMAT = stringPreferencesKey("time_format")
     val DATE_FORMAT = stringPreferencesKey("date_format")
     val WEEK_START = stringPreferencesKey("week_start")
@@ -88,7 +96,8 @@ internal object SettingsKeys {
 
 internal fun Preferences.toAppSettingsState() = AppSettingsState(
     themeMode = parseEnum(this[SettingsKeys.THEME_MODE], ThemeMode.SYSTEM),
-    dynamicColor = this[SettingsKeys.DYNAMIC_COLOR] ?: true,
+    dynamicColor = this[SettingsKeys.DYNAMIC_COLOR] ?: false,
+    perReminderColors = this[SettingsKeys.PER_REMINDER_COLORS] ?: false,
     timeFormat = parseEnum(this[SettingsKeys.TIME_FORMAT], TimeFormatPref.SYSTEM),
     dateFormat = parseEnum(this[SettingsKeys.DATE_FORMAT], DateFormatPref.SYSTEM),
     weekStart = parseEnum(this[SettingsKeys.WEEK_START], WeekStart.MONDAY),
