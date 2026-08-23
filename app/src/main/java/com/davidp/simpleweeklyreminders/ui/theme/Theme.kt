@@ -11,12 +11,15 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.davidp.simpleweeklyreminders.data.settings.AppSettingsState
 import com.davidp.simpleweeklyreminders.data.settings.ThemeMode
+import com.davidp.simpleweeklyreminders.data.settings.ThemePack
 
 object AppShapes {
     val small = RoundedCornerShape(12.dp)       // Day cells, small chips
@@ -69,20 +72,35 @@ val LocalAppSettings = staticCompositionLocalOf { AppSettingsState() }
 val LocalIsDarkTheme = staticCompositionLocalOf { false }
 
 /**
- * "Paper" — warm neutral paper with a slate-teal accent. The app's own identity, used unless
- * the user opts into wallpaper colors. Further theme packs are planned; see redesign.txt.
+ * Warm neutral paper surfaces, shared by every theme pack. Only the accent family below
+ * changes per pack, so the app keeps one identity and the packs stay a six-colour swap.
  */
-private val LightColorScheme = lightColorScheme(
-    primary = Color(0xFF2F5D6B),
+private fun lightSchemeFor(tones: ThemePackTones) = LightNeutralScheme.copy(
+    primary = tones.accentLight,
     onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFFCDE7EF),
-    onPrimaryContainer = Color(0xFF06333F),
-
-    secondary = Color(0xFF2F5D6B),
+    primaryContainer = tones.containerLight,
+    onPrimaryContainer = tones.deep,
+    secondary = tones.accentLight,
     onSecondary = Color(0xFFFFFFFF),
-    secondaryContainer = Color(0xFFE3EEF2),
-    onSecondaryContainer = Color(0xFF06333F),
+    // Softer than the container: the wash behind an icon, not a selected surface
+    secondaryContainer = tones.containerLight.copy(alpha = 0.55f).compositeOver(Color(0xFFFAF9F6)),
+    onSecondaryContainer = tones.deep,
+    inversePrimary = tones.accentDark
+)
 
+private fun darkSchemeFor(tones: ThemePackTones) = DarkNeutralScheme.copy(
+    primary = tones.accentDark,
+    onPrimary = tones.deep,
+    primaryContainer = tones.containerDark,
+    onPrimaryContainer = tones.pale,
+    secondary = tones.accentDark,
+    onSecondary = tones.deep,
+    secondaryContainer = tones.containerDark.copy(alpha = 0.7f).compositeOver(Color(0xFF161512)),
+    onSecondaryContainer = tones.pale,
+    inversePrimary = tones.accentLight
+)
+
+private val LightNeutralScheme = lightColorScheme(
     // Reserved for "deferred" meaning — the snooze glyph on chips and day rows.
     tertiary = Color(0xFF9A6714),
     onTertiary = Color(0xFFFFFFFF),
@@ -112,21 +130,10 @@ private val LightColorScheme = lightColorScheme(
 
     inverseSurface = Color(0xFF322F2A),
     inverseOnSurface = Color(0xFFF5F2EC),
-    inversePrimary = Color(0xFF93CEDF),
     scrim = Color(0xFF000000)
 )
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Color(0xFF93CEDF),
-    onPrimary = Color(0xFF06333F),
-    primaryContainer = Color(0xFF1E4550),
-    onPrimaryContainer = Color(0xFFBFE6F2),
-
-    secondary = Color(0xFF93CEDF),
-    onSecondary = Color(0xFF06333F),
-    secondaryContainer = Color(0xFF1E3B44),
-    onSecondaryContainer = Color(0xFFBFE6F2),
-
+private val DarkNeutralScheme = darkColorScheme(
     tertiary = Color(0xFFE5BC72),
     onTertiary = Color(0xFF3A2708),
     tertiaryContainer = Color(0xFF4A3618),
@@ -155,7 +162,6 @@ private val DarkColorScheme = darkColorScheme(
 
     inverseSurface = Color(0xFFEAE7DF),
     inverseOnSurface = Color(0xFF1C1B18),
-    inversePrimary = Color(0xFF2F5D6B),
     scrim = Color(0xFF000000)
 )
 
@@ -163,8 +169,10 @@ private val DarkColorScheme = darkColorScheme(
 fun CalendarAppTheme(
     themeMode: ThemeMode = ThemeMode.SYSTEM,
     // Off by default: on Android 12+ a dynamic scheme replaces the app's palette outright,
-    // so leaving this on would mean the designed "Paper" look is never seen. Opt-in via Settings.
+    // so leaving this on would mean the designed look is never seen. Opt-in via Settings,
+    // where it appears as one more entry in the theme-pack list.
     dynamicColor: Boolean = false,
+    themePack: ThemePack = ThemePack.PAPER,
     content: @Composable () -> Unit
 ) {
     val darkTheme = when (themeMode) {
@@ -172,17 +180,26 @@ fun CalendarAppTheme(
         ThemeMode.DARK -> true
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
     }
+    val tones = tonesFor(themePack)
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
 
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+        darkTheme -> darkSchemeFor(tones)
+        else -> lightSchemeFor(tones)
     }
 
-    val reminderColors = if (darkTheme) DarkReminderColors else LightReminderColors
+    // Status colours follow whatever accent ended up in the scheme, so a pack — or a dynamic
+    // wallpaper scheme — colours completed days without a second source of truth.
+    val reminderColors = remember(colorScheme.primary, colorScheme.onPrimary, darkTheme) {
+        reminderColorsFor(
+            accent = colorScheme.primary,
+            onAccent = colorScheme.onPrimary,
+            dark = darkTheme
+        )
+    }
 
     CompositionLocalProvider(
         LocalReminderColors provides reminderColors,

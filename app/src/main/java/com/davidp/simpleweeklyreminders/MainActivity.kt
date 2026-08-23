@@ -104,7 +104,11 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val settings by settingsRepository.flow.collectAsState(initial = initialSettings)
-            CalendarAppTheme(themeMode = settings.themeMode, dynamicColor = settings.dynamicColor) {
+            CalendarAppTheme(
+                themeMode = settings.themeMode,
+                dynamicColor = settings.dynamicColor,
+                themePack = settings.themePack
+            ) {
                 CompositionLocalProvider(LocalAppSettings provides settings) {
                     ReminderApp(viewModel)
                 }

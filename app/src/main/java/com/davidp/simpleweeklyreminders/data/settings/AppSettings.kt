@@ -19,12 +19,20 @@ enum class TimeFormatPref { SYSTEM, H12, H24 }
 enum class DateFormatPref { SYSTEM, MONTH_FIRST, DAY_FIRST }
 enum class WeekStart { SUNDAY, MONDAY }
 
+/**
+ * Accent family. The neutral paper surfaces are the same in every pack — only the accent
+ * changes, which is what colours completed days in the calendar. Persisted by name, so
+ * reordering is safe but renaming is not (parseEnum falls back to PAPER).
+ */
+enum class ThemePack { PAPER, MOSS, CLAY, INK, INDIGO, PLUM, DUNE, TIDE }
+
 /** Immutable snapshot the whole app reads; defaults are the pre-settings behaviour. */
 data class AppSettingsState(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     // Off by default so the app's own palette is what users actually see; dynamic color
     // replaces it outright on Android 12+. Opt-in from Settings. See CalendarAppTheme.
     val dynamicColor: Boolean = false,
+    val themePack: ThemePack = ThemePack.PAPER,
     // When on, each reminder gets a colour field in its form and draws itself in that colour.
     val perReminderColors: Boolean = false,
     val timeFormat: TimeFormatPref = TimeFormatPref.SYSTEM,
@@ -58,6 +66,12 @@ class SettingsRepository(private val context: Context) {
     suspend fun setDynamicColor(enabled: Boolean) =
         edit { it[SettingsKeys.DYNAMIC_COLOR] = enabled }
 
+    /** Selecting a pack turns dynamic colour off — the two are one choice in the picker. */
+    suspend fun setThemePack(pack: ThemePack) = edit {
+        it[SettingsKeys.THEME_PACK] = pack.name
+        it[SettingsKeys.DYNAMIC_COLOR] = false
+    }
+
     suspend fun setPerReminderColors(enabled: Boolean) =
         edit { it[SettingsKeys.PER_REMINDER_COLORS] = enabled }
 
@@ -86,6 +100,7 @@ class SettingsRepository(private val context: Context) {
 internal object SettingsKeys {
     val THEME_MODE = stringPreferencesKey("theme_mode")
     val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
+    val THEME_PACK = stringPreferencesKey("theme_pack")
     val PER_REMINDER_COLORS = booleanPreferencesKey("per_reminder_colors")
     val TIME_FORMAT = stringPreferencesKey("time_format")
     val DATE_FORMAT = stringPreferencesKey("date_format")
@@ -97,6 +112,7 @@ internal object SettingsKeys {
 internal fun Preferences.toAppSettingsState() = AppSettingsState(
     themeMode = parseEnum(this[SettingsKeys.THEME_MODE], ThemeMode.SYSTEM),
     dynamicColor = this[SettingsKeys.DYNAMIC_COLOR] ?: false,
+    themePack = parseEnum(this[SettingsKeys.THEME_PACK], ThemePack.PAPER),
     perReminderColors = this[SettingsKeys.PER_REMINDER_COLORS] ?: false,
     timeFormat = parseEnum(this[SettingsKeys.TIME_FORMAT], TimeFormatPref.SYSTEM),
     dateFormat = parseEnum(this[SettingsKeys.DATE_FORMAT], DateFormatPref.SYSTEM),

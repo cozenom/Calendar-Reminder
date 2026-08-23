@@ -17,8 +17,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.activity.compose.BackHandler
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -34,12 +36,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -55,6 +59,7 @@ import com.davidp.simpleweeklyreminders.data.settings.WeekStart
 import com.davidp.simpleweeklyreminders.ui.theme.LocalAppSettings
 import com.davidp.simpleweeklyreminders.ui.theme.appShapes
 import com.davidp.simpleweeklyreminders.ui.theme.appTypography
+import com.davidp.simpleweeklyreminders.ui.theme.tonesFor
 import kotlinx.coroutines.launch
 
 // Set to the hosted privacy-policy URL before launch; blank hides the About row.
@@ -68,6 +73,19 @@ fun SettingsScreen(onBack: () -> Unit) {
     // Same DataStore singleton as everywhere else — constructing another repo just wraps it.
     val repo = remember { SettingsRepository(context.applicationContext) }
     val scope = rememberCoroutineScope()
+    var showThemePacks by remember { mutableStateOf(false) }
+
+    if (showThemePacks) {
+        BackHandler { showThemePacks = false }
+        ThemePackScreen(
+            selected = settings.themePack,
+            dynamicColor = settings.dynamicColor,
+            onSelectPack = { scope.launch { repo.setThemePack(it) } },
+            onSelectDynamic = { scope.launch { repo.setDynamicColor(true) } },
+            onBack = { showThemePacks = false }
+        )
+        return
+    }
 
     Column(
         modifier = Modifier
@@ -96,16 +114,16 @@ fun SettingsScreen(onBack: () -> Unit) {
                 selected = settings.themeMode,
                 onSelect = { scope.launch { repo.setThemeMode(it) } }
             )
-            // Material You is Android 12+ only; hide the toggle where it does nothing.
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                Spacer(Modifier.height(8.dp))
-                SwitchRow(
-                    label = "Dynamic color",
-                    subtitle = "Match the system wallpaper palette",
-                    checked = settings.dynamicColor,
-                    onCheckedChange = { scope.launch { repo.setDynamicColor(it) } }
-                )
-            }
+            Spacer(Modifier.height(8.dp))
+            // Material You lives inside the pack list rather than as its own switch — from
+            // the user's side it's one choice: what colours the app.
+            ActionRow(
+                label = "Theme pack",
+                subtitle = if (settings.dynamicColor) "Material You"
+                else tonesFor(settings.themePack).label,
+                onClick = { showThemePacks = true },
+                trailingIcon = Icons.AutoMirrored.Filled.KeyboardArrowRight
+            )
             Spacer(Modifier.height(8.dp))
             SwitchRow(
                 label = "Per-reminder colours",
@@ -334,8 +352,14 @@ private fun SwitchRow(
     }
 }
 
+/** [trailingIcon] distinguishes leaving the app (OpenInNew) from going deeper inside it. */
 @Composable
-private fun ActionRow(label: String, subtitle: String?, onClick: () -> Unit) {
+private fun ActionRow(
+    label: String,
+    subtitle: String?,
+    onClick: () -> Unit,
+    trailingIcon: ImageVector = Icons.AutoMirrored.Filled.OpenInNew
+) {
     TextButton(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -343,7 +367,11 @@ private fun ActionRow(label: String, subtitle: String?, onClick: () -> Unit) {
         contentPadding = PaddingValuesRow
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(label, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                label,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
             if (subtitle != null) {
                 Text(
                     subtitle,
@@ -352,7 +380,7 @@ private fun ActionRow(label: String, subtitle: String?, onClick: () -> Unit) {
                 )
             }
         }
-        Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null)
+        Icon(trailingIcon, contentDescription = null)
     }
 }
 

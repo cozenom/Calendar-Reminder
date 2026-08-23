@@ -33,32 +33,30 @@ data class ReminderColors(
     val importanceHigh: Color,
 )
 
-val LightReminderColors = ReminderColors(
-    done = Color(0xFF2F5D6B),               // accent
-    onDone = Color(0xFFFFFFFF),
-    doneWash = Color(0xFFE3EEF2),
-    neutral = Color(0xFFF2F0EA),            // group surface
-    track = Color(0x221C1B18),              // ink @ 13%
-    missed = Color(0xFF1C1B18),             // ink
-    hairline = Color(0x2E1C1B18),           // ink @ 18%
+/**
+ * Builds the status palette around whatever accent the active scheme resolved to — a theme
+ * pack, or a dynamic wallpaper scheme. Only `done`/`onDone`/`doneWash` follow the accent; the
+ * neutral, track, missed-ink and importance tints are the same in every pack.
+ */
+fun reminderColorsFor(accent: Color, onAccent: Color, dark: Boolean) = ReminderColors(
+    done = accent,
+    onDone = onAccent,
+    doneWash = accent.copy(alpha = if (dark) 0.22f else 0.16f),
+    neutral = if (dark) Color(0xFF1F1E1A) else Color(0xFFF2F0EA),
+    track = if (dark) Color(0x26EAE7DF) else Color(0x221C1B18),   // ink @ 15% / 13%
+    missed = if (dark) Color(0xFFEAE7DF) else Color(0xFF1C1B18),  // ink
+    hairline = if (dark) Color(0x38EAE7DF) else Color(0x2E1C1B18), // ink @ 22% / 18%
 
-    importanceLow = Color(0xFF3E6E9E),
-    importanceMedium = Color(0xFF9A6714),
-    importanceHigh = Color(0xFFB3382B),
+    importanceLow = if (dark) Color(0xFF8FBEE0) else Color(0xFF3E6E9E),
+    importanceMedium = if (dark) Color(0xFFE5BC72) else Color(0xFF9A6714),
+    importanceHigh = if (dark) Color(0xFFF0958A) else Color(0xFFB3382B),
 )
 
-val DarkReminderColors = ReminderColors(
-    done = Color(0xFF93CEDF),
-    onDone = Color(0xFF06333F),
-    doneWash = Color(0xFF1E3B44),
-    neutral = Color(0xFF1F1E1A),
-    track = Color(0x26EAE7DF),              // ink @ 15%
-    missed = Color(0xFFEAE7DF),
-    hairline = Color(0x38EAE7DF),           // ink @ 22%
-
-    importanceLow = Color(0xFF8FBEE0),
-    importanceMedium = Color(0xFFE5BC72),
-    importanceHigh = Color(0xFFF0958A),
+/** Fallback for previews and any composable read outside CalendarAppTheme. */
+val LightReminderColors = reminderColorsFor(
+    accent = Color(0xFF2F5D6B),
+    onAccent = Color(0xFFFFFFFF),
+    dark = false
 )
 
 val LocalReminderColors = staticCompositionLocalOf { LightReminderColors }

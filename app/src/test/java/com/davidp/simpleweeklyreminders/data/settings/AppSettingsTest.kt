@@ -2,6 +2,7 @@ package com.davidp.simpleweeklyreminders.data.settings
 
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.mutablePreferencesOf
+import com.davidp.simpleweeklyreminders.data.settings.ThemePack
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -28,6 +29,15 @@ class AppSettingsTest {
     }
 
     @Test
+    fun removedThemePackFallsBackToPaper() {
+        // Packs are persisted by name, so a renamed or dropped one must not crash on read
+        val prefs = mutablePreferencesOf().apply {
+            this[SettingsKeys.THEME_PACK] = "SUNSET"
+        }
+        assertEquals(ThemePack.PAPER, prefs.toAppSettingsState().themePack)
+    }
+
+    @Test
     fun emptyPreferences_givesAllDefaults() {
         assertEquals(AppSettingsState(), emptyPreferences().toAppSettingsState())
     }
@@ -39,6 +49,7 @@ class AppSettingsTest {
             // Opposite of the default, so this asserts the stored value is actually read
             this[SettingsKeys.DYNAMIC_COLOR] = true
             this[SettingsKeys.PER_REMINDER_COLORS] = true
+            this[SettingsKeys.THEME_PACK] = ThemePack.PLUM.name
             this[SettingsKeys.WEEK_START] = WeekStart.SUNDAY.name
             this[SettingsKeys.SNOOZE_MINUTES] = 30
         }
@@ -47,6 +58,7 @@ class AppSettingsTest {
         assertEquals(ThemeMode.DARK, state.themeMode)
         assertEquals(true, state.dynamicColor)
         assertEquals(true, state.perReminderColors)
+        assertEquals(ThemePack.PLUM, state.themePack)
         assertEquals(WeekStart.SUNDAY, state.weekStart)
         assertEquals(30, state.snoozeMinutes)
         // Untouched keys still default
