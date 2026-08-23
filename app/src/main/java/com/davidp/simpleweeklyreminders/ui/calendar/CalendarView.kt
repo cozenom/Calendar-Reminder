@@ -45,7 +45,7 @@ private val NOTCH_SIZE = 5.dp
 
 /** Outline on a missed segment. Kept well under half the bar's height so it reads as a
  *  hollow segment rather than a solid one. */
-private val MISSED_OUTLINE = 0.dp
+private val MISSED_OUTLINE = 0.5.dp
 
 @Composable
 fun CalendarView(
