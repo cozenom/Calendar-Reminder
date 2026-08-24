@@ -30,7 +30,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.davidp.simpleweeklyreminders.data.model.OccurrenceStatus
-import com.davidp.simpleweeklyreminders.data.settings.WeekStart
+import com.davidp.simpleweeklyreminders.ui.components.weekdayMiniName
+import com.davidp.simpleweeklyreminders.ui.components.weekdayOrder
 import com.davidp.simpleweeklyreminders.ui.theme.LocalAppSettings
 import com.davidp.simpleweeklyreminders.ui.theme.appShapes
 import com.davidp.simpleweeklyreminders.ui.theme.appTypography
@@ -60,10 +61,7 @@ fun CalendarView(
     // Blank cells before day 1, counted from the chosen first column.
     val leadingBlanks = leadingBlankCount(firstDow, weekStart)
     val totalCells = daysInMonth + leadingBlanks
-    val weekdayLabels = when (weekStart) {
-        WeekStart.MONDAY -> listOf("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su")
-        WeekStart.SUNDAY -> listOf("Su", "Mo", "Tu", "We", "Th", "Fr", "Sa")
-    }
+    val weekdayLabels = weekdayOrder(weekStart).map(::weekdayMiniName)
     val today = LocalDate.now()
 
     // Plain grid, not LazyVerticalGrid: ≤42 cells, all on screen, so laziness saves

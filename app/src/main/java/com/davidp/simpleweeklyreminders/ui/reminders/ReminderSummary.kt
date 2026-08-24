@@ -3,12 +3,11 @@ package com.davidp.simpleweeklyreminders.ui.reminders
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderType
 import com.davidp.simpleweeklyreminders.data.model.nextOccurrence
+import com.davidp.simpleweeklyreminders.ui.components.weekdayShortName
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
-
-private val WEEKDAY_ABBREVIATIONS = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 
 /** Human-readable recurrence line, e.g. "Mon, Wed, Fri", "Every 2 days", "Weekdays". */
 fun scheduleSummary(reminder: Reminder, datePattern: String, dateNoYearPattern: String): String {
@@ -20,7 +19,7 @@ fun scheduleSummary(reminder: Reminder, datePattern: String, dateNoYearPattern: 
             reminder.reminderDays.size == 7 -> "Every day"
             reminder.reminderDays == setOf(1, 2, 3, 4, 5) -> "Weekdays"
             reminder.reminderDays == setOf(6, 7) -> "Weekends"
-            else -> reminder.reminderDays.sorted().joinToString(", ") { WEEKDAY_ABBREVIATIONS[it - 1] }
+            else -> reminder.reminderDays.sorted().joinToString(", ") { weekdayShortName(it) }
         }
     }
 

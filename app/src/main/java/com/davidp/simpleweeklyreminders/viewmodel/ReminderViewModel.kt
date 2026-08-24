@@ -87,29 +87,29 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
 
     fun insert(reminder: Reminder) = viewModelScope.launch {
         repository.insert(reminder)
-        ReminderWorker.rescheduleNotifications(getApplication())
+        ReminderWorker.schedule(getApplication())
     }
 
     fun update(reminder: Reminder) = viewModelScope.launch {
         repository.update(reminder)
-        ReminderWorker.rescheduleNotifications(getApplication())
+        ReminderWorker.schedule(getApplication())
     }
 
     fun delete(reminder: Reminder) = viewModelScope.launch {
         repository.delete(reminder)
-        ReminderWorker.rescheduleNotifications(getApplication())
+        ReminderWorker.schedule(getApplication())
     }
 
     fun archive(reminder: Reminder) = viewModelScope.launch {
         repository.update(
             reminder.copy(isActive = false, endDate = LocalDate.now().minusDays(1), archivedAt = LocalDateTime.now())
         )
-        ReminderWorker.rescheduleNotifications(getApplication())
+        ReminderWorker.schedule(getApplication())
     }
 
     fun restore(reminder: Reminder) = viewModelScope.launch {
         repository.update(reminder.copy(isActive = true, endDate = null, archivedAt = null))
-        ReminderWorker.rescheduleNotifications(getApplication())
+        ReminderWorker.schedule(getApplication())
     }
 
     fun updateLogCompletedStatus(logId: Int, completed: Boolean) = viewModelScope.launch {

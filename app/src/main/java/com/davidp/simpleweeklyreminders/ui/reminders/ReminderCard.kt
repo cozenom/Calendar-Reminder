@@ -46,7 +46,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.davidp.simpleweeklyreminders.data.model.Reminder
@@ -92,7 +91,6 @@ fun ReminderItem(
     var showNotes by rememberSaveable { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
 
-    val colors = MaterialTheme.reminderColors
     val context = LocalContext.current
     val settings = LocalAppSettings.current
     val timePattern = settings.timeFormat.timePattern(context)

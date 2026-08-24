@@ -35,17 +35,15 @@
         </activity>
 
 
+        <!--
+        No intent-filter: every broadcast to this receiver is explicit (it names the
+        component), and explicit intents bypass filters entirely. The filter that used to
+        sit here was already missing ACTION_DISMISS and still worked, which proved it inert.
+        -->
         <receiver
             android:name=".data.notification.NotificationActionReceiver"
             android:enabled="true"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.davidp.simpleweeklyreminders.ACTION_SHOW_NOTIFICATION" />
-                <action android:name="com.davidp.simpleweeklyreminders.ACTION_COMPLETED" />
-                <action android:name="com.davidp.simpleweeklyreminders.ACTION_SNOOZE" />
-                <action android:name="com.davidp.simpleweeklyreminders.ACTION_MISSED_DISMISSED" />
-            </intent-filter>
-        </receiver>
+            android:exported="false" />
 
         <receiver
             android:name=".data.notification.BootReceiver"

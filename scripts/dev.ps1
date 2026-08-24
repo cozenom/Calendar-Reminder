@@ -5,7 +5,9 @@ param(
     [ValidateSet('build', 'release', 'install', 'test', 'uitest', 'lint', 'check', 'clean', 'help')]
     [string]$Command = 'help',
 
-    [switch]$Deep
+    [switch]$Deep,
+
+    [switch]$Device
 )
 
 $RepoRoot = Split-Path -Parent $PSScriptRoot
@@ -22,6 +24,7 @@ function Show-Help {
 Usage:
   .\scripts\dev.ps1                  Show this list
   .\scripts\dev.ps1 <command>        Run a command
+  .\scripts\dev.ps1 check -Device    Also run the Compose UI tests
   .\scripts\dev.ps1 clean -Deep      Also wipe .gradle/.kotlin/.idea caches
 
 Commands:
@@ -32,7 +35,8 @@ Commands:
   uitest    Run Compose UI tests on a connected device/emulator
                                               (gradlew connectedDebugAndroidTest)
   lint      Run Android Lint                              (gradlew lintDebug)
-  check     test + lint together (JVM only; uitest needs a device)
+  check     test + lint together (JVM only, no device needed)
+            -Device also runs uitest — everything, in one go
   clean     Remove build/ and app/build/                  (gradlew clean)
             -Deep also removes .gradle/, .kotlin/, .idea/caches/
             (safe: all regenerate on next build/sync, just slower once)
@@ -54,7 +58,13 @@ switch ($Command) {
     'test'    { Invoke-Gradle @('testDebugUnitTest') }
     'uitest'  { Invoke-Gradle @('connectedDebugAndroidTest') }
     'lint'    { Invoke-Gradle @('lintDebug') }
-    'check'   { Invoke-Gradle @('testDebugUnitTest', 'lintDebug') }
+    'check' {
+        # JVM tests first: they're seconds, so a plain failure surfaces before the
+        # minute-long device run rather than after it.
+        $tasks = @('testDebugUnitTest', 'lintDebug')
+        if ($Device) { $tasks += 'connectedDebugAndroidTest' }
+        Invoke-Gradle $tasks
+    }
     'clean' {
         Invoke-Gradle @('clean')
         if ($Deep) {

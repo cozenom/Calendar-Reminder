@@ -33,9 +33,6 @@ object AppDimensions {
     val spacingSmall = 8.dp
     val spacingMedium = 16.dp
 
-    // Indicator dots
-    val indicatorDotLarge = 8.dp
-
     // Button sizes
     val frequencyButtonWidth = 48.dp
 }

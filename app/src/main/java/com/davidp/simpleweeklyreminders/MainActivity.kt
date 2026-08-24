@@ -77,7 +77,6 @@ import com.davidp.simpleweeklyreminders.ui.theme.LocalIsDarkTheme
 import com.davidp.simpleweeklyreminders.ui.theme.appShapes
 import com.davidp.simpleweeklyreminders.ui.theme.resolveDark
 import com.davidp.simpleweeklyreminders.viewmodel.ReminderViewModel
-import com.davidp.simpleweeklyreminders.viewmodel.ReminderViewModelFactory
 import kotlinx.coroutines.runBlocking
 
 // androidx.activity's own defaults, which are private there: the scrim behind 3-button
@@ -102,9 +101,9 @@ class MainActivity : ComponentActivity() {
         // User is looking at the app — reset the baseline for "missed reminders" reports
         BootReceiver.markSeenNow(this)
 
-        viewModel = ViewModelProvider(
-            this, ReminderViewModelFactory(application)
-        )[ReminderViewModel::class.java]
+        // No custom factory needed: the default one already constructs an
+        // AndroidViewModel from its (Application) constructor.
+        viewModel = ViewModelProvider(this)[ReminderViewModel::class.java]
 
         val settingsRepository = SettingsRepository(applicationContext)
         // Read once, blocking, before the first frame so the stored theme applies with

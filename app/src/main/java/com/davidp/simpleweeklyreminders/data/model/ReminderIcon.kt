@@ -11,11 +11,11 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.graphics.vector.ImageVector
 
 data class ReminderIconOption(val key: String, val label: String, val icon: ImageVector)
-data class IconCategory(val name: String, val tabIcon: ImageVector, val icons: List<ReminderIconOption>)
+data class IconCategory(val name: String, val icons: List<ReminderIconOption>)
 
 val ReminderIconCategories: List<IconCategory> = listOf(
 
-    IconCategory("General", Icons.Filled.Notifications, listOf(
+    IconCategory("General", listOf(
         ReminderIconOption("notifications",  "Reminder",   Icons.Filled.Notifications),
         ReminderIconOption("star",           "Important",  Icons.Filled.Star),
         ReminderIconOption("alarm",          "Alarm",      Icons.Filled.Alarm),
@@ -34,7 +34,7 @@ val ReminderIconCategories: List<IconCategory> = listOf(
         ReminderIconOption("familyRestroom", "Family",     Icons.Filled.FamilyRestroom),
     )),
 
-    IconCategory("Health", Icons.Filled.Favorite, listOf(
+    IconCategory("Health", listOf(
         ReminderIconOption("medicalServices",  "Medical",    Icons.Filled.MedicalServices),
         ReminderIconOption("favorite",         "Health",     Icons.Filled.Favorite),
         ReminderIconOption("spa",              "Spa",        Icons.Filled.Spa),
@@ -51,7 +51,7 @@ val ReminderIconCategories: List<IconCategory> = listOf(
         ReminderIconOption("waterDrop",        "Hydration",  Icons.Filled.WaterDrop),
     )),
 
-    IconCategory("Nature", Icons.Filled.Eco, listOf(
+    IconCategory("Nature", listOf(
         ReminderIconOption("eco",               "Plant",    Icons.Filled.Eco),
         ReminderIconOption("park",              "Park",     Icons.Filled.Park),
         ReminderIconOption("localFlorist",      "Flower",   Icons.Filled.LocalFlorist),
@@ -68,7 +68,7 @@ val ReminderIconCategories: List<IconCategory> = listOf(
         ReminderIconOption("thunderstorm",      "Storm",    Icons.Filled.Thunderstorm),
     )),
 
-    IconCategory("Food", Icons.Filled.Restaurant, listOf(
+    IconCategory("Food", listOf(
         ReminderIconOption("restaurant",      "Restaurant", Icons.Filled.Restaurant),
         ReminderIconOption("localCafe",       "Cafe",       Icons.Filled.LocalCafe),
         ReminderIconOption("localBar",        "Bar",        Icons.Filled.LocalBar),
@@ -85,7 +85,7 @@ val ReminderIconCategories: List<IconCategory> = listOf(
         ReminderIconOption("breakfastDining", "Breakfast",  Icons.Filled.BreakfastDining),
     )),
 
-    IconCategory("Home", Icons.Filled.Home, listOf(
+    IconCategory("Home", listOf(
         ReminderIconOption("home",             "Home",      Icons.Filled.Home),
         ReminderIconOption("weekend",          "Relax",     Icons.Filled.Weekend),
         ReminderIconOption("cleaningServices", "Clean",     Icons.Filled.CleaningServices),
@@ -102,7 +102,7 @@ val ReminderIconCategories: List<IconCategory> = listOf(
         ReminderIconOption("balcony",          "Balcony",   Icons.Filled.Balcony),
     )),
 
-    IconCategory("Work", Icons.Filled.Work, listOf(
+    IconCategory("Work", listOf(
         ReminderIconOption("work",           "Work",      Icons.Filled.Work),
         ReminderIconOption("school",         "School",    Icons.Filled.School),
         ReminderIconOption("computer",       "Computer",  Icons.Filled.Computer),
@@ -119,7 +119,7 @@ val ReminderIconCategories: List<IconCategory> = listOf(
         ReminderIconOption("menuBook",       "Book",      Icons.AutoMirrored.Filled.MenuBook),
     )),
 
-    IconCategory("Sport", Icons.AutoMirrored.Filled.DirectionsRun, listOf(
+    IconCategory("Sport", listOf(
         ReminderIconOption("directionsRun",    "Run",        Icons.AutoMirrored.Filled.DirectionsRun),
         ReminderIconOption("sportsBasketball", "Basketball", Icons.Filled.SportsBasketball),
         ReminderIconOption("sportsSoccer",     "Soccer",     Icons.Filled.SportsSoccer),

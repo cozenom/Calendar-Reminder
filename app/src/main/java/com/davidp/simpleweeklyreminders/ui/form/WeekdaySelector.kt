@@ -20,34 +20,25 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import com.davidp.simpleweeklyreminders.data.settings.WeekStart
+import com.davidp.simpleweeklyreminders.ui.components.weekdayFullName
+import com.davidp.simpleweeklyreminders.ui.components.weekdayNarrowName
+import com.davidp.simpleweeklyreminders.ui.components.weekdayOrder
 import com.davidp.simpleweeklyreminders.ui.theme.LocalAppSettings
-
-/** ISO day numbers, Mon=1 .. Sun=7, paired with the single letter shown in the circle. */
-private val WEEKDAYS = listOf(
-    1 to "M", 2 to "T", 3 to "W", 4 to "T", 5 to "F", 6 to "S", 7 to "S"
-)
-private val FULL_NAMES = listOf(
-    "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"
-)
 
 @Composable
 fun WeekdaySelector(selectedDays: Set<Int>, onDaysChanged: (Set<Int>) -> Unit) {
     // Follows the same first-column choice as the calendar grid
-    val ordered = when (LocalAppSettings.current.weekStart) {
-        WeekStart.MONDAY -> WEEKDAYS
-        WeekStart.SUNDAY -> listOf(WEEKDAYS.last()) + WEEKDAYS.dropLast(1)
-    }
+    val ordered = weekdayOrder(LocalAppSettings.current.weekStart)
 
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        ordered.forEach { (isoDay, letter) ->
+        ordered.forEach { isoDay ->
             val isSelected = selectedDays.contains(isoDay)
             WeekdayButton(
-                letter = letter,
-                fullName = FULL_NAMES[isoDay - 1],
+                letter = weekdayNarrowName(isoDay),
+                fullName = weekdayFullName(isoDay),
                 isSelected = isSelected,
                 onClick = {
                     val newSet = if (isSelected) selectedDays - isoDay else selectedDays + isoDay

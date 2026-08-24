@@ -8,7 +8,6 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationCompat
 import androidx.core.content.edit
-import androidx.core.graphics.toColorInt
 import com.davidp.simpleweeklyreminders.MainActivity
 import com.davidp.simpleweeklyreminders.R
 import com.davidp.simpleweeklyreminders.data.database.AppDatabase

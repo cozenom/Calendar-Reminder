@@ -148,9 +148,5 @@ class ReminderWorker(
                     workRequest
                 )
         }
-
-        fun rescheduleNotifications(context: Context) {
-            schedule(context)
-        }
     }
 }
