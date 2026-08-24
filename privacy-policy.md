@@ -1,6 +1,6 @@
 # Privacy Policy for Simple Weekly Reminders
 
-*Last updated: April 11, 2026*
+*Last updated: August 24, 2026*
 
 Simple Weekly Reminders does not collect, store, or share any personal data. All reminder data is stored locally on your device and is never transmitted anywhere.
 
@@ -11,7 +11,7 @@ The app requests the following permissions solely to deliver reminders:
 - **Notifications** — to display reminder alerts
 - **Exact alarms** — to trigger reminders at scheduled times
 - **Boot completed** — to restore scheduled reminders after device restart
-- **Wake lock / Vibrate / Full screen intent** — to ensure reminders are delivered reliably
+- **Wake lock / Vibrate** — to ensure reminders are delivered reliably
 
 ## Data
 
