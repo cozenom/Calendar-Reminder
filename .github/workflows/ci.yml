@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0   # full history: versionCode is derived from commit count
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -36,6 +38,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0   # full history: versionCode is derived from commit count
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5

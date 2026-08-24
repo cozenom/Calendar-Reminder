@@ -15,6 +15,21 @@ val localProperties = Properties().apply {
 }
 val releaseStoreFile = localProperties.getProperty("RELEASE_STORE_FILE")
 
+// versionCode is derived from the commit count so releases need no manual edit.
+// - Play only requires the number to increase; gaps between releases are fine.
+// - Shallow clones under-count, so CI checkouts must use fetch-depth: 0.
+// - Fails the build rather than guessing: a published code can never be reused.
+val gitVersionCode: Int = run {
+    val git = providers.exec {
+        commandLine("git", "rev-list", "--count", "HEAD")
+        isIgnoreExitValue = true
+    }
+    check(git.result.get().exitValue == 0) {
+        "Could not read the git commit count for versionCode -- build from a full git clone."
+    }
+    git.standardOutput.asText.get().trim().toInt()
+}
+
 android {
     namespace = "com.davidp.simpleweeklyreminders"
     compileSdk = 36
@@ -23,7 +38,7 @@ android {
         applicationId = "com.davidp.simpleweeklyreminders"
         minSdk = 26
         targetSdk = 36
-        versionCode = 4
+        versionCode = gitVersionCode
         versionName = "1.11"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -51,6 +66,13 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+
+            // Bundle native symbols so Play can symbolicate crashes in the .so
+            // files our AndroidX deps ship (graphics-path, datastore). Stored in
+            // AAB metadata -- stripped before delivery, so no user download cost.
+            ndk {
+                debugSymbolLevel = "SYMBOL_TABLE"
+            }
             if (releaseStoreFile != null) {
                 signingConfig = signingConfigs.getByName("release")
             }
@@ -114,4 +136,11 @@ dependencies {
 
     // Drag to reorder
     implementation(libs.reorderable)
+}
+
+// Reports the version Gradle resolved, without building: ./gradlew -q :app:printVersion
+tasks.register("printVersion") {
+    val code = android.defaultConfig.versionCode
+    val name = android.defaultConfig.versionName
+    doLast { println("versionCode=$code versionName=$name") }
 }
