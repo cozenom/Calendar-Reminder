@@ -2,20 +2,24 @@
 agp = "9.2.1"
 kotlin = "2.2.10"
 ksp = "2.3.9"
+# coreKtx 1.19.0, composeBom 2026.08.00 (Compose 1.12) and lifecycle 2.11.0 are all held
+# back deliberately: each one's AAR metadata demands compileSdk 37, and this project
+# compiles against 36. They move as one batch with compileSdk, not individually.
+# Decision (2026-08-23): stay on 36 through launch — shipping to Play on a known-good
+# toolchain beats chasing AndroidX. Revisit once 37 is stable and the app is published.
 coreKtx = "1.18.0"
 junit = "4.13.2"
 # Espresso < 3.6 reflects into InputManager.getInstance(), removed in recent Android —
 # every instrumented test dies at rule setup on an API 35+ device. Keep these current.
 junitVersion = "1.3.0"
 espressoCore = "3.7.0"
-lifecycleRuntimeKtx = "2.9.4"
-activityCompose = "1.12.0"
+activityCompose = "1.13.0"
 composeBom = "2026.06.00"
 room = "2.8.4"
 lifecycle = "2.9.4"
 coroutines = "1.11.0"
-work = "2.10.2"
-datastore = "1.1.7"
+work = "2.11.2"
+datastore = "1.2.1"
 reorderable = "3.1.0"
 
 [libraries]
@@ -23,7 +27,7 @@ androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = 
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
-androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
+androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-ui = { group = "androidx.compose.ui", name = "ui" }
