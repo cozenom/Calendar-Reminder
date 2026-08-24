@@ -2,13 +2,9 @@ package com.davidp.simpleweeklyreminders.ui.reminders
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -40,17 +36,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.davidp.simpleweeklyreminders.data.model.Importance
+import com.davidp.simpleweeklyreminders.data.model.ALL_IMPORTANCES
 import com.davidp.simpleweeklyreminders.data.model.SortMode
 import com.davidp.simpleweeklyreminders.data.model.defaultDirection
 import com.davidp.simpleweeklyreminders.data.model.sortedFor
 import com.davidp.simpleweeklyreminders.ui.archive.newlyArchivedCount
-import com.davidp.simpleweeklyreminders.ui.theme.dimensions
+import com.davidp.simpleweeklyreminders.ui.components.EmptyState
 import com.davidp.simpleweeklyreminders.viewmodel.ReminderViewModel
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -77,14 +71,14 @@ fun RemindersTab(viewModel: ReminderViewModel, onOpenArchive: () -> Unit, snackb
     // recreation via rememberSaveable, so switching apps for a second doesn't silently drop them.
     var sortMode by rememberSaveable { mutableStateOf(SortMode.MANUAL) }
     var sortDirection by rememberSaveable { mutableStateOf(SortMode.MANUAL.defaultDirection()) }
-    var selectedImportances by rememberSaveable { mutableStateOf(setOf(Importance.LOW, Importance.MEDIUM, Importance.HIGH)) }
+    var selectedImportances by rememberSaveable { mutableStateOf(ALL_IMPORTANCES) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var hidePaused by rememberSaveable { mutableStateOf(false) }
     var showSortFilterSheet by remember { mutableStateOf(false) }
     // The sheet is one surface with two entry points — the search icon opens it with the
     // field already focused, the sort icon opens it plainly.
     var searchOnOpen by remember { mutableStateOf(false) }
-    val isFilterActive = sortMode != SortMode.MANUAL || selectedImportances.size < 3 ||
+    val isFilterActive = sortMode != SortMode.MANUAL || selectedImportances != ALL_IMPORTANCES ||
         searchQuery.isNotBlank() || hidePaused
 
     val visibleReminders = remember(
@@ -232,35 +226,5 @@ fun RemindersTab(viewModel: ReminderViewModel, onOpenArchive: () -> Unit, snackb
             focusSearchOnOpen = searchOnOpen,
             onDismiss = { showSortFilterSheet = false }
         )
-    }
-}
-
-@Composable
-private fun EmptyState(icon: ImageVector, title: String, body: String) {
-    Box(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 44.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(56.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-            )
-            Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
-            Text(
-                title,
-                style = MaterialTheme.typography.titleMedium,
-                textAlign = TextAlign.Center
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                body,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
-        }
     }
 }

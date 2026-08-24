@@ -8,7 +8,6 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationCompat
 import androidx.core.content.edit
-import com.davidp.simpleweeklyreminders.MainActivity
 import com.davidp.simpleweeklyreminders.R
 import com.davidp.simpleweeklyreminders.data.database.AppDatabase
 import com.davidp.simpleweeklyreminders.data.model.OccurrenceStatus
@@ -58,22 +57,14 @@ class BootReceiver : BroadcastReceiver() {
             .filter { statusOf(it, now) == OccurrenceStatus.MISSED }
         if (missedLogs.isEmpty()) return
 
-        val notificationManager =
-            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
         val channel = NotificationChannel(
             MISSED_CHANNEL_ID,
             "Missed Reminders",
             NotificationManager.IMPORTANCE_HIGH
         )
-        notificationManager.createNotificationChannel(channel)
+        context.notificationManager.createNotificationChannel(channel)
 
-        val tapIntent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            context, 0, tapIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+        val pendingIntent = launchAppPendingIntent(context)
 
         val dismissIntent = Intent(context, NotificationActionReceiver::class.java).apply {
             action = ACTION_MISSED_DISMISSED
@@ -118,7 +109,7 @@ class BootReceiver : BroadcastReceiver() {
             .setAutoCancel(true)
             .build()
 
-        notificationManager.notify(MISSED_NOTIFICATION_ID, notification)
+        context.notificationManager.notify(MISSED_NOTIFICATION_ID, notification)
     }
 
     companion object {

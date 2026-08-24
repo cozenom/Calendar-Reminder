@@ -14,6 +14,9 @@ enum class ReminderType { SPECIFIC_DAYS, EVERY_N_DAYS, ONE_TIME }
 // between MEDIUM and HIGH) needs a new case here, not a data migration.
 enum class Importance { LOW, MEDIUM, HIGH }
 
+/** Every level — the unfiltered default for the Reminders tab's importance filter. */
+val ALL_IMPORTANCES: Set<Importance> = Importance.entries.toSet()
+
 /** How the Reminders tab list is ordered. MANUAL is the drag-reorderable default. */
 enum class SortMode { MANUAL, DATE_ADDED, IMPORTANCE, NEXT_OCCURRENCE, TITLE }
 

@@ -49,14 +49,15 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import com.davidp.simpleweeklyreminders.data.model.ALL_IMPORTANCES
 import com.davidp.simpleweeklyreminders.data.model.Importance
+import com.davidp.simpleweeklyreminders.ui.components.GroupSurface
+import com.davidp.simpleweeklyreminders.ui.components.SectionLabel
 import com.davidp.simpleweeklyreminders.data.model.SortDirection
 import com.davidp.simpleweeklyreminders.data.model.SortMode
 import com.davidp.simpleweeklyreminders.ui.theme.appShapes
-import com.davidp.simpleweeklyreminders.ui.theme.appTypography
 import com.davidp.simpleweeklyreminders.ui.theme.dimensions
 
-private val ALL_IMPORTANCES = setOf(Importance.LOW, Importance.MEDIUM, Importance.HIGH)
 
 /** Sort-order + importance-filter + title-search bottom sheet for the Reminders tab. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -145,12 +146,7 @@ fun SortFilterSheet(
             )
 
             SectionLabel("Sort by")
-            Column(
-                modifier = Modifier
-                    .clip(MaterialTheme.appShapes.medium)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .selectableGroup()
-            ) {
+            GroupSurface(Modifier.selectableGroup()) {
                 sortOptions.forEachIndexed { index, (mode, label) ->
                     if (index > 0) {
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -264,16 +260,6 @@ fun SortFilterSheet(
             Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
         }
     }
-}
-
-@Composable
-private fun SectionLabel(text: String) {
-    Text(
-        text = text.uppercase(),
-        style = MaterialTheme.appTypography.sectionLabel,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(start = 4.dp, top = 18.dp, bottom = 7.dp)
-    )
 }
 
 /** Filled when on, hairline outline when off — the same fill-not-hue rule used elsewhere. */

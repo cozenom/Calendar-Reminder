@@ -7,8 +7,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -42,7 +42,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -56,14 +55,18 @@ import com.davidp.simpleweeklyreminders.data.settings.SettingsRepository
 import com.davidp.simpleweeklyreminders.data.settings.ThemeMode
 import com.davidp.simpleweeklyreminders.data.settings.TimeFormatPref
 import com.davidp.simpleweeklyreminders.data.settings.WeekStart
+import com.davidp.simpleweeklyreminders.ui.components.GroupSurface
+import com.davidp.simpleweeklyreminders.ui.components.SectionLabel
 import com.davidp.simpleweeklyreminders.ui.theme.LocalAppSettings
 import com.davidp.simpleweeklyreminders.ui.theme.appShapes
-import com.davidp.simpleweeklyreminders.ui.theme.appTypography
 import com.davidp.simpleweeklyreminders.ui.theme.tonesFor
 import kotlinx.coroutines.launch
 
 // Set to the hosted privacy-policy URL before launch; blank hides the About row.
 private const val PRIVACY_POLICY_URL = ""
+
+/** Snooze lengths offered in Settings, in minutes. */
+private val SNOOZE_PRESET_MINUTES = listOf(5, 10, 15, 30, 45, 60)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -168,21 +171,12 @@ fun SettingsScreen(onBack: () -> Unit) {
         }
 
         SettingsSection("Reminders") {
-            Text("Snooze duration", style = MaterialTheme.typography.bodyLarge)
-            Spacer(Modifier.height(8.dp))
-            val presets = listOf(5, 10, 15, 30, 45, 60)
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                presets.forEachIndexed { index, minutes ->
-                    SegmentedButton(
-                        selected = settings.snoozeMinutes == minutes,
-                        onClick = { scope.launch { repo.setSnoozeMinutes(minutes) } },
-                        shape = SegmentedButtonDefaults.itemShape(index = index, count = presets.size),
-                        icon = {}
-                    ) {
-                        Text("${minutes}m")
-                    }
-                }
-            }
+            SegmentedRow(
+                label = "Snooze duration",
+                options = SNOOZE_PRESET_MINUTES.map { it to "${it}m" },
+                selected = settings.snoozeMinutes,
+                onSelect = { scope.launch { repo.setSnoozeMinutes(it) } }
+            )
             SwitchRow(
                 label = "Missed-reminder summary",
                 subtitle = "Notify on restart about reminders missed while off",
@@ -285,18 +279,12 @@ private fun PermissionsSection(context: Context) {
 @Composable
 private fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-        Text(
-            text = title.uppercase(),
-            style = MaterialTheme.appTypography.sectionLabel,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = 6.dp, top = 14.dp, bottom = 6.dp)
-        )
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(MaterialTheme.appShapes.large)
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .padding(horizontal = 14.dp, vertical = 10.dp),
+        SectionLabel(title)
+        GroupSurface(
+            modifier = Modifier.fillMaxWidth(),
+            // Full-width cards here, not inline groups, so a rounder corner than the default
+            shape = MaterialTheme.appShapes.large,
+            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
             content = content
         )
     }

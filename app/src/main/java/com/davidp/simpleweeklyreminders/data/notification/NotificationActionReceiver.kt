@@ -18,7 +18,6 @@ import android.media.RingtoneManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
-import com.davidp.simpleweeklyreminders.MainActivity
 import com.davidp.simpleweeklyreminders.R
 import com.davidp.simpleweeklyreminders.data.database.AppDatabase
 import com.davidp.simpleweeklyreminders.data.model.Importance
@@ -64,8 +63,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
 
     private suspend fun showNotification(context: Context, logId: Int, isSnooze: Boolean) {
         Log.d("NotificationActionReceiver", "Showing notification for log $logId")
-        val notificationManager =
-            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val notificationManager = context.notificationManager
 
         createNotificationChannels(context, notificationManager)
 
@@ -95,12 +93,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
         // Matches Reminder.importance's default if the reminder row is somehow gone
         val importance = reminder?.importance ?: Importance.HIGH
 
-        val intent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+        val pendingIntent = launchAppPendingIntent(context)
 
         val completedIntent = Intent(context, NotificationActionReceiver::class.java).apply {
             action = ReminderWorker.ACTION_COMPLETED
@@ -292,13 +285,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
      * nothing to detect and no state to keep.
      */
     private fun postGroupSummary(context: Context, notificationManager: NotificationManager) {
-        val tapIntent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            context, GROUP_SUMMARY_ID, tapIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+        val pendingIntent = launchAppPendingIntent(context, GROUP_SUMMARY_ID)
 
         val summary = NotificationCompat.Builder(context, CHANNEL_ID_GROUP)
             .setSmallIcon(R.drawable.ic_notification)
@@ -333,8 +320,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
         val reminderLogDao = database.reminderLogDao()
         reminderLogDao.updateCompletedStatus(logId, true)
 
-        val notificationManager =
-            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val notificationManager = context.notificationManager
         notificationManager.cancel(logId)
         cancelSummaryIfEmpty(context, notificationManager)
 
@@ -344,8 +330,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
 
     private suspend fun snooze(context: Context, logId: Int) {
         // Action-button taps don't auto-dismiss; harmless no-op after a swipe
-        val notificationManager =
-            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val notificationManager = context.notificationManager
         notificationManager.cancel(logId)
         cancelSummaryIfEmpty(context, notificationManager)
 
@@ -370,8 +355,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
      * data/model/OccurrenceStatus.kt) — no separate status column needed.
      */
     private suspend fun dismiss(context: Context, logId: Int) {
-        val notificationManager =
-            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val notificationManager = context.notificationManager
         notificationManager.cancel(logId)
         cancelSummaryIfEmpty(context, notificationManager)
 

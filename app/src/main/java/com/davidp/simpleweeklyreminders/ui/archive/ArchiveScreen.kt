@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -45,7 +44,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.davidp.simpleweeklyreminders.data.model.Reminder
@@ -55,8 +53,8 @@ import com.davidp.simpleweeklyreminders.data.model.iconFromKey
 import com.davidp.simpleweeklyreminders.data.settings.ArchiveSettings
 import com.davidp.simpleweeklyreminders.data.settings.datePattern
 import com.davidp.simpleweeklyreminders.ui.theme.LocalAppSettings
+import com.davidp.simpleweeklyreminders.ui.components.EmptyState
 import com.davidp.simpleweeklyreminders.ui.theme.appShapes
-import com.davidp.simpleweeklyreminders.ui.theme.dimensions
 import com.davidp.simpleweeklyreminders.ui.theme.reminderColors
 import com.davidp.simpleweeklyreminders.viewmodel.ReminderViewModel
 import java.time.format.DateTimeFormatter
@@ -94,25 +92,7 @@ fun ArchiveScreen(viewModel: ReminderViewModel, onBack: () -> Unit) {
         )
 
         if (loadedArchived.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 44.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        imageVector = Icons.Outlined.Inventory2,
-                        contentDescription = null,
-                        modifier = Modifier.size(56.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                    )
-                    Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
-                    Text(
-                        "Nothing archived yet",
-                        style = MaterialTheme.typography.titleMedium,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
+            EmptyState(icon = Icons.Outlined.Inventory2, title = "Nothing archived yet")
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),

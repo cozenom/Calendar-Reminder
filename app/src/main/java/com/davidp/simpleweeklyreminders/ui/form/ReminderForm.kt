@@ -1,12 +1,10 @@
 package com.davidp.simpleweeklyreminders.ui.form
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -44,7 +42,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -58,9 +55,10 @@ import com.davidp.simpleweeklyreminders.data.settings.dateNoYearPattern
 import com.davidp.simpleweeklyreminders.data.settings.is24Hour
 import com.davidp.simpleweeklyreminders.data.settings.timePattern
 import com.davidp.simpleweeklyreminders.ui.calendar.CalendarDialog
+import com.davidp.simpleweeklyreminders.ui.components.GroupSurface
+import com.davidp.simpleweeklyreminders.ui.components.SectionLabel
 import com.davidp.simpleweeklyreminders.ui.theme.LocalAppSettings
 import com.davidp.simpleweeklyreminders.ui.theme.appShapes
-import com.davidp.simpleweeklyreminders.ui.theme.appTypography
 import com.davidp.simpleweeklyreminders.ui.theme.dimensions
 import com.davidp.simpleweeklyreminders.ui.theme.reminderAccent
 import java.time.LocalDate
@@ -168,7 +166,7 @@ private fun ReminderForm(
             Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
             ColorSelector(selectedKey = selectedColor, onChanged = { selectedColor = it })
         }
-        FormSectionLabel("Repeats")
+        SectionLabel("Repeats")
         RecurrenceToggle(mode = recurrenceMode, onChanged = { recurrenceMode = it })
         when (recurrenceMode) {
             ReminderType.EVERY_N_DAYS -> {
@@ -182,8 +180,8 @@ private fun ReminderForm(
             ReminderType.ONE_TIME -> {} // single date picked below, nothing to select here
         }
 
-        FormSectionLabel("Times")
-        FormGroup {
+        SectionLabel("Times")
+        GroupSurface(Modifier.fillMaxWidth()) {
             times.forEachIndexed { index, time ->
                 if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -230,7 +228,7 @@ private fun ReminderForm(
             }
         }
 
-        FormSectionLabel("Importance")
+        SectionLabel("Importance")
         ImportanceSelector(importance = importance, onChanged = { importance = it })
 
         val dateFormat = LocalAppSettings.current.dateFormat
@@ -240,8 +238,8 @@ private fun ReminderForm(
         val oneTimeInPast = recurrenceMode == ReminderType.ONE_TIME &&
             times.all { LocalDateTime.of(startDate, it) <= LocalDateTime.now() }
 
-        FormSectionLabel("Runs")
-        FormGroup {
+        SectionLabel("Runs")
+        GroupSurface(Modifier.fillMaxWidth()) {
             ValueRow(
                 label = if (recurrenceMode == ReminderType.ONE_TIME) "Date" else "Starts",
                 value = startDate.format(DateTimeFormatter.ofPattern(datePattern)),
@@ -279,7 +277,7 @@ private fun ReminderForm(
             )
         }
 
-        FormSectionLabel("Notes")
+        SectionLabel("Notes")
         OutlinedTextField(
             value = notes,
             onValueChange = { notes = it },
@@ -356,29 +354,6 @@ private fun ReminderForm(
             onDismiss = { showIconPicker = false }
         )
     }
-}
-
-/** Uppercase group heading above a form section. */
-@Composable
-private fun FormSectionLabel(text: String) {
-    Text(
-        text = text.uppercase(),
-        style = MaterialTheme.appTypography.sectionLabel,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(start = 4.dp, top = 16.dp, bottom = 7.dp)
-    )
-}
-
-/** Rounded neutral container holding a section's rows, divided by hairlines. */
-@Composable
-private fun FormGroup(content: @Composable ColumnScope.() -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(MaterialTheme.appShapes.medium)
-            .background(MaterialTheme.colorScheme.surfaceVariant),
-        content = content
-    )
 }
 
 /** Label on the left, current value on the right — the settings-style row used by "Runs". */
