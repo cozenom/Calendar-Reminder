@@ -354,7 +354,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
      * which already reads as "missed" once its time is past (see
      * data/model/OccurrenceStatus.kt) — no separate status column needed.
      */
-    private suspend fun dismiss(context: Context, logId: Int) {
+    private fun dismiss(context: Context, logId: Int) {
         val notificationManager = context.notificationManager
         notificationManager.cancel(logId)
         cancelSummaryIfEmpty(context, notificationManager)

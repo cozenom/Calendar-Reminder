@@ -62,8 +62,11 @@ import com.davidp.simpleweeklyreminders.ui.theme.appShapes
 import com.davidp.simpleweeklyreminders.ui.theme.tonesFor
 import kotlinx.coroutines.launch
 
-// Set to the hosted privacy-policy URL before launch; blank hides the About row.
-private const val PRIVACY_POLICY_URL = ""
+// GitHub Pages rendering of privacy-policy.md in this repo. Blank hides the About row,
+// so this must stay a URL that actually resolves — the same one goes in the Play
+// Console listing. Editing the markdown updates this page on the next push.
+private const val PRIVACY_POLICY_URL =
+    "https://cozenom.github.io/Calendar-Reminder/privacy-policy"
 
 /** Snooze lengths offered in Settings, in minutes. */
 private val SNOOZE_PRESET_MINUTES = listOf(5, 10, 15, 30, 45, 60)

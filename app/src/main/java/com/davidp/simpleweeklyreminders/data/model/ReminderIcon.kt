@@ -139,6 +139,12 @@ val ReminderIconCategories: List<IconCategory> = listOf(
 
 const val DEFAULT_ICON_KEY = "notifications"
 
+/** Every icon, flattened once — the picker's grid and search both read this. */
+val AllReminderIcons: List<ReminderIconOption> = ReminderIconCategories.flatMap { it.icons }
+
+// iconFromKey runs per row per recomposition, so the lookup is a map built once rather
+// than a flatMap + linear scan each time.
+private val iconsByKey: Map<String, ReminderIconOption> = AllReminderIcons.associateBy { it.key }
+
 fun iconFromKey(key: String?): ReminderIconOption =
-    ReminderIconCategories.flatMap { it.icons }.find { it.key == key }
-        ?: ReminderIconCategories.first().icons.first()
+    key?.let { iconsByKey[it] } ?: AllReminderIcons.first()

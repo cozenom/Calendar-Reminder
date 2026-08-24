@@ -14,7 +14,7 @@ import org.junit.Test
  */
 class ReminderIconTest {
 
-    private val allOptions = ReminderIconCategories.flatMap { it.icons }
+    private val allOptions = AllReminderIcons
 
     @Test
     fun `every picker icon has a notification drawable`() {
@@ -42,7 +42,7 @@ class ReminderIconTest {
 
     @Test
     fun `an unknown or null key falls back to the first icon`() {
-        val fallback = ReminderIconCategories.first().icons.first()
+        val fallback = AllReminderIcons.first()
         assertSame(fallback, iconFromKey(null))
         assertSame(fallback, iconFromKey("noSuchIcon"))
     }

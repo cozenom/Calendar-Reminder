@@ -46,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.davidp.simpleweeklyreminders.data.model.AllReminderIcons
 import com.davidp.simpleweeklyreminders.data.model.ReminderIconCategories
 import com.davidp.simpleweeklyreminders.data.model.ReminderIconOption
 import com.davidp.simpleweeklyreminders.ui.theme.appShapes
@@ -67,7 +68,7 @@ fun IconPickerSheet(
     var category by remember { mutableStateOf(ALL_CATEGORIES) }
     var query by remember { mutableStateOf("") }
 
-    val allOptions = remember { ReminderIconCategories.flatMap { it.icons } }
+    val allOptions = AllReminderIcons
     val visible = remember(category, query) {
         val inCategory = if (category == ALL_CATEGORIES) allOptions
         else ReminderIconCategories.first { it.name == category }.icons

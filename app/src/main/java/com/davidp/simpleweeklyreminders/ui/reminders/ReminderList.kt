@@ -67,7 +67,7 @@ fun ReminderList(
                     onArchive = { onArchiveReminder(reminder) },
                     viewModel = viewModel,
                     dragEnabled = dragEnabled,
-                    modifier = if (dragEnabled) Modifier.draggableHandle(
+                    dragHandleModifier = if (dragEnabled) Modifier.draggableHandle(
                         onDragStarted = {
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                             isDraggingActive = true

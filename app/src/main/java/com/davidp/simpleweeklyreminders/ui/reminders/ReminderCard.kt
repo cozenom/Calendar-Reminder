@@ -81,8 +81,11 @@ fun ReminderItem(
     todayLogs: List<ReminderLog>,
     onArchive: () -> Unit,
     viewModel: ReminderViewModel,
+    modifier: Modifier = Modifier,
     dragEnabled: Boolean = true,
-    modifier: Modifier = Modifier
+    // Applied to the grip icon, not the row: that icon *is* the drag handle, so this is
+    // where the caller's `draggableHandle()` has to land.
+    dragHandleModifier: Modifier = Modifier
 ) {
     var showEditSheet by remember { mutableStateOf(false) }
     // Saveable, not plain remember: opening notes now costs two taps via the overflow menu,
@@ -100,7 +103,7 @@ fun ReminderItem(
     // Falls back to the theme accent when per-reminder colours are off or none is set
     val accent = reminderAccent(reminder.color)
 
-    Column {
+    Column(modifier = modifier) {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         // Paused reminders stay legible but visibly recede
         Column(
@@ -113,7 +116,7 @@ fun ReminderItem(
                     Icon(
                         imageVector = Icons.Filled.DragIndicator,
                         contentDescription = "Drag to reorder",
-                        modifier = modifier
+                        modifier = dragHandleModifier
                             .size(20.dp)
                             .padding(end = 4.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
