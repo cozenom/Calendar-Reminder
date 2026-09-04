@@ -288,4 +288,29 @@ class ReminderRepositoryTest {
         val logs = allLogsFor(logDao, id)
         assertTrue(logs.all { it.title == "New Title" })
     }
+
+    // --- archiveStats ---
+
+    @Test
+    fun `archiveStats counts done and missed within the reminder span only`() = runBlocking {
+        val (repo, _, logDao) = newRepository()
+        val r = reminder(id = 1, startDate = monday, endDate = monday.plusDays(2))
+        val now = LocalDateTime.of(monday.plusDays(10), LocalTime.NOON)
+
+        suspend fun add(at: LocalDateTime, completed: Boolean, reminderId: Int = 1) =
+            logDao.insert(ReminderLog(reminderId = reminderId, title = "T", logDateTime = at, completed = completed))
+
+        add(monday.atTime(9, 0), completed = true)
+        add(monday.plusDays(1).atTime(9, 0), completed = true)
+        add(monday.plusDays(2).atTime(9, 0), completed = false)          // missed (elapsed, incomplete)
+        add(monday.plusDays(5).atTime(9, 0), completed = false)          // after endDate — excluded
+        add(monday.minusDays(1).atTime(9, 0), completed = true)          // before startDate — excluded
+        add(monday.atTime(9, 0), completed = true, reminderId = 2)       // other reminder — excluded
+
+        val counts = repo.archiveStats(r, now)
+
+        assertEquals(2, counts.done)
+        assertEquals(1, counts.missed)
+        assertEquals(3, counts.total)
+    }
 }

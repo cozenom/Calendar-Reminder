@@ -25,3 +25,20 @@ fun statusOf(log: ReminderLog, now: LocalDateTime): OccurrenceStatus {
         else -> OccurrenceStatus.PENDING
     }
 }
+
+/** A set of occurrences tallied by [statusOf]. Used for the archive row's done/missed line. */
+data class OccurrenceCounts(val done: Int, val missed: Int, val pending: Int) {
+    val total: Int get() = done + missed + pending
+}
+
+fun countOutcomes(logs: List<ReminderLog>, now: LocalDateTime): OccurrenceCounts {
+    var done = 0
+    var missed = 0
+    var pending = 0
+    for (log in logs) when (statusOf(log, now)) {
+        OccurrenceStatus.DONE -> done++
+        OccurrenceStatus.MISSED -> missed++
+        OccurrenceStatus.PENDING -> pending++
+    }
+    return OccurrenceCounts(done, missed, pending)
+}

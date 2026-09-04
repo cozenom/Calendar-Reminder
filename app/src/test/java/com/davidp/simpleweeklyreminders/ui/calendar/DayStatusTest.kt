@@ -2,6 +2,7 @@ package com.davidp.simpleweeklyreminders.ui.calendar
 
 import com.davidp.simpleweeklyreminders.data.model.OccurrenceStatus
 import com.davidp.simpleweeklyreminders.data.model.ReminderLog
+import com.davidp.simpleweeklyreminders.data.model.countOutcomes
 import com.davidp.simpleweeklyreminders.data.model.statusOf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -147,6 +148,31 @@ class DayStatusTest {
     @Test
     fun emptyInputGivesEmptyMap() {
         assertTrue(dayStatuses(emptyList(), now).isEmpty())
+    }
+
+    // --- countOutcomes (archive row tally) ---
+
+    @Test
+    fun countOutcomes_talliesEachStatus() {
+        val logs = listOf(
+            log(1, now.minusHours(3), completed = true),
+            log(2, now.minusHours(2), completed = true),
+            log(3, now.minusHours(1)),                              // missed
+            log(4, now.plusHours(1)),                               // pending
+            log(5, now.minusHours(1), snoozedUntil = now.plusMinutes(10)) // pending snooze
+        )
+        val counts = countOutcomes(logs, now)
+
+        assertEquals(2, counts.done)
+        assertEquals(1, counts.missed)
+        assertEquals(2, counts.pending)
+        assertEquals(5, counts.total)
+    }
+
+    @Test
+    fun countOutcomes_emptyIsAllZero() {
+        val counts = countOutcomes(emptyList(), now)
+        assertEquals(0, counts.total)
     }
 
     // --- per-reminder colour ---

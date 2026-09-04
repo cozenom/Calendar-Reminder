@@ -2,13 +2,16 @@ package com.davidp.simpleweeklyreminders.data.repository
 
 import com.davidp.simpleweeklyreminders.data.dao.ReminderDao
 import com.davidp.simpleweeklyreminders.data.dao.ReminderLogDao
+import com.davidp.simpleweeklyreminders.data.model.OccurrenceCounts
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderLog
 import com.davidp.simpleweeklyreminders.data.model.ReminderType
+import com.davidp.simpleweeklyreminders.data.model.countOutcomes
 import com.davidp.simpleweeklyreminders.data.model.isScheduledOn
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.temporal.ChronoUnit
 
 class ReminderRepository(
@@ -170,6 +173,19 @@ class ReminderRepository(
                 completed = true
             )
         )
+    }
+
+    /**
+     * Done/missed tally over an archived reminder's whole run, for its archive-row subtitle.
+     * A one-shot suspend aggregate — not a fourth Room observer (see CLAUDE.md). Spans
+     * startDate..endDate; falls back to today's end if endDate is somehow null.
+     */
+    suspend fun archiveStats(reminder: Reminder, now: LocalDateTime = LocalDateTime.now()): OccurrenceCounts {
+        val end = (reminder.endDate ?: now.toLocalDate()).atTime(LocalTime.MAX)
+        val logs = reminderLogDao.getLogsForReminderInRange(
+            reminder.id, reminder.startDate.atStartOfDay(), end
+        )
+        return countOutcomes(logs, now)
     }
 
     suspend fun updateRemindersOrder(reminders: List<Reminder>) {

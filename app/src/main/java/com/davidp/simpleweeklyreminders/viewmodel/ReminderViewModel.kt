@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.davidp.simpleweeklyreminders.data.database.AppDatabase
+import com.davidp.simpleweeklyreminders.data.model.OccurrenceCounts
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderLog
 import com.davidp.simpleweeklyreminders.data.model.isArchived
@@ -119,6 +120,9 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
     fun logAdHocCompletion(reminder: Reminder, dateTime: LocalDateTime) = viewModelScope.launch {
         repository.insertCompletedLog(reminder, dateTime)
     }
+
+    /** One-shot done/missed tally for an archive row; loaded per row, not observed. */
+    suspend fun loadArchiveStats(reminder: Reminder): OccurrenceCounts = repository.archiveStats(reminder)
 
     fun updateRemindersOrder(reminders: List<Reminder>) = viewModelScope.launch {
         repository.updateRemindersOrder(reminders)

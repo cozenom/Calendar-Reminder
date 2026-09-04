@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.davidp.simpleweeklyreminders.data.model.OccurrenceCounts
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderType
 import com.davidp.simpleweeklyreminders.data.model.archivedSince
@@ -102,6 +103,7 @@ fun ArchiveScreen(viewModel: ReminderViewModel, onBack: () -> Unit) {
                 items(loadedArchived, key = { it.id }) { reminder ->
                     ArchivedReminderItem(
                         reminder = reminder,
+                        loadStats = { viewModel.loadArchiveStats(reminder) },
                         onRestore = { viewModel.restore(reminder) },
                         onDelete = { viewModel.delete(reminder) }
                     )
@@ -111,18 +113,38 @@ fun ArchiveScreen(viewModel: ReminderViewModel, onBack: () -> Unit) {
     }
 }
 
+/** "41 done, 3 missed" — omits a zero side, null while loading or when nothing was tracked. */
+private fun statsSummary(counts: OccurrenceCounts?): String? {
+    val c = counts ?: return null
+    return when {
+        c.done + c.missed == 0 -> null
+        c.missed == 0 -> "${c.done} done"
+        c.done == 0 -> "${c.missed} missed"
+        else -> "${c.done} done, ${c.missed} missed"
+    }
+}
+
 @Composable
-fun ArchivedReminderItem(reminder: Reminder, onRestore: () -> Unit, onDelete: () -> Unit) {
+fun ArchivedReminderItem(
+    reminder: Reminder,
+    loadStats: suspend () -> OccurrenceCounts,
+    onRestore: () -> Unit,
+    onDelete: () -> Unit
+) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    // Loaded once per row (one-shot suspend aggregate), not observed
+    var stats by remember(reminder.id) { mutableStateOf<OccurrenceCounts?>(null) }
+    LaunchedEffect(reminder.id) { stats = loadStats() }
 
     val datePattern = LocalAppSettings.current.dateFormat.datePattern(LocalContext.current)
-    val subtitle = when {
+    val base = when {
         reminder.reminderType == ReminderType.ONE_TIME ->
             "One-time · ${reminder.startDate.format(DateTimeFormatter.ofPattern(datePattern))}"
         reminder.endDate != null ->
             "Ended ${reminder.endDate?.format(DateTimeFormatter.ofPattern(datePattern))}"
         else -> "Archived"
     }
+    val subtitle = base + (statsSummary(stats)?.let { " · $it" } ?: "")
 
     Column(
         modifier = Modifier
