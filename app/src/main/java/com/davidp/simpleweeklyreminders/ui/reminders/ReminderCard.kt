@@ -2,6 +2,7 @@ package com.davidp.simpleweeklyreminders.ui.reminders
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -88,9 +89,9 @@ fun ReminderItem(
     dragHandleModifier: Modifier = Modifier
 ) {
     var showEditSheet by remember { mutableStateOf(false) }
-    // Saveable, not plain remember: opening notes now costs two taps via the overflow menu,
-    // so losing it on a scroll out of view (or a rotation) would be irritating. LazyColumn
-    // restores this per item key when the row scrolls back in.
+    // Saveable, not plain remember: losing an expanded note on a scroll out of view (or a
+    // rotation) would be irritating. LazyColumn restores this per item key when the row
+    // scrolls back in.
     var showNotes by rememberSaveable { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
 
@@ -150,8 +151,24 @@ fun ReminderItem(
                             reminder.title,
                             style = MaterialTheme.typography.titleSmall,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
                         )
+                        // Notes live behind a visible glyph, not the overflow: it doubles as an
+                        // at-a-glance "this one has a note" marker and lights up when expanded.
+                        if (hasNotes) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.Notes,
+                                contentDescription = if (showNotes) "Hide notes" else "Show notes",
+                                tint = if (showNotes) accent else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .clip(RoundedCornerShape(50))
+                                    .clickable { showNotes = !showNotes }
+                                    .padding(5.dp)
+                            )
+                        }
                     }
                     Text(
                         rowSubtitle(
@@ -205,13 +222,6 @@ fun ReminderItem(
                             leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
                             onClick = { showMenu = false; showEditSheet = true }
                         )
-                        if (hasNotes) {
-                            DropdownMenuItem(
-                                text = { Text(if (showNotes) "Hide notes" else "Show notes") },
-                                leadingIcon = { Icon(Icons.AutoMirrored.Outlined.Notes, contentDescription = null) },
-                                onClick = { showMenu = false; showNotes = !showNotes }
-                            )
-                        }
                         DropdownMenuItem(
                             text = { Text("Archive") },
                             leadingIcon = { Icon(Icons.Outlined.Archive, contentDescription = null) },
