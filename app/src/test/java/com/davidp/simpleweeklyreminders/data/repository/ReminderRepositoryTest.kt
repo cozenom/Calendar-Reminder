@@ -85,20 +85,19 @@ class ReminderRepositoryTest {
     }
 
     @Test
-    fun `every-N-days interval snaps forward to the next aligned day when generated mid-cycle`() = runBlocking {
+    fun `update snaps an interval reminder forward to the next aligned day`() = runBlocking {
         val (repo, _, logDao) = newRepository()
         val r = reminder(startDate = monday, dayInterval = 3, endDate = monday.plusDays(20))
-        val midCycleNow = LocalDateTime.of(monday.plusDays(4), LocalTime.MIDNIGHT)
+        val id = repo.insert(r, now = beforeStart).toInt()
+        val midCycle = LocalDateTime.of(monday.plusDays(4), LocalTime.MIDNIGHT)
 
-        val id = repo.insert(r, now = midCycleNow).toInt()
+        // Editing regenerates the future only. The interval sequence from start is
+        // monday, +3, +6, +9..., so the next aligned day after monday+4 is monday+6.
+        repo.update(r.copy(id = id), now = midCycle)
 
-        val dates = allLogsFor(logDao, id).map { it.logDateTime.toLocalDate() }.sorted()
-        // Interval sequence from start is monday, +3, +6, +9... so the next aligned
-        // day from "today" (monday+4) is monday+6, not monday+4 or monday+5.
-        assertEquals(
-            listOf(monday.plusDays(6), monday.plusDays(9), monday.plusDays(12), monday.plusDays(15), monday.plusDays(18)),
-            dates
-        )
+        val futureDates = logDao.getFutureLogsForReminder(id, midCycle)
+            .map { it.logDateTime.toLocalDate() }.sorted()
+        assertEquals(monday.plusDays(6), futureDates.first())
     }
 
     @Test
@@ -119,10 +118,10 @@ class ReminderRepositoryTest {
         assertTrue(logs.all { it.logDateTime.toLocalDate() == monday })
     }
 
-    // --- insert / generateLogsForReminder: `now` guard and dedup ---
+    // --- insert / generateLogsForReminder: backfill and dedup ---
 
     @Test
-    fun `never generates a log at or before now`() = runBlocking {
+    fun `insert backfills an earlier-today slot that has already passed`() = runBlocking {
         val (repo, _, logDao) = newRepository()
         val r = reminder(
             startDate = monday,
@@ -134,9 +133,10 @@ class ReminderRepositoryTest {
 
         val id = repo.insert(r, now = todayAtNoon).toInt()
 
-        val logs = allLogsFor(logDao, id)
-        assertEquals(1, logs.size)
-        assertEquals(LocalTime.of(20, 0), logs.single().logDateTime.toLocalTime())
+        // 08:00 had already passed at creation but is still backfilled (tappable, reads
+        // missed); 20:00 is upcoming. Both exist so the calendar has real rows to draw.
+        val times = allLogsFor(logDao, id).map { it.logDateTime.toLocalTime() }.sorted()
+        assertEquals(listOf(LocalTime.of(8, 0), LocalTime.of(20, 0)), times)
     }
 
     @Test
@@ -192,16 +192,19 @@ class ReminderRepositoryTest {
     }
 
     @Test
-    fun `already-started reminder loops from today, not the original start date`() = runBlocking {
+    fun `update regenerates the future from today, not the original start date`() = runBlocking {
         val (repo, _, logDao) = newRepository()
         val pastStart = monday.minusWeeks(4)
         val r = reminder(startDate = pastStart, endDate = pastStart.plusDays(60))
         val today = LocalDateTime.of(monday, LocalTime.MIDNIGHT)
-
         val id = repo.insert(r, now = today).toInt()
 
-        val dates = allLogsFor(logDao, id).map { it.logDateTime.toLocalDate() }.sorted()
-        assertEquals(monday, dates.first())
+        // Editing regenerates future logs from today; it must not re-seed the past run.
+        repo.update(r.copy(id = id), now = today)
+
+        val futureDates = logDao.getFutureLogsForReminder(id, today)
+            .map { it.logDateTime.toLocalDate() }.sorted()
+        assertEquals(monday, futureDates.first())
     }
 
     // --- update() ---
@@ -312,5 +315,53 @@ class ReminderRepositoryTest {
         assertEquals(2, counts.done)
         assertEquals(1, counts.missed)
         assertEquals(3, counts.total)
+    }
+
+    // --- backfill on create (past occurrences) ---
+
+    @Test
+    fun `insert backfills past occurrences from a backdated start`() = runBlocking {
+        val (repo, _, logDao) = newRepository()
+        // Daily reminder started a week before "now" — every day up to now is in the past
+        val now = LocalDateTime.of(monday.plusDays(6), LocalTime.NOON)
+        val r = reminder(startDate = monday, endDate = monday.plusDays(6))
+
+        val id = repo.insert(r, now = now).toInt()
+
+        val dates = allLogsFor(logDao, id).map { it.logDateTime.toLocalDate() }.sorted()
+        assertEquals((0L..6L).map { monday.plusDays(it) }, dates)
+        // Backfilled slots are uncompleted (they read as missed until acted on)
+        assertTrue(allLogsFor(logDao, id).none { it.completed })
+    }
+
+    @Test
+    fun `insert backfills every-N-days on the correct cadence`() = runBlocking {
+        val (repo, _, logDao) = newRepository()
+        val now = LocalDateTime.of(monday.plusDays(10), LocalTime.NOON)
+        val r = reminder(startDate = monday, dayInterval = 3, endDate = monday.plusDays(9))
+
+        val id = repo.insert(r, now = now).toInt()
+
+        val dates = allLogsFor(logDao, id).map { it.logDateTime.toLocalDate() }.sorted()
+        // Phase anchored at startDate: days 0, 3, 6, 9 — no seam
+        assertEquals(listOf(monday, monday.plusDays(3), monday.plusDays(6), monday.plusDays(9)), dates)
+    }
+
+    @Test
+    fun `update does not backfill past occurrences`() = runBlocking {
+        val (repo, _, logDao) = newRepository()
+        val now = LocalDateTime.of(monday.plusDays(3), LocalTime.NOON)
+        val r = reminder(startDate = monday, endDate = monday.plusDays(6))
+        val id = repo.insert(r, now = now).toInt()
+
+        val today = now.toLocalDate()
+        val pastBefore = allLogsFor(logDao, id).map { it.logDateTime.toLocalDate() }.filter { it < today }.sorted()
+        assertTrue(pastBefore.isNotEmpty())
+
+        // An edit regenerates the future only — past logs must be left exactly as they were
+        repo.update(r.copy(id = id, title = "Renamed"), now = now)
+
+        val pastAfter = allLogsFor(logDao, id).map { it.logDateTime.toLocalDate() }.filter { it < today }.sorted()
+        assertEquals(pastBefore, pastAfter)
     }
 }

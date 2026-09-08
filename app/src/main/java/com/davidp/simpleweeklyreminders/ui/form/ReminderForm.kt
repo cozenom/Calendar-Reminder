@@ -240,10 +240,13 @@ private fun ReminderForm(
 
         SectionLabel("Runs")
         GroupSurface(Modifier.fillMaxWidth()) {
+            // Start date is fixed once created: its logs (incl. backfilled past ones) are
+            // already generated, and moving it would desync them / shift the interval phase.
             ValueRow(
                 label = if (recurrenceMode == ReminderType.ONE_TIME) "Date" else "Starts",
                 value = startDate.format(DateTimeFormatter.ofPattern(datePattern)),
-                onClick = { showStartDatePicker = true }
+                onClick = { showStartDatePicker = true },
+                enabled = initial == null
             )
             if (recurrenceMode != ReminderType.ONE_TIME) {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -259,6 +262,14 @@ private fun ReminderForm(
                     }
                 )
             }
+        }
+        if (initial != null) {
+            Text(
+                "Start date is fixed once created — delete and re-add to change it",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 6.dp, start = 4.dp)
+            )
         }
         if (endBeforeStart) {
             Text(
@@ -363,20 +374,27 @@ private fun ValueRow(
     value: String,
     onClick: () -> Unit,
     muted: Boolean = false,
+    enabled: Boolean = true,
     trailing: @Composable () -> Unit = {}
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(start = 14.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyLarge,
+            color = if (enabled) MaterialTheme.colorScheme.onSurface
+            else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f)
+        )
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
-            color = if (muted) MaterialTheme.colorScheme.onSurfaceVariant
+            color = if (muted || !enabled) MaterialTheme.colorScheme.onSurfaceVariant
             else MaterialTheme.colorScheme.onSurface
         )
         trailing()

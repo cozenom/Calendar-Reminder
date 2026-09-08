@@ -26,7 +26,11 @@ class ReminderRepository(
 
     suspend fun insert(reminder: Reminder, now: LocalDateTime = LocalDateTime.now()): Long {
         val id = reminderDao.insertReminder(reminder)
-        generateLogsForReminder(reminder.copy(id = id.toInt()), now)
+        // Backfill the whole run from startDate: a backdated start fills past occurrences
+        // (shown missed, still tappable) so the calendar and chips have real rows to draw.
+        // Safe because the start date is locked once created (see ReminderForm), so update()
+        // never has to re-backfill.
+        generateLogsForReminder(reminder.copy(id = id.toInt()), now, includePast = true)
         return id
     }
 
@@ -100,12 +104,25 @@ class ReminderRepository(
         reminderDao.deleteReminder(reminder)
     }
 
-    private suspend fun generateLogsForReminder(reminder: Reminder, now: LocalDateTime = LocalDateTime.now()) {
+    /**
+     * @param includePast generate occurrences that have already passed too (from startDate).
+     * Only true on insert; update() keeps this false so it touches the future only and never
+     * resurrects or re-flags completed past logs.
+     */
+    private suspend fun generateLogsForReminder(
+        reminder: Reminder,
+        now: LocalDateTime = LocalDateTime.now(),
+        includePast: Boolean = false
+    ) {
         if (!reminder.isActive) return
 
         val currentDate = now.toLocalDate()
         val endDate = reminder.endDate ?: currentDate.plusYears(1)
-        val loopStart = if (reminder.startDate > currentDate) reminder.startDate else currentDate
+        val loopStart = when {
+            includePast -> reminder.startDate
+            reminder.startDate > currentDate -> reminder.startDate
+            else -> currentDate
+        }
         // distinct(): reminders saved before the form deduped times may still hold
         // duplicates, which would insert two logs for the same occurrence
         val times = reminder.reminderTimes.distinct()
@@ -123,9 +140,9 @@ class ReminderRepository(
             while (date <= endDate) {
                 for (time in times) {
                     val logDateTime = LocalDateTime.of(date, time)
-                    // Never create already-passed occurrences: a reminder that was
-                    // paused or didn't exist at that time can't have missed it
-                    if (logDateTime > now && logDateTime !in existingDateTimes) {
+                    // Past occurrences only on a backfilling insert; otherwise a paused or
+                    // freshly-edited reminder can't have missed a slot it wasn't around for.
+                    if ((includePast || logDateTime > now) && logDateTime !in existingDateTimes) {
                         reminderLogDao.insert(ReminderLog(
                             reminderId = reminder.id,
                             title = reminder.title,
@@ -141,7 +158,7 @@ class ReminderRepository(
                 if (reminder.reminderDays.contains(date.dayOfWeek.value)) {
                     for (time in times) {
                         val logDateTime = LocalDateTime.of(date, time)
-                        if (logDateTime > now && logDateTime !in existingDateTimes) {
+                        if ((includePast || logDateTime > now) && logDateTime !in existingDateTimes) {
                             reminderLogDao.insert(ReminderLog(
                                 reminderId = reminder.id,
                                 title = reminder.title,
