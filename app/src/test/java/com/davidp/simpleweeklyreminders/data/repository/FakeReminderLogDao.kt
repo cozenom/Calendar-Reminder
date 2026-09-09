@@ -18,6 +18,10 @@ class FakeReminderLogDao : ReminderLogDao {
         logs.value = logs.value + log.copy(id = id)
     }
 
+    override suspend fun insertAll(logs: List<ReminderLog>) {
+        logs.forEach { insert(it) }
+    }
+
     override fun getLogsForDateRange(start: LocalDateTime, end: LocalDateTime): Flow<List<ReminderLog>> =
         logs.map { list -> list.filter { it.logDateTime >= start && it.logDateTime <= end } }
 

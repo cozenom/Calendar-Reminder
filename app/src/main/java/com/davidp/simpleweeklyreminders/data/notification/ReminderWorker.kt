@@ -14,6 +14,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.davidp.simpleweeklyreminders.data.database.AppDatabase
 import com.davidp.simpleweeklyreminders.data.model.ReminderLog
+import com.davidp.simpleweeklyreminders.data.repository.ReminderRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
@@ -29,11 +30,16 @@ class ReminderWorker(
         val database = AppDatabase.getDatabase(applicationContext)
         val reminderDao = database.reminderDao()
         val reminderLogDao = database.reminderLogDao()
+        val repository = ReminderRepository(reminderDao, reminderLogDao)
 
         val now = LocalDateTime.now()
         val reminders = reminderDao.getAllRemindersList()
 
         reminders.forEach { reminder ->
+            // Advance the materialization horizon so a chain that ran dry while the app was
+            // closed gets fresh logs before we look for the next one (todo #13). No-ops for
+            // inactive reminders.
+            repository.topUpLogs(reminder, now)
             cancelAlarm(applicationContext, reminder.id)
             val nextLog = reminderLogDao.getNextLogForReminder(reminder.id, now)
             if (nextLog != null) {

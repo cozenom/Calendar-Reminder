@@ -12,6 +12,10 @@ interface ReminderLogDao {
     @Insert
     suspend fun insert(log: ReminderLog)
 
+    /** Batch insert — Room runs the whole list in one transaction (see generateLogsForReminder). */
+    @Insert
+    suspend fun insertAll(logs: List<ReminderLog>)
+
     @Query("SELECT * FROM reminder_logs WHERE logDateTime BETWEEN :start AND :end ORDER BY logDateTime ASC")
     fun getLogsForDateRange(start: LocalDateTime, end: LocalDateTime): Flow<List<ReminderLog>>
 

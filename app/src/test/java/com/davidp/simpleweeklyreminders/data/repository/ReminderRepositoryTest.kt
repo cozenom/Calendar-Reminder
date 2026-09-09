@@ -364,4 +364,24 @@ class ReminderRepositoryTest {
         val pastAfter = allLogsFor(logDao, id).map { it.logDateTime.toLocalDate() }.filter { it < today }.sorted()
         assertEquals(pastBefore, pastAfter)
     }
+
+    // --- topUpLogs (self-sustaining chain) ---
+
+    @Test
+    fun `topUpLogs advances the horizon additively so the chain never runs dry`() = runBlocking {
+        val (repo, _, logDao) = newRepository()
+        // No end date: insert fills to now+1yr; the chain would otherwise run out there
+        val r = reminder(startDate = monday, endDate = null)
+        val t0 = LocalDateTime.of(monday, LocalTime.MIDNIGHT)
+        val id = repo.insert(r, now = t0).toInt()
+        val countAfterInsert = allLogsFor(logDao, id).size
+
+        // Simulate a year passing (the chain reached the materialized edge) and top up
+        val t1 = t0.plusYears(1)
+        repo.topUpLogs(r.copy(id = id), now = t1)
+
+        val all = allLogsFor(logDao, id)
+        assertTrue(all.size > countAfterInsert)          // additive: new future rows added
+        assertTrue(all.any { it.logDateTime > t1 })       // a next occurrence now exists past t1
+    }
 }

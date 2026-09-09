@@ -22,6 +22,7 @@ import com.davidp.simpleweeklyreminders.R
 import com.davidp.simpleweeklyreminders.data.database.AppDatabase
 import com.davidp.simpleweeklyreminders.data.model.Importance
 import com.davidp.simpleweeklyreminders.data.model.iconDrawableRes
+import com.davidp.simpleweeklyreminders.data.repository.ReminderRepository
 import com.davidp.simpleweeklyreminders.data.settings.SettingsRepository
 import com.davidp.simpleweeklyreminders.data.settings.timePattern
 import kotlinx.coroutines.CoroutineScope
@@ -75,7 +76,15 @@ class NotificationActionReceiver : BroadcastReceiver() {
         // log time, so "next log after logDateTime" could already be in the past
         // and re-arming it would fire immediately as a duplicate.
         if (!isSnooze) {
-            val nextLog = database.reminderLogDao().getNextLogForReminder(log.reminderId, log.logDateTime)
+            var nextLog = database.reminderLogDao().getNextLogForReminder(log.reminderId, log.logDateTime)
+            if (nextLog == null) {
+                // Chain reached its last materialized row — extend the horizon so firing never
+                // stops, then re-arm from the freshly generated logs (todo #13).
+                database.reminderDao().getReminderByIdOnce(log.reminderId)?.let { reminder ->
+                    ReminderRepository(database.reminderDao(), database.reminderLogDao()).topUpLogs(reminder)
+                    nextLog = database.reminderLogDao().getNextLogForReminder(log.reminderId, log.logDateTime)
+                }
+            }
             if (nextLog != null) {
                 ReminderWorker.scheduleAlarm(context, nextLog)
             }

@@ -132,44 +132,49 @@ class ReminderRepository(
             .getExistingLogDateTimesForReminder(reminder.id, loopStart.atStartOfDay())
             .toHashSet()
 
+        // Collect the whole run and insert in one transaction. A recurring reminder can be
+        // hundreds-to-thousands of rows (esp. with backfill); one-at-a-time inserts are each
+        // their own transaction and would jank the save.
+        val newLogs = mutableListOf<ReminderLog>()
+        // Past occurrences only on a backfilling insert; otherwise a paused or freshly-edited
+        // reminder can't have missed a slot it wasn't around for.
+        fun addIfNew(date: LocalDate, time: LocalTime) {
+            val logDateTime = LocalDateTime.of(date, time)
+            if ((includePast || logDateTime > now) && logDateTime !in existingDateTimes) {
+                newLogs += ReminderLog(reminderId = reminder.id, title = reminder.title, logDateTime = logDateTime)
+            }
+        }
+
         if (reminder.reminderType == ReminderType.EVERY_N_DAYS) {
             val interval = reminder.dayInterval ?: 1
             val daysSinceStart = ChronoUnit.DAYS.between(reminder.startDate, loopStart)
             val offset = daysSinceStart % interval
             var date = if (offset == 0L) loopStart else loopStart.plusDays(interval - offset)
             while (date <= endDate) {
-                for (time in times) {
-                    val logDateTime = LocalDateTime.of(date, time)
-                    // Past occurrences only on a backfilling insert; otherwise a paused or
-                    // freshly-edited reminder can't have missed a slot it wasn't around for.
-                    if ((includePast || logDateTime > now) && logDateTime !in existingDateTimes) {
-                        reminderLogDao.insert(ReminderLog(
-                            reminderId = reminder.id,
-                            title = reminder.title,
-                            logDateTime = logDateTime
-                        ))
-                    }
-                }
+                for (time in times) addIfNew(date, time)
                 date = date.plusDays(interval.toLong())
             }
         } else {
             var date = loopStart
             while (date <= endDate) {
                 if (reminder.reminderDays.contains(date.dayOfWeek.value)) {
-                    for (time in times) {
-                        val logDateTime = LocalDateTime.of(date, time)
-                        if ((includePast || logDateTime > now) && logDateTime !in existingDateTimes) {
-                            reminderLogDao.insert(ReminderLog(
-                                reminderId = reminder.id,
-                                title = reminder.title,
-                                logDateTime = logDateTime
-                            ))
-                        }
-                    }
+                    for (time in times) addIfNew(date, time)
                 }
                 date = date.plusDays(1)
             }
         }
+
+        if (newLogs.isNotEmpty()) reminderLogDao.insertAll(newLogs)
+    }
+
+    /**
+     * Advance a reminder's materialized future logs to the current horizon. Purely additive
+     * (dedup skips what already exists, nothing is deleted), so it's safe to call repeatedly:
+     * from the alarm chain when it reaches its last row, and from ReminderWorker on app open /
+     * boot. This is what stops a no-end-date reminder from running out of logs (todo #13).
+     */
+    suspend fun topUpLogs(reminder: Reminder, now: LocalDateTime = LocalDateTime.now()) {
+        generateLogsForReminder(reminder, now)
     }
 
     suspend fun updateLogCompletedStatus(logId: Int, completed: Boolean) {
