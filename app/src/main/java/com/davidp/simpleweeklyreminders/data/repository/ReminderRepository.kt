@@ -117,12 +117,20 @@ class ReminderRepository(
         if (!reminder.isActive) return
 
         val currentDate = now.toLocalDate()
-        val endDate = reminder.endDate ?: currentDate.plusYears(1)
         val loopStart = when {
             includePast -> reminder.startDate
             reminder.startDate > currentDate -> reminder.startDate
             else -> currentDate
         }
+        // Materialize only a short forward window. The calendar computes further-out
+        // occurrences from the schedule (see syntheticFutureLogs) and the alarm chain
+        // self-sustains via the fire-hook top-up, so a year of rows isn't needed (todo #13).
+        // Anchored on max(today, loopStart) so a future-dated reminder still gets its first
+        // occurrence; widened past a long interval so the next occurrence always lands inside
+        // the window (otherwise the chain would have nothing to arm). endDate still caps it.
+        val windowDays = maxOf(FORWARD_WINDOW_DAYS, (reminder.dayInterval?.toLong() ?: 0L) + 1L)
+        val horizon = maxOf(currentDate, loopStart).plusDays(windowDays)
+        val endDate = reminder.endDate?.let { if (it < horizon) it else horizon } ?: horizon
         // distinct(): reminders saved before the form deduped times may still hold
         // duplicates, which would insert two logs for the same occurrence
         val times = reminder.reminderTimes.distinct()
@@ -214,5 +222,14 @@ class ReminderRepository(
         reminders.forEachIndexed { index, reminder ->
             reminderDao.updateSortOrder(reminder.id, index)
         }
+    }
+
+    private companion object {
+        /**
+         * How far ahead to materialize logs. The calendar shows occurrences beyond this by
+         * computing them from the schedule, and the alarm chain is kept alive by the fire-hook
+         * top-up, so this is just a buffer — not the reminder's real reach (todo #13).
+         */
+        const val FORWARD_WINDOW_DAYS = 45L
     }
 }

@@ -1,10 +1,55 @@
 package com.davidp.simpleweeklyreminders.ui.calendar
 
 import com.davidp.simpleweeklyreminders.data.model.OccurrenceStatus
+import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderLog
+import com.davidp.simpleweeklyreminders.data.model.isScheduledOn
 import com.davidp.simpleweeklyreminders.data.model.statusOf
 import java.time.LocalDate
 import java.time.LocalDateTime
+
+/**
+ * Future occurrences the calendar should show that have no materialized log yet, as synthetic
+ * ReminderLog rows (id = 0, uncompleted). We only materialize a short forward window (see
+ * ReminderRepository), so the calendar computes the rest here instead of storing a year of
+ * rows — statusOf() renders a future uncompleted log as PENDING, so these fold and render
+ * exactly like real ones (todo #13).
+ *
+ * TODAY AND LATER ONLY. A past scheduled slot with no log is "not tracked", not missed —
+ * synthesising it would invent a failure. Past days stay real-logs-only.
+ *
+ * Deduped against [existingLogs] by (reminderId, exact time), so a slot that already has a log
+ * (incl. one completed early) keeps its real row.
+ */
+fun syntheticFutureLogs(
+    reminders: List<Reminder>,
+    existingLogs: List<ReminderLog>,
+    range: ClosedRange<LocalDate>,
+    today: LocalDate
+): List<ReminderLog> {
+    val start = maxOf(range.start, today)
+    if (start > range.endInclusive) return emptyList()
+    val logged = existingLogs.mapTo(HashSet()) { it.reminderId to it.logDateTime }
+
+    val out = mutableListOf<ReminderLog>()
+    for (reminder in reminders) {
+        if (!reminder.isActive) continue
+        val times = reminder.reminderTimes.distinct()
+        var date = start
+        while (date <= range.endInclusive) {
+            if (reminder.isScheduledOn(date)) {
+                for (time in times) {
+                    val dateTime = LocalDateTime.of(date, time)
+                    if ((reminder.id to dateTime) !in logged) {
+                        out += ReminderLog(reminderId = reminder.id, title = reminder.title, logDateTime = dateTime)
+                    }
+                }
+            }
+            date = date.plusDays(1)
+        }
+    }
+    return out
+}
 
 /**
  * One occurrence in a day's bar: how it stands, and which reminder's colour it should take.

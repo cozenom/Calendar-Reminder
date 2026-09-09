@@ -1,6 +1,7 @@
 package com.davidp.simpleweeklyreminders.ui.calendar
 
 import com.davidp.simpleweeklyreminders.data.model.OccurrenceStatus
+import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderLog
 import com.davidp.simpleweeklyreminders.data.model.countOutcomes
 import com.davidp.simpleweeklyreminders.data.model.statusOf
@@ -11,6 +12,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.LocalTime
 
 /**
  * The calendar's done/pending/missed split. Status is derived from `completed` +
@@ -205,5 +207,47 @@ class DayStatusTest {
         val segments = dayStatuses(logs, now, mapOf(1 to "teal")).getValue(today).segments
 
         assertNull(segments.single().colorKey)
+    }
+
+    // --- syntheticFutureLogs (calendar computes the forward window) ---
+
+    private fun reminder(
+        id: Int = 1,
+        times: List<LocalTime> = listOf(LocalTime.of(9, 0)),
+        start: LocalDate = today.minusDays(10),
+        days: Set<Int> = setOf(1, 2, 3, 4, 5, 6, 7), // every weekday
+        active: Boolean = true
+    ) = Reminder(id = id, title = "Meds", reminderTimes = times, startDate = start, reminderDays = days, isActive = active)
+
+    @Test
+    fun syntheticFutureLogs_addsPendingRowsForScheduledDaysWithNoLog() {
+        val synth = syntheticFutureLogs(listOf(reminder()), emptyList(), today..today.plusDays(2), today)
+
+        assertEquals(3, synth.size) // today, +1, +2
+        assertTrue(synth.all { it.id == 0 && !it.completed })
+        assertEquals(listOf(today, today.plusDays(1), today.plusDays(2)), synth.map { it.logDateTime.toLocalDate() })
+    }
+
+    @Test
+    fun syntheticFutureLogs_neverSynthesisesThePast() {
+        // Range starts before today; nothing before today should be produced
+        val synth = syntheticFutureLogs(listOf(reminder()), emptyList(), today.minusDays(3)..today.plusDays(1), today)
+
+        assertEquals(listOf(today, today.plusDays(1)), synth.map { it.logDateTime.toLocalDate() })
+    }
+
+    @Test
+    fun syntheticFutureLogs_dedupsAgainstAnExistingLog() {
+        val existing = listOf(log(5, today.atTime(9, 0), reminderId = 1))
+        val synth = syntheticFutureLogs(listOf(reminder()), existing, today..today, today)
+
+        assertTrue(synth.isEmpty()) // the only slot already has a real log
+    }
+
+    @Test
+    fun syntheticFutureLogs_skipsInactiveReminders() {
+        val synth = syntheticFutureLogs(listOf(reminder(active = false)), emptyList(), today..today.plusDays(2), today)
+
+        assertTrue(synth.isEmpty())
     }
 }

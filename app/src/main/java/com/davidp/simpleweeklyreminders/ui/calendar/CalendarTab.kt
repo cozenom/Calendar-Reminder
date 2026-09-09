@@ -87,8 +87,21 @@ fun CalendarTab(viewModel: ReminderViewModel) {
         allReminders.orEmpty().associate { it.id to it.color }
     }
 
-    val selectedDateLogs = remember(calendarLogs, selectedDate) {
-        calendarLogs.filter { it.logDateTime.toLocalDate() == selectedDate }
+    // Only a short forward window is materialized (see ReminderRepository); the calendar fills
+    // the rest of the visible range with schedule-derived PENDING rows so future pips/lists
+    // still show without storing a year of logs (todo #13). Same window the logs flow covers.
+    val visibleRange = remember(currentMonth, selectedDate) {
+        val selMonth = YearMonth.from(selectedDate)
+        val first = minOf(currentMonth.minusMonths(1), selMonth)
+        val last = maxOf(currentMonth.plusMonths(1), selMonth)
+        first.atDay(1)..last.atEndOfMonth()
+    }
+    val displayLogs = remember(calendarLogs, allReminders, visibleRange, now) {
+        calendarLogs + syntheticFutureLogs(allReminders.orEmpty(), calendarLogs, visibleRange, now.toLocalDate())
+    }
+
+    val selectedDateLogs = remember(displayLogs, selectedDate) {
+        displayLogs.filter { it.logDateTime.toLocalDate() == selectedDate }
     }
     val selectedDayStatus = remember(selectedDateLogs, now) {
         dayStatuses(selectedDateLogs, now)[selectedDate]
@@ -124,9 +137,9 @@ fun CalendarTab(viewModel: ReminderViewModel) {
             // Folded once per page rather than filtered inside each of the 42 cells. Slices
             // the shared window instead of querying per page — the window already spans the
             // neighbouring months a swipe can reach.
-            val statuses = remember(calendarLogs, monthForPage, now, colorKeys) {
+            val statuses = remember(displayLogs, monthForPage, now, colorKeys) {
                 dayStatuses(
-                    calendarLogs.filter { YearMonth.from(it.logDateTime) == monthForPage },
+                    displayLogs.filter { YearMonth.from(it.logDateTime) == monthForPage },
                     now,
                     colorKeys
                 )
@@ -178,7 +191,11 @@ fun CalendarTab(viewModel: ReminderViewModel) {
             )
         } else {
             LazyColumn(modifier = Modifier.padding(horizontal = 14.dp)) {
-                items(selectedDateLogs, key = { it.id }) { log ->
+                // Synthetic rows (id 0, no materialized log) have no db id — key them by slot
+                items(
+                    selectedDateLogs,
+                    key = { if (it.id != 0) "log-${it.id}" else "synth-${it.reminderId}-${it.logDateTime.toLocalTime()}" }
+                ) { log ->
                     val reminder = remindersOnSelectedDate.find { it.id == log.reminderId }
                     ReminderEventItem(
                         log = log,
@@ -188,7 +205,12 @@ fun CalendarTab(viewModel: ReminderViewModel) {
                         importance = reminder?.importance ?: Importance.HIGH,
                         onToggle = {
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                            viewModel.updateLogCompletedStatus(log.id, !log.completed)
+                            if (log.id != 0) {
+                                viewModel.updateLogCompletedStatus(log.id, !log.completed)
+                            } else if (reminder != null) {
+                                // Tapping a not-yet-materialized future slot records it done early
+                                viewModel.logAdHocCompletion(reminder, log.logDateTime)
+                            }
                         }
                     )
                 }

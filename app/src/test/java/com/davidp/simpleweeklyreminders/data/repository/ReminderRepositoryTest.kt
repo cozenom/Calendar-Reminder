@@ -167,15 +167,34 @@ class ReminderRepositoryTest {
     // --- generateLogsForReminder: endDate and loopStart defaults ---
 
     @Test
-    fun `null endDate defaults to one year from now, inclusive`() = runBlocking {
+    fun `null endDate materializes only the forward window, not a year`() = runBlocking {
         val (repo, _, logDao) = newRepository()
-        val r = reminder(startDate = monday, endDate = null, dayInterval = 365)
+        // Daily, no end date. Old behaviour was a full year of rows; now it's bounded to the
+        // ~45-day forward window (the calendar computes further out) — todo #13.
+        val r = reminder(startDate = monday, endDate = null)
         val today = LocalDateTime.of(monday, LocalTime.MIDNIGHT)
 
         val id = repo.insert(r, now = today).toInt()
 
         val dates = allLogsFor(logDao, id).map { it.logDateTime.toLocalDate() }.sorted()
-        assertEquals(listOf(monday, monday.plusYears(1)), dates)
+        assertEquals(monday, dates.first())
+        assertEquals(monday.plusDays(45), dates.last())   // window edge, nowhere near a year
+        assertEquals(46, dates.size)                        // monday .. monday+45 inclusive
+    }
+
+    @Test
+    fun `long interval still materializes the next occurrence inside the window`() = runBlocking {
+        val (repo, _, logDao) = newRepository()
+        // Every 90 days, no end. The window must widen past the interval or the chain would
+        // have nothing to arm — so at least the next occurrence must exist.
+        val r = reminder(startDate = monday, endDate = null, dayInterval = 90)
+        val today = LocalDateTime.of(monday, LocalTime.MIDNIGHT)
+
+        val id = repo.insert(r, now = today).toInt()
+
+        val dates = allLogsFor(logDao, id).map { it.logDateTime.toLocalDate() }.sorted()
+        assertEquals(monday, dates.first())
+        assertEquals(monday.plusDays(90), dates[1])   // next occurrence is present, not skipped
     }
 
     @Test
