@@ -175,7 +175,17 @@ private fun ReminderForm(
             ColorSelector(selectedKey = selectedColor, onChanged = { selectedColor = it })
         }
         SectionLabel("Repeats")
-        RecurrenceToggle(mode = recurrenceMode, onChanged = { recurrenceMode = it })
+        RecurrenceToggle(
+            mode = recurrenceMode,
+            onChanged = { mode ->
+                // One-time saves endDate = startDate; carried over to a repeating cadence it
+                // would run a single day. Leaving one-time resets Ends to Never.
+                if (recurrenceMode == ReminderType.ONE_TIME && mode != ReminderType.ONE_TIME) {
+                    endDate = null
+                }
+                recurrenceMode = mode
+            }
+        )
         when (recurrenceMode) {
             ReminderType.EVERY_N_DAYS -> {
                 Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
