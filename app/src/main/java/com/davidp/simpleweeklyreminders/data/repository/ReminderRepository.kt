@@ -208,10 +208,13 @@ class ReminderRepository(
     /**
      * Done/missed tally over an archived reminder's whole run, for its archive-row subtitle.
      * A one-shot suspend aggregate — not a fourth Room observer (see CLAUDE.md). Spans
-     * startDate..endDate; falls back to today's end if endDate is somehow null.
+     * startDate up to whichever came first: the manual archive moment or the end of endDate.
+     * archivedAt matters since a manual archive keeps a future endDate, and slots ticked off
+     * early past the archive point would otherwise count. Falls back to today's end.
      */
     suspend fun archiveStats(reminder: Reminder, now: LocalDateTime = LocalDateTime.now()): OccurrenceCounts {
-        val end = (reminder.endDate ?: now.toLocalDate()).atTime(LocalTime.MAX)
+        val end = listOfNotNull(reminder.archivedAt, reminder.endDate?.atTime(LocalTime.MAX)).minOrNull()
+            ?: now.toLocalDate().atTime(LocalTime.MAX)
         val logs = reminderLogDao.getLogsForReminderInRange(
             reminder.id, reminder.startDate.atStartOfDay(), end
         )

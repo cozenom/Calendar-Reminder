@@ -3,6 +3,7 @@ package com.davidp.simpleweeklyreminders.ui.calendar
 import com.davidp.simpleweeklyreminders.data.model.OccurrenceStatus
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderLog
+import com.davidp.simpleweeklyreminders.data.model.isArchived
 import com.davidp.simpleweeklyreminders.data.model.isScheduledOn
 import com.davidp.simpleweeklyreminders.data.model.statusOf
 import java.time.LocalDate
@@ -33,7 +34,8 @@ fun syntheticFutureLogs(
 
     val out = mutableListOf<ReminderLog>()
     for (reminder in reminders) {
-        if (!reminder.isActive) continue
+        // isArchived too: a manual archive keeps its endDate, so the schedule alone won't stop it
+        if (!reminder.isActive || reminder.isArchived(today)) continue
         val times = reminder.reminderTimes.distinct()
         var date = start
         while (date <= range.endInclusive) {

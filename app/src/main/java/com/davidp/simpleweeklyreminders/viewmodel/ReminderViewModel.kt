@@ -7,6 +7,7 @@ import com.davidp.simpleweeklyreminders.data.database.AppDatabase
 import com.davidp.simpleweeklyreminders.data.model.OccurrenceCounts
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderLog
+import com.davidp.simpleweeklyreminders.data.model.archivedSince
 import com.davidp.simpleweeklyreminders.data.model.isArchived
 import com.davidp.simpleweeklyreminders.data.notification.ReminderWorker
 import com.davidp.simpleweeklyreminders.data.repository.ReminderLogRepository
@@ -49,7 +50,8 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
 
     /** Archived reminders, most recently archived first — also a filter of [reminders]. */
     val archivedReminders: StateFlow<List<Reminder>?> = reminders
-        .map { list -> list?.filter { it.isArchived() }?.sortedByDescending { it.endDate } }
+        // archivedSince, not endDate: a manual archive keeps the user's end date (or none)
+        .map { list -> list?.filter { it.isArchived() }?.sortedByDescending { it.archivedSince() } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIPTION_TIMEOUT_MS), null)
 
     private val calendarWindow = MutableStateFlow(CalendarWindow(YearMonth.now(), LocalDate.now()))
@@ -101,15 +103,19 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
         ReminderWorker.schedule(getApplication())
     }
 
+    /** Manual archive: stamp archivedAt and stop scheduling. endDate is left untouched. */
     fun archive(reminder: Reminder) = viewModelScope.launch {
-        repository.update(
-            reminder.copy(isActive = false, endDate = LocalDate.now().minusDays(1), archivedAt = LocalDateTime.now())
-        )
+        repository.update(reminder.copy(isActive = false, archivedAt = LocalDateTime.now()))
         ReminderWorker.schedule(getApplication())
     }
 
-    fun restore(reminder: Reminder) = viewModelScope.launch {
-        repository.update(reminder.copy(isActive = true, endDate = null, archivedAt = null))
+    /**
+     * Undo of [archive] and the Archive screen's Restore. Keeps the reminder's end date by
+     * default; a lapsed reminder (see hasLapsed) needs [endDate] passed as null or a date from
+     * today on — restoring it with its old past date would drop it straight back in the Archive.
+     */
+    fun restore(reminder: Reminder, endDate: LocalDate? = reminder.endDate) = viewModelScope.launch {
+        repository.update(reminder.copy(isActive = true, endDate = endDate, archivedAt = null))
         ReminderWorker.schedule(getApplication())
     }
 

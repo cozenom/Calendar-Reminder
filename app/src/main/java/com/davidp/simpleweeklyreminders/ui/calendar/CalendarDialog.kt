@@ -28,11 +28,13 @@ import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 
+/** @param minDate earliest selectable day; earlier days are shown dimmed and ignore taps. */
 @Composable
 fun CalendarDialog(
     onDismissRequest: () -> Unit,
     onDateSelected: (LocalDate) -> Unit,
-    initialDate: LocalDate
+    initialDate: LocalDate,
+    minDate: LocalDate? = null
 ) {
     var selectedDate by remember { mutableStateOf(initialDate) }
 
@@ -74,7 +76,8 @@ fun CalendarDialog(
                     onDateSelected = { selectedDate = it; onDateSelected(it) },
                     selectedDate = selectedDate,
                     // Date picker, not a status view — no occurrence bars here
-                    statuses = emptyMap()
+                    statuses = emptyMap(),
+                    minDate = minDate
                 )
             }
         },

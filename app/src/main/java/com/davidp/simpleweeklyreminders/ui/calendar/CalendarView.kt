@@ -48,12 +48,14 @@ private val NOTCH_SIZE = 5.dp
  *  hollow segment rather than a solid one. */
 private val MISSED_OUTLINE = 0.5.dp
 
+/** @param minDate picker-only: days before it are dimmed and not tappable. Null = all days. */
 @Composable
 fun CalendarView(
     currentMonth: YearMonth,
     onDateSelected: (LocalDate) -> Unit,
     selectedDate: LocalDate?,
-    statuses: Map<LocalDate, DayStatus>
+    statuses: Map<LocalDate, DayStatus>,
+    minDate: LocalDate? = null
 ) {
     val daysInMonth = currentMonth.lengthOfMonth()
     val firstDow = currentMonth.atDay(1).dayOfWeek.value // Mon=1 .. Sun=7
@@ -100,6 +102,7 @@ fun CalendarView(
                         isSelected = date == selectedDate,
                         isToday = date == today,
                         isPast = date < today,
+                        enabled = minDate == null || date >= minDate,
                         onClick = { onDateSelected(date) },
                         modifier = Modifier.weight(1f)
                     )
@@ -116,12 +119,15 @@ private fun DayCell(
     isSelected: Boolean,
     isToday: Boolean,
     isPast: Boolean,
+    enabled: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val colors = MaterialTheme.reminderColors
     val dayColor = when {
         isSelected -> MaterialTheme.colorScheme.onPrimaryContainer
+        // M3's disabled-content alpha, so an off-limits day reads as unavailable
+        !enabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
         isPast -> MaterialTheme.colorScheme.onSurfaceVariant
         else -> MaterialTheme.colorScheme.onSurface
     }
@@ -130,7 +136,7 @@ private fun DayCell(
         modifier = modifier
             .padding(2.dp)
             .clip(MaterialTheme.appShapes.small)
-            .clickable(onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
             .background(
                 if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
                 shape = MaterialTheme.appShapes.small

@@ -216,6 +216,36 @@ class ReminderScheduleTest {
         assertTrue(r.isArchived(today = monday))
     }
 
+    @Test
+    fun `archivedAt alone archives a reminder with no end date`() {
+        // Manual archive no longer back-dates endDate, so archivedAt must be enough on its own
+        val r = reminder(endDate = null, archivedAt = monday.atTime(9, 0))
+        assertTrue(r.isArchived(today = monday))
+    }
+
+    @Test
+    fun `archivedAt archives even while the end date is still ahead`() {
+        // The user's future end date survives an archive, and mustn't read as "still running"
+        val r = reminder(endDate = monday.plusDays(30), archivedAt = monday.atTime(9, 0))
+        assertTrue(r.isArchived(today = monday))
+    }
+
+    // --- hasLapsed (drives Restore's "pick a new end date") ---
+
+    @Test
+    fun `hasLapsed only once the end date is behind today`() {
+        assertFalse(reminder(endDate = null).hasLapsed(today = monday))
+        assertFalse(reminder(endDate = monday).hasLapsed(today = monday))
+        assertTrue(reminder(endDate = monday.minusDays(1)).hasLapsed(today = monday))
+    }
+
+    @Test
+    fun `a manual archive with a future end date has not lapsed`() {
+        // Restores straight back with its own end date, no picker
+        val r = reminder(endDate = monday.plusDays(30), archivedAt = monday.atTime(9, 0))
+        assertFalse(r.hasLapsed(today = monday))
+    }
+
     // --- archivedSince ---
 
     @Test
@@ -238,9 +268,19 @@ class ReminderScheduleTest {
     }
 
     @Test
-    fun `archivedAt on a not-yet-archived reminder is ignored`() {
-        // Guards against a stale archivedAt surviving a restore()-then-re-edit path
-        val r = reminder(endDate = monday.plusDays(1), archivedAt = monday.atTime(9, 0))
-        assertNull(r.archivedSince(today = monday))
+    fun `archivedAt counts even when the end date is still ahead`() {
+        // Replaces "archivedAt on a not-yet-archived reminder is ignored" — archivedAt used to
+        // be only a precision hint next to a back-dated endDate. It's now the manual-archive
+        // marker itself; restore() clears it, so a stale one can't linger.
+        val stamp = monday.atTime(9, 0)
+        val r = reminder(endDate = monday.plusDays(1), archivedAt = stamp)
+        assertEquals(stamp, r.archivedSince(today = monday))
+    }
+
+    @Test
+    fun `manual archive with no end date still has an archivedSince to sort by`() {
+        val stamp = monday.atTime(9, 0)
+        val r = reminder(endDate = null, archivedAt = stamp)
+        assertEquals(stamp, r.archivedSince(today = monday))
     }
 }

@@ -12,11 +12,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -26,9 +29,11 @@ import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -44,20 +49,26 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.davidp.simpleweeklyreminders.data.model.OccurrenceCounts
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderType
 import com.davidp.simpleweeklyreminders.data.model.archivedSince
+import com.davidp.simpleweeklyreminders.data.model.hasLapsed
 import com.davidp.simpleweeklyreminders.data.model.iconFromKey
 import com.davidp.simpleweeklyreminders.data.settings.ArchiveSettings
+import com.davidp.simpleweeklyreminders.data.settings.dateNoYearPattern
 import com.davidp.simpleweeklyreminders.data.settings.datePattern
+import com.davidp.simpleweeklyreminders.ui.calendar.CalendarDialog
 import com.davidp.simpleweeklyreminders.ui.theme.LocalAppSettings
 import com.davidp.simpleweeklyreminders.ui.components.EmptyState
+import com.davidp.simpleweeklyreminders.ui.components.GroupSurface
 import com.davidp.simpleweeklyreminders.ui.theme.appShapes
 import com.davidp.simpleweeklyreminders.ui.theme.reminderColors
 import com.davidp.simpleweeklyreminders.viewmodel.ReminderViewModel
+import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 /** Reminders that lapsed into the Archive after the user last viewed it. */
@@ -104,7 +115,7 @@ fun ArchiveScreen(viewModel: ReminderViewModel, onBack: () -> Unit) {
                     ArchivedReminderItem(
                         reminder = reminder,
                         loadStats = { viewModel.loadArchiveStats(reminder) },
-                        onRestore = { viewModel.restore(reminder) },
+                        onRestore = { endDate -> viewModel.restore(reminder, endDate) },
                         onDelete = { viewModel.delete(reminder) }
                     )
                 }
@@ -128,18 +139,28 @@ private fun statsSummary(counts: OccurrenceCounts?): String? {
 fun ArchivedReminderItem(
     reminder: Reminder,
     loadStats: suspend () -> OccurrenceCounts,
-    onRestore: () -> Unit,
+    /** Restores with the given end date: the reminder's own, or the one picked in the dialog. */
+    onRestore: (endDate: LocalDate?) -> Unit,
     onDelete: () -> Unit
 ) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showRestoreDialog by remember { mutableStateOf(false) }
+    var showEndDatePicker by remember { mutableStateOf(false) }
+    // The end date being chosen in the restore dialog; null = Never
+    var restoreEndDate by remember { mutableStateOf<LocalDate?>(null) }
     // Loaded once per row (one-shot suspend aggregate), not observed
     var stats by remember(reminder.id) { mutableStateOf<OccurrenceCounts?>(null) }
     LaunchedEffect(reminder.id) { stats = loadStats() }
 
-    val datePattern = LocalAppSettings.current.dateFormat.datePattern(LocalContext.current)
+    val dateFormat = LocalAppSettings.current.dateFormat
+    val datePattern = dateFormat.datePattern(LocalContext.current)
+    val dateNoYearPattern = dateFormat.dateNoYearPattern(LocalContext.current)
+    // archivedAt first: a manual archive keeps the user's end date, which may still be ahead
     val base = when {
         reminder.reminderType == ReminderType.ONE_TIME ->
             "One-time · ${reminder.startDate.format(DateTimeFormatter.ofPattern(datePattern))}"
+        reminder.archivedAt != null ->
+            "Archived ${reminder.archivedAt?.toLocalDate()?.format(DateTimeFormatter.ofPattern(datePattern))}"
         reminder.endDate != null ->
             "Ended ${reminder.endDate?.format(DateTimeFormatter.ofPattern(datePattern))}"
         else -> "Archived"
@@ -192,7 +213,16 @@ fun ArchivedReminderItem(
                 ArchiveAction(
                     icon = Icons.Filled.RestartAlt,
                     label = "Restore",
-                    onClick = onRestore,
+                    // Past its end date there's nothing left to run, so ask for a new one;
+                    // otherwise (manual archive) restore with the end date it already has
+                    onClick = {
+                        if (reminder.hasLapsed()) {
+                            restoreEndDate = null // each opening starts from "Never"
+                            showRestoreDialog = true
+                        } else {
+                            onRestore(reminder.endDate)
+                        }
+                    },
                     filled = true
                 )
             }
@@ -225,6 +255,92 @@ fun ArchivedReminderItem(
                 }
             }
         )
+    }
+
+    // Same shape as the Delete confirm above (filled action + Cancel); the choice uses the
+    // radio rows from the sort sheet. "On a date" opens the picker — tap it again to change.
+    if (showRestoreDialog) {
+        AlertDialog(
+            onDismissRequest = { showRestoreDialog = false },
+            title = { Text("Restore Reminder") },
+            text = {
+                Column {
+                    Text(
+                        "\"${reminder.title}\" ended " +
+                            "${reminder.endDate?.format(DateTimeFormatter.ofPattern(datePattern))}. " +
+                            "Choose when it should end now."
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                    GroupSurface(Modifier.fillMaxWidth().selectableGroup()) {
+                        EndOptionRow(
+                            label = "Never",
+                            selected = restoreEndDate == null,
+                            onClick = { restoreEndDate = null }
+                        )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        EndOptionRow(
+                            label = "On a date",
+                            selected = restoreEndDate != null,
+                            onClick = { showEndDatePicker = true },
+                            value = restoreEndDate?.format(DateTimeFormatter.ofPattern(dateNoYearPattern))
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { showRestoreDialog = false; onRestore(restoreEndDate) },
+                    shape = MaterialTheme.appShapes.medium
+                ) {
+                    Text("Restore")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRestoreDialog = false }, shape = MaterialTheme.appShapes.medium) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Opens over the restore dialog. Picking selects "On a date"; cancelling leaves the choice
+    // as it was. Restore still has to be tapped to commit.
+    if (showEndDatePicker) {
+        val today = LocalDate.now()
+        CalendarDialog(
+            onDismissRequest = { showEndDatePicker = false },
+            onDateSelected = { restoreEndDate = it; showEndDatePicker = false },
+            initialDate = restoreEndDate ?: today,
+            // A past date would land it straight back in the Archive
+            minDate = today
+        )
+    }
+}
+
+/**
+ * One radio row in the restore dialog — same row as the sort sheet's "Sort by" options.
+ * [value] shows on the right of the selected "On a date" row (the picked date).
+ */
+@Composable
+private fun EndOptionRow(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    value: String? = null
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .selectable(selected = selected, onClick = onClick, role = Role.RadioButton)
+            .padding(horizontal = 14.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RadioButton(selected = selected, onClick = null)
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        if (value != null) {
+            Text(value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+        }
     }
 }
 

@@ -216,8 +216,17 @@ class DayStatusTest {
         times: List<LocalTime> = listOf(LocalTime.of(9, 0)),
         start: LocalDate = today.minusDays(10),
         days: Set<Int> = setOf(1, 2, 3, 4, 5, 6, 7), // every weekday
-        active: Boolean = true
-    ) = Reminder(id = id, title = "Meds", reminderTimes = times, startDate = start, reminderDays = days, isActive = active)
+        active: Boolean = true,
+        archivedAt: LocalDateTime? = null
+    ) = Reminder(
+        id = id,
+        title = "Meds",
+        reminderTimes = times,
+        startDate = start,
+        reminderDays = days,
+        isActive = active,
+        archivedAt = archivedAt
+    )
 
     @Test
     fun syntheticFutureLogs_addsPendingRowsForScheduledDaysWithNoLog() {
@@ -247,6 +256,16 @@ class DayStatusTest {
     @Test
     fun syntheticFutureLogs_skipsInactiveReminders() {
         val synth = syntheticFutureLogs(listOf(reminder(active = false)), emptyList(), today..today.plusDays(2), today)
+
+        assertTrue(synth.isEmpty())
+    }
+
+    @Test
+    fun syntheticFutureLogs_skipsAManuallyArchivedReminderWithNoPastEndDate() {
+        // Manual archive leaves endDate alone (here: none), so the schedule would run forever.
+        // Kept active on purpose: this pins the isArchived guard, not the isActive one.
+        val archived = reminder(archivedAt = today.minusDays(1).atTime(9, 0))
+        val synth = syntheticFutureLogs(listOf(archived), emptyList(), today..today.plusDays(2), today)
 
         assertTrue(synth.isEmpty())
     }

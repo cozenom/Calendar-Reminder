@@ -44,7 +44,8 @@ class ReminderRepositoryTest {
         reminderDays: Set<Int> = setOf(1, 2, 3, 4, 5, 6, 7),
         dayInterval: Int? = null,
         reminderType: ReminderType = if (dayInterval != null) ReminderType.EVERY_N_DAYS else ReminderType.SPECIFIC_DAYS,
-        isActive: Boolean = true
+        isActive: Boolean = true,
+        archivedAt: LocalDateTime? = null
     ) = Reminder(
         id = id,
         title = title,
@@ -54,7 +55,8 @@ class ReminderRepositoryTest {
         reminderDays = reminderDays,
         dayInterval = dayInterval,
         reminderType = reminderType,
-        isActive = isActive
+        isActive = isActive,
+        archivedAt = archivedAt
     )
 
     private suspend fun allLogsFor(logDao: FakeReminderLogDao, reminderId: Int): List<ReminderLog> =
@@ -334,6 +336,28 @@ class ReminderRepositoryTest {
         assertEquals(2, counts.done)
         assertEquals(1, counts.missed)
         assertEquals(3, counts.total)
+    }
+
+    @Test
+    fun `archiveStats stops at the manual archive moment, not a later end date`() = runBlocking {
+        val (repo, _, logDao) = newRepository()
+        // Archived on day 2 at noon; the user's own end date is still weeks away
+        val archivedAt = monday.plusDays(2).atTime(12, 0)
+        val r = reminder(id = 1, startDate = monday, endDate = monday.plusDays(30), archivedAt = archivedAt)
+        val now = LocalDateTime.of(monday.plusDays(3), LocalTime.NOON)
+
+        suspend fun add(at: LocalDateTime, completed: Boolean) =
+            logDao.insert(ReminderLog(reminderId = 1, title = "T", logDateTime = at, completed = completed))
+
+        add(monday.atTime(9, 0), completed = true)
+        add(monday.plusDays(2).atTime(9, 0), completed = false)          // missed, before the archive
+        add(monday.plusDays(5).atTime(9, 0), completed = true)           // ticked off early — excluded
+
+        val counts = repo.archiveStats(r, now)
+
+        assertEquals(1, counts.done)
+        assertEquals(1, counts.missed)
+        assertEquals(2, counts.total)
     }
 
     // --- backfill on create (past occurrences) ---
