@@ -200,7 +200,9 @@ fun RemindersTab(viewModel: ReminderViewModel, onOpenArchive: () -> Unit, snackb
                     }
                 },
                 viewModel = viewModel,
-                sortMode = sortMode
+                // Covers sort mode plus search / importance / hide-paused: a drag saves the
+                // order of the visible rows only, so any of these would renumber hidden ones
+                dragEnabled = !isFilterActive
             )
         }
     }

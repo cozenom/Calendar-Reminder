@@ -76,6 +76,9 @@ private val TIME_CHIP_SPACING = 7.dp
 /** Left inset that lines the chip row up under the title rather than the icon tile. */
 private val CHIP_ROW_INSET = 45.dp
 
+/** The grip's slot. Reserved even when drag is off so the row doesn't shift sideways. */
+private val DRAG_HANDLE_SIZE = 20.dp
+
 @Composable
 fun ReminderItem(
     reminder: Reminder,
@@ -118,10 +121,13 @@ fun ReminderItem(
                         imageVector = Icons.Filled.DragIndicator,
                         contentDescription = "Drag to reorder",
                         modifier = dragHandleModifier
-                            .size(20.dp)
+                            .size(DRAG_HANDLE_SIZE)
                             .padding(end = 4.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
                     )
+                } else {
+                    // Sorting/filtering pauses drag; keep the layout identical, just no grip
+                    Spacer(modifier = Modifier.width(DRAG_HANDLE_SIZE))
                 }
                 Box(
                     modifier = Modifier

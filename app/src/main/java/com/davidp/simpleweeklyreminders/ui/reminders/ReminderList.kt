@@ -17,33 +17,35 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderLog
-import com.davidp.simpleweeklyreminders.data.model.SortMode
 import com.davidp.simpleweeklyreminders.viewmodel.ReminderViewModel
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
+/**
+ * @param dragEnabled false whenever [reminders] isn't the full list in manual order. A drop
+ * saves sortOrder = 0..n-1 across the rows passed in, so dragging a sorted or filtered subset
+ * would renumber over the reminders that aren't on screen.
+ */
 @Composable
 fun ReminderList(
     reminders: List<Reminder>,
     todayLogsByReminder: Map<Int, List<ReminderLog>>,
     onArchiveReminder: (Reminder) -> Unit,
     viewModel: ReminderViewModel,
-    sortMode: SortMode = SortMode.MANUAL
+    dragEnabled: Boolean = true
 ) {
     var list by remember { mutableStateOf(reminders) }
     var isDraggingActive by remember { mutableStateOf(false) }
     val haptics = LocalHapticFeedback.current
-    // Manual only — a computed sort would re-sort the list back on the next recomposition
-    val dragEnabled = sortMode == SortMode.MANUAL
 
     LaunchedEffect(reminders) {
         if (!isDraggingActive) list = reminders
     }
 
     val lazyListState = rememberLazyListState()
+    // Moves only reshuffle the in-memory list; the order is saved once on drop (below)
     val reorderState = rememberReorderableLazyListState(lazyListState) { from, to ->
         list = list.toMutableList().apply { add(to.index, removeAt(from.index)) }
-        viewModel.updateRemindersOrder(list)
     }
 
     LazyColumn(
@@ -72,7 +74,10 @@ fun ReminderList(
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                             isDraggingActive = true
                         },
-                        onDragStopped = { isDraggingActive = false }
+                        onDragStopped = {
+                            isDraggingActive = false
+                            viewModel.updateRemindersOrder(list)
+                        }
                     ) else Modifier
                 )
             }
