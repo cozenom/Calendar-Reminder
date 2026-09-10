@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Debug-only orange, overriding main's indigo so the debug install stands out on the launcher -->
+    <color name="ic_launcher_background">#E65100</color>
+</resources>

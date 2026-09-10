@@ -54,6 +54,7 @@ import com.davidp.simpleweeklyreminders.data.settings.datePattern
 import com.davidp.simpleweeklyreminders.data.settings.dateNoYearPattern
 import com.davidp.simpleweeklyreminders.data.settings.is24Hour
 import com.davidp.simpleweeklyreminders.data.settings.timePattern
+import com.davidp.simpleweeklyreminders.debug.DebugTools
 import com.davidp.simpleweeklyreminders.ui.calendar.CalendarDialog
 import com.davidp.simpleweeklyreminders.ui.components.GroupSurface
 import com.davidp.simpleweeklyreminders.ui.components.SectionLabel
@@ -67,9 +68,16 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 
-/** Default for a newly added time slot: a couple of minutes from now, on a whole minute. */
-private fun defaultNewTime(): LocalTime =
-    LocalTime.now().plusMinutes(2).truncatedTo(ChronoUnit.MINUTES)
+/**
+ * Default for a newly added time slot.
+ * - Debug: 2 min out, so a test reminder fires fast.
+ * - Release: the next full hour.
+ */
+private fun defaultNewTime(): LocalTime {
+    val now = LocalTime.now()
+    return if (DebugTools.ENABLED) now.plusMinutes(2).truncatedTo(ChronoUnit.MINUTES)
+    else now.plusHours(1).truncatedTo(ChronoUnit.HOURS)
+}
 
 /**
  * Bottom sheet with the shared add/edit reminder form.

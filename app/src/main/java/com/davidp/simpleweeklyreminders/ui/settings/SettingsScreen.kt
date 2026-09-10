@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
+import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.ColumnScope
@@ -22,6 +23,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.AddCircleOutline
+import androidx.compose.material.icons.filled.Alarm
+import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -55,6 +63,7 @@ import com.davidp.simpleweeklyreminders.data.settings.SettingsRepository
 import com.davidp.simpleweeklyreminders.data.settings.ThemeMode
 import com.davidp.simpleweeklyreminders.data.settings.TimeFormatPref
 import com.davidp.simpleweeklyreminders.data.settings.WeekStart
+import com.davidp.simpleweeklyreminders.debug.DebugTools
 import com.davidp.simpleweeklyreminders.ui.components.GroupSurface
 import com.davidp.simpleweeklyreminders.ui.components.SectionLabel
 import com.davidp.simpleweeklyreminders.ui.theme.LocalAppSettings
@@ -219,6 +228,86 @@ fun SettingsScreen(onBack: () -> Unit) {
                 )
             }
         }
+
+        // Compile-time false in release, so R8 drops the section and the stub it calls
+        if (DebugTools.ENABLED) DeveloperSection(context)
+    }
+}
+
+/** Debug builds only — seed/clear sample data for testing (see DebugTools in src/debug). */
+@Composable
+private fun DeveloperSection(context: Context) {
+    val scope = rememberCoroutineScope()
+    var showClearConfirm by remember { mutableStateOf(false) }
+
+    SettingsSection("Developer") {
+        ActionRow(
+            label = "Seed sample reminders",
+            subtitle = "Adds ~18 reminders with past history",
+            onClick = {
+                scope.launch {
+                    val count = DebugTools.seedSampleReminders(context)
+                    Toast.makeText(context, "Added $count reminders", Toast.LENGTH_SHORT).show()
+                }
+            },
+            trailingIcon = Icons.Filled.AddCircleOutline
+        )
+        ActionRow(
+            label = "Fire test notifications",
+            subtitle = "One per importance, in 10 seconds",
+            onClick = {
+                scope.launch {
+                    DebugTools.fireTestNotifications(context)
+                    Toast.makeText(context, "Firing in 10s", Toast.LENGTH_SHORT).show()
+                }
+            },
+            trailingIcon = Icons.Filled.NotificationsActive
+        )
+        ActionRow(
+            label = "Add reminder due in 1 min",
+            subtitle = "Time to lock the phone and test the real alarm",
+            onClick = {
+                scope.launch {
+                    DebugTools.addReminderDueInOneMinute(context)
+                    Toast.makeText(context, "Due in 1 min", Toast.LENGTH_SHORT).show()
+                }
+            },
+            trailingIcon = Icons.Filled.Alarm
+        )
+        ActionRow(
+            label = "Clear all reminders",
+            subtitle = "Deletes every reminder and its history",
+            onClick = { showClearConfirm = true },
+            trailingIcon = Icons.Filled.DeleteSweep
+        )
+    }
+
+    if (showClearConfirm) {
+        AlertDialog(
+            onDismissRequest = { showClearConfirm = false },
+            title = { Text("Clear all reminders") },
+            text = { Text("Delete every reminder, archived ones and all history? This can't be undone.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showClearConfirm = false
+                        scope.launch {
+                            DebugTools.clearAllReminders(context)
+                            Toast.makeText(context, "Cleared", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    shape = MaterialTheme.appShapes.medium,
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Clear")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearConfirm = false }, shape = MaterialTheme.appShapes.medium) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 

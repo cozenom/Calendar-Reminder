@@ -1,0 +1,4 @@
+<resources>
+    <!-- Overrides main's app_name so the debug install is distinguishable on the launcher -->
+    <string name="app_name">Reminders (Debug)</string>
+</resources>

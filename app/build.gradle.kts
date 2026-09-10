@@ -59,6 +59,11 @@ android {
     }
 
     buildTypes {
+        // Separate package from the Play install, so both coexist with their own data
+        // instead of the debug key and Play key fighting over one app slot.
+        debug {
+            applicationIdSuffix = ".debug"
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
