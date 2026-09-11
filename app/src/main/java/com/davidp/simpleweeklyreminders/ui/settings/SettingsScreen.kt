@@ -1,12 +1,8 @@
 package com.davidp.simpleweeklyreminders.ui.settings
 
-import android.Manifest
-import android.app.AlarmManager
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Build
-import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -41,9 +37,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -53,11 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.davidp.simpleweeklyreminders.data.settings.DateFormatPref
 import com.davidp.simpleweeklyreminders.data.settings.SettingsRepository
 import com.davidp.simpleweeklyreminders.data.settings.ThemeMode
@@ -66,6 +56,9 @@ import com.davidp.simpleweeklyreminders.data.settings.WeekStart
 import com.davidp.simpleweeklyreminders.debug.DebugTools
 import com.davidp.simpleweeklyreminders.ui.components.GroupSurface
 import com.davidp.simpleweeklyreminders.ui.components.SectionLabel
+import com.davidp.simpleweeklyreminders.ui.components.exactAlarmSettingsIntent
+import com.davidp.simpleweeklyreminders.ui.components.notificationSettingsIntent
+import com.davidp.simpleweeklyreminders.ui.components.rememberReminderPermissions
 import com.davidp.simpleweeklyreminders.ui.theme.LocalAppSettings
 import com.davidp.simpleweeklyreminders.ui.theme.appShapes
 import com.davidp.simpleweeklyreminders.ui.theme.tonesFor
@@ -201,12 +194,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             ActionRow(
                 label = "Sound & vibration",
                 subtitle = "Per-importance channels — opens system settings",
-                onClick = {
-                    context.startActivity(
-                        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-                    )
-                }
+                onClick = { context.startActivity(notificationSettingsIntent(context)) }
             )
         }
 
@@ -313,55 +301,22 @@ private fun DeveloperSection(context: Context) {
 
 @Composable
 private fun PermissionsSection(context: Context) {
-    // Permission state can change when the user returns from a system settings screen;
-    // bump a key on every resume so the rows re-read it.
-    var resumeKey by remember { mutableIntStateOf(0) }
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) resumeKey++
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
-
-    val notifGranted = remember(resumeKey) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            ContextCompat.checkSelfPermission(
-                context, Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
-        } else true
-    }
-    val exactAlarmGranted = remember(resumeKey) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            (context.getSystemService(Context.ALARM_SERVICE) as AlarmManager).canScheduleExactAlarms()
-        } else true
-    }
+    // Same state the Reminders-tab banner reads, re-read on every resume
+    val permissions = rememberReminderPermissions()
 
     SettingsSection("Permissions") {
         PermissionRow(
             label = "Notifications",
-            granted = notifGranted,
-            onClick = {
-                context.startActivity(
-                    Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                        .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-                )
-            }
+            granted = permissions.notifications,
+            onClick = { context.startActivity(notificationSettingsIntent(context)) }
         )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             Spacer(Modifier.height(8.dp))
             PermissionRow(
-                label = "Exact alarms",
-                granted = exactAlarmGranted,
-                onClick = {
-                    context.startActivity(
-                        Intent(
-                            Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
-                            "package:${context.packageName}".toUri()
-                        )
-                    )
-                }
+                // Android's own name for it, so it matches the system page and the banner
+                label = "Alarms & reminders",
+                granted = permissions.exactAlarms,
+                onClick = { context.startActivity(exactAlarmSettingsIntent(context)) }
             )
         }
     }

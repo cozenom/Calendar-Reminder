@@ -54,15 +54,17 @@
         </receiver>
 
         <!--
-        Re-arms alarms when the time zone or clock changes (see TimeChangeReceiver).
-        Both broadcasts are exempt from the Android 8 manifest-receiver limits.
+        Re-arms alarms on a time-zone/clock change or when exact alarms get allowed
+        (see RescheduleReceiver). All three are exempt from the Android 8
+        manifest-receiver limits.
         -->
         <receiver
-            android:name=".data.notification.TimeChangeReceiver"
+            android:name=".data.notification.RescheduleReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.TIMEZONE_CHANGED" />
                 <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
             </intent-filter>
         </receiver>
 

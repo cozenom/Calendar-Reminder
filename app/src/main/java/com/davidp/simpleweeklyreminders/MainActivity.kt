@@ -1,14 +1,11 @@
 package com.davidp.simpleweeklyreminders
 
 import android.Manifest
-import android.app.AlarmManager
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Color as AndroidColor
 import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -60,7 +57,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
-import androidx.core.net.toUri
 import androidx.lifecycle.ViewModelProvider
 import com.davidp.simpleweeklyreminders.data.notification.BootReceiver
 import com.davidp.simpleweeklyreminders.data.notification.ReminderWorker
@@ -86,17 +82,15 @@ private val NavigationBarDarkScrim = AndroidColor.argb(0x80, 0x1b, 0x1b, 0x1b)
 
 class MainActivity : ComponentActivity() {
     private lateinit var viewModel: ReminderViewModel
-    private lateinit var alarmManager: AlarmManager
     private lateinit var requestPermissionLauncher: ActivityResultLauncher<String>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        alarmManager = getSystemService(ALARM_SERVICE) as AlarmManager
 
         requestPermissionLauncher =
             registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ -> }
 
-        requestRequiredPermissions()
+        requestNotificationPermission()
         ReminderWorker.schedule(this)
         // User is looking at the app — reset the baseline for "missed reminders" reports
         BootReceiver.markSeenNow(this)
@@ -153,7 +147,12 @@ class MainActivity : ComponentActivity() {
         )
     }
 
-    private fun requestRequiredPermissions() {
+    /**
+     * Android's notification popup, until the user has answered it. Exact alarms have no popup
+     * (only a settings page), so they're never asked for here — the Reminders-tab
+     * PermissionBanner covers both once declined, without interrupting the launch.
+     */
+    private fun requestNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             when {
                 ContextCompat.checkSelfPermission(
@@ -161,20 +160,12 @@ class MainActivity : ComponentActivity() {
                     Manifest.permission.POST_NOTIFICATIONS
                 ) == PackageManager.PERMISSION_GRANTED -> {}
 
+                // Declined once: don't re-prompt on launch, the banner explains instead
                 shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) -> {}
 
                 else -> {
                     requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
-            }
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (!alarmManager.canScheduleExactAlarms()) {
-                val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
-                    data = "package:$packageName".toUri()
-                }
-                startActivity(intent)
             }
         }
     }

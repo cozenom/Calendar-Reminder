@@ -146,6 +146,9 @@ fun RemindersTab(viewModel: ReminderViewModel, onOpenArchive: () -> Unit, snackb
             }
         }
 
+        // Only while notifications or exact alarms are off; renders nothing otherwise
+        PermissionBanner(modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp))
+
         // Quick way to drop the search without reopening the sheet — tapping the
         // chip itself (rather than the x) reopens the sheet to edit it instead.
         if (searchQuery.isNotBlank()) {
