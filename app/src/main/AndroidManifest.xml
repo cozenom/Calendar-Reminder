@@ -53,6 +53,19 @@
             </intent-filter>
         </receiver>
 
+        <!--
+        Re-arms alarms when the time zone or clock changes (see TimeChangeReceiver).
+        Both broadcasts are exempt from the Android 8 manifest-receiver limits.
+        -->
+        <receiver
+            android:name=".data.notification.TimeChangeReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+            </intent-filter>
+        </receiver>
+
     </application>
 
 </manifest>
