@@ -46,13 +46,13 @@ The same calendar in three of the eight packs — each works in light and dark.
 
 **100% offline. Zero data collection.**
 
-All data is stored locally using SQLite. No cloud sync, no analytics, no external servers. The only permission required is notifications. Your data never leaves your device.
+All data is stored locally using SQLite. No cloud sync, no analytics, no external servers. The only permissions used are notifications and exact alarms (so reminders fire on time). Your data never leaves your device.
 
 ## Requirements
 
 - Android 8.0+ (API 26)
 - ~5 MB storage
-- Notification permission (prompted on first run)
+- Notification permission (prompted on first run) and "Alarms & reminders" (offered in-app if it's off; without it reminders may arrive late)
 
 ## Tech Stack
 
