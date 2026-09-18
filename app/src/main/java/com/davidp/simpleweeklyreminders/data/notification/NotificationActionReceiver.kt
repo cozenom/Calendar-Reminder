@@ -63,7 +63,6 @@ class NotificationActionReceiver : BroadcastReceiver() {
     }
 
     private suspend fun showNotification(context: Context, logId: Int, isSnooze: Boolean) {
-        Log.d("NotificationActionReceiver", "Showing notification for log $logId")
         val notificationManager = context.notificationManager
 
         createNotificationChannels(context, notificationManager)
@@ -206,7 +205,6 @@ class NotificationActionReceiver : BroadcastReceiver() {
         try {
             notificationManager.notify(logId, builder.build())
             postGroupSummary(context, notificationManager)
-            Log.d("NotificationActionReceiver", "Notification shown for log $logId")
         } catch (e: Exception) {
             Log.e("NotificationActionReceiver", "Error showing notification: ${e.message}", e)
         }
@@ -341,8 +339,6 @@ class NotificationActionReceiver : BroadcastReceiver() {
         ReminderWorker.scheduleSnoozeAlarm(context, log.id, snoozedUntil)
 
         BootReceiver.markSeenNow(context)
-
-        Log.d("NotificationActionReceiver", "Snoozed log $logId until $snoozedUntil")
     }
 
     /**
@@ -357,8 +353,6 @@ class NotificationActionReceiver : BroadcastReceiver() {
         cancelSummaryIfEmpty(notificationManager)
 
         BootReceiver.markSeenNow(context)
-
-        Log.d("NotificationActionReceiver", "Dismissed log $logId")
     }
 
     private fun buildIconBitmap(context: Context, resId: Int): Bitmap {

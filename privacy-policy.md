@@ -1,6 +1,6 @@
 # Privacy Policy for Simple Weekly Reminders
 
-*Last updated: August 24, 2026*
+*Last updated: September 18, 2026*
 
 Simple Weekly Reminders does not collect, store, or share any personal data. All reminder data is stored locally on your device and is never transmitted anywhere.
 
@@ -16,6 +16,8 @@ The app requests the following permissions solely to deliver reminders:
 ## Data
 
 No personal data is collected. No analytics or tracking of any kind is used. No data is shared with third parties.
+
+If you have Android's built-in app backup enabled, your reminders and settings are included in it so they can be restored on a new device. That backup is handled by Android and your Google account, not by this app, and can be turned off in your device's backup settings.
 
 ## Contact
 

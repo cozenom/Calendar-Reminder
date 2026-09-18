@@ -12,7 +12,7 @@ import com.davidp.simpleweeklyreminders.data.model.ReminderLog
 
 @Database(
     entities = [Reminder::class, ReminderLog::class],
-    version = 7,
+    version = 8,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -24,25 +24,18 @@ abstract class AppDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
-        // No Migrations by design, pre-launch: the app is unpublished, so no device
-        // is on an older schema and every install builds v7 straight from the
-        // entities. A schema change wipes local data instead — see todo.txt
-        // PRE-LAUNCH before publishing, where this reverses:
-        //   - the launch schema becomes a permanent floor (no retroactive path
-        //     from a version already on someone's device)
-        //   - so fallbackToDestructiveMigration comes off, and every change from
-        //     then on needs a real Migration + a migration test
-        // exportSchema stays on meanwhile: app/schemas/*.json is the prerequisite
-        // for writing those migrations later, and can't be reconstructed after the fact.
+        // v8 is the launch schema and a permanent floor: devices already on it can't
+        // be retroactively migrated, so every schema change from here on needs a real
+        // Migration (addMigrations) + a migration test. No destructive fallback on
+        // purpose -- a missing migration must crash in testing, not wipe user data.
+        // app/schemas/*.json (exportSchema) is what those migrations are written from.
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
                     "app_database"
-                )
-                    .fallbackToDestructiveMigration(dropAllTables = true)
-                    .build()
+                ).build()
                 INSTANCE = instance
                 instance
             }
