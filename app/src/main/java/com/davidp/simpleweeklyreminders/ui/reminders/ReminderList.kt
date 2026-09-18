@@ -16,7 +16,6 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import com.davidp.simpleweeklyreminders.data.model.Reminder
-import com.davidp.simpleweeklyreminders.data.model.ReminderLog
 import com.davidp.simpleweeklyreminders.viewmodel.ReminderViewModel
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -29,7 +28,6 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 @Composable
 fun ReminderList(
     reminders: List<Reminder>,
-    todayLogsByReminder: Map<Int, List<ReminderLog>>,
     onArchiveReminder: (Reminder) -> Unit,
     viewModel: ReminderViewModel,
     dragEnabled: Boolean = true
@@ -65,7 +63,6 @@ fun ReminderList(
             ) { _ ->
                 ReminderItem(
                     reminder = reminder,
-                    todayLogs = todayLogsByReminder[reminder.id] ?: emptyList(),
                     onArchive = { onArchiveReminder(reminder) },
                     viewModel = viewModel,
                     dragEnabled = dragEnabled,

@@ -26,7 +26,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,7 +46,6 @@ import com.davidp.simpleweeklyreminders.ui.archive.newlyArchivedCount
 import com.davidp.simpleweeklyreminders.ui.components.EmptyState
 import com.davidp.simpleweeklyreminders.viewmodel.ReminderViewModel
 import kotlinx.coroutines.launch
-import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,10 +54,6 @@ fun RemindersTab(viewModel: ReminderViewModel, onOpenArchive: () -> Unit, snackb
     // flashing the empty state on every switch to this tab
     val reminders by viewModel.allReminders.collectAsState()
     val archived by viewModel.archivedReminders.collectAsState()
-    val today = LocalDate.now()
-    // Re-points the shared today's-logs flow if the date rolls over while the app is open
-    LaunchedEffect(today) { viewModel.setToday(today) }
-    val todayLogs by viewModel.todayLogs.collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -91,28 +85,16 @@ fun RemindersTab(viewModel: ReminderViewModel, onOpenArchive: () -> Unit, snackb
             .sortedFor(sortMode, sortDirection)
     }
 
-    val doneToday = todayLogs.count { it.completed }
-
     Column {
+        // Title lives in the top app bar; this row carries the actions. No count or
+        // done-today line: the sort sheet shows matches, the Calendar tab shows the day.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 20.dp, end = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+                .padding(end = 8.dp),
+            horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Title lives in the top app bar; this row carries the count and the actions.
-            Text(
-                text = buildString {
-                    append("${visibleReminders.size} reminder${if (visibleReminders.size == 1) "" else "s"}")
-                    if (todayLogs.isNotEmpty()) append(" · $doneToday of ${todayLogs.size} done today")
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { searchOnOpen = true; showSortFilterSheet = true }) {
                     Icon(
@@ -188,7 +170,6 @@ fun RemindersTab(viewModel: ReminderViewModel, onOpenArchive: () -> Unit, snackb
         } else {
             ReminderList(
                 reminders = visibleReminders,
-                todayLogsByReminder = todayLogs.groupBy { it.reminderId },
                 onArchiveReminder = { reminder ->
                     viewModel.archive(reminder)
                     scope.launch {

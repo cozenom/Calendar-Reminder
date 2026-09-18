@@ -2,15 +2,21 @@ package com.davidp.simpleweeklyreminders.ui.reminders
 
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderType
-import com.davidp.simpleweeklyreminders.data.model.nextOccurrence
 import com.davidp.simpleweeklyreminders.ui.components.weekdayShortName
 import java.time.LocalDate
-import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import java.time.temporal.ChronoUnit
 
-/** Human-readable recurrence line, e.g. "Mon, Wed, Fri", "Every 2 days", "Weekdays". */
-fun scheduleSummary(reminder: Reminder, datePattern: String, dateNoYearPattern: String): String {
+/**
+ * Human-readable recurrence line, e.g. "Mon, Wed, Fri", "Every 2 days", "Weekdays".
+ * [today] is passed in rather than read here, so the caller owns the clock (and tests can
+ * pin it).
+ */
+fun scheduleSummary(
+    reminder: Reminder,
+    datePattern: String,
+    dateNoYearPattern: String,
+    today: LocalDate
+): String {
     val base = when (reminder.reminderType) {
         ReminderType.EVERY_N_DAYS ->
             if (reminder.dayInterval == 1) "Every day" else "Every ${reminder.dayInterval} days"
@@ -23,7 +29,6 @@ fun scheduleSummary(reminder: Reminder, datePattern: String, dateNoYearPattern: 
         }
     }
 
-    val today = LocalDate.now()
     val qualifiers = buildList {
         if (reminder.startDate > today) {
             add("starts ${reminder.startDate.format(DateTimeFormatter.ofPattern(dateNoYearPattern))}")
@@ -34,41 +39,21 @@ fun scheduleSummary(reminder: Reminder, datePattern: String, dateNoYearPattern: 
 }
 
 /**
- * The next fire, compact enough to sit inside a row subtitle: "today 22:00", "tomorrow 08:30",
- * "Fri 09:00", "4 Sep 10:00".
- */
-internal fun formatNextCompact(
-    dateTime: LocalDateTime,
-    now: LocalDateTime,
-    timePattern: String,
-    dateNoYearPattern: String
-): String {
-    val time = dateTime.format(DateTimeFormatter.ofPattern(timePattern))
-    val daysAway = ChronoUnit.DAYS.between(now.toLocalDate(), dateTime.toLocalDate())
-    val day = when {
-        daysAway == 0L -> "today"
-        daysAway == 1L -> "tomorrow"
-        daysAway < 7L -> dateTime.format(DateTimeFormatter.ofPattern("EEE"))
-        else -> dateTime.format(DateTimeFormatter.ofPattern(dateNoYearPattern))
-    }
-    return "$day $time"
-}
-
-/**
- * The reminder row's one-line subtitle: cadence, then when it next fires —
- * "Every day · today 22:00", "Mon, Wed, Fri · Fri 09:00", "Every 3 days · paused".
+ * The reminder row's one-line subtitle: cadence, then its times —
+ * "Every day · 08:00, 22:00", "Mon, Wed, Fri · 09:00".
  *
- * Replaces the old separate "Next: Tomorrow at 9:00 AM" line.
+ * Describes the schedule as set up, not today's progress: that lives on the Calendar tab.
+ * Paused isn't spelled out either — the row's switch and dimming already say it.
  */
 fun rowSubtitle(
     reminder: Reminder,
-    now: LocalDateTime,
     timePattern: String,
     datePattern: String,
-    dateNoYearPattern: String
+    dateNoYearPattern: String,
+    today: LocalDate
 ): String {
-    val cadence = scheduleSummary(reminder, datePattern, dateNoYearPattern)
-    if (!reminder.isActive) return "$cadence · paused"
-    val next = nextOccurrence(reminder, now) ?: return cadence
-    return "$cadence · ${formatNextCompact(next, now, timePattern, dateNoYearPattern)}"
+    val cadence = scheduleSummary(reminder, datePattern, dateNoYearPattern, today)
+    val formatter = DateTimeFormatter.ofPattern(timePattern)
+    val times = reminder.reminderTimes.distinct().sorted().joinToString(", ") { it.format(formatter) }
+    return if (times.isEmpty()) cadence else "$cadence · $times"
 }

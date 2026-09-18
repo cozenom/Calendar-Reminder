@@ -26,7 +26,7 @@ import java.time.LocalDateTime
 import java.time.YearMonth
 
 /**
- * Owns the app's three database observers. Room flows are cold, so every extra collector
+ * Owns the app's two database observers. Room flows are cold, so every extra collector
  * re-queries independently and can hand the UI a different snapshot. Derive from the flows
  * below; add a query only for rows none of them already cover.
  */
@@ -37,7 +37,7 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
     private val logRepository = ReminderLogRepository(database.reminderLogDao())
 
     /**
-     * Watcher 1 of 3: every row in the reminders table. null until the first emission
+     * Watcher 1 of 2: every row in the reminders table. null until the first emission
      * lands, so callers can show nothing rather than flashing an empty state.
      */
     val reminders: StateFlow<List<Reminder>?> = repository.allReminders
@@ -57,7 +57,7 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
     private val calendarWindow = MutableStateFlow(CalendarWindow(YearMonth.now(), LocalDate.now()))
 
     /**
-     * Watcher 2 of 3: logs for the calendar's visible range. The month grid's pips and the
+     * Watcher 2 of 2: logs for the calendar's visible range. The month grid's pips and the
      * selected-day list both slice this single emission, so they cannot disagree about a
      * day's completed state. Set the range with [setCalendarWindow].
      */
@@ -67,25 +67,9 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
         .flatMapLatest { range -> logRepository.getLogsForDateRange(range.start, range.end) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIPTION_TIMEOUT_MS), emptyList())
 
-    private val today = MutableStateFlow(LocalDate.now())
-
-    /**
-     * Watcher 3 of 3: today's logs, for the reminder cards' per-time chips. Separate from
-     * [calendarLogs] because the Reminders tab needs today no matter which month the
-     * calendar is parked on; it's one day of rows, so the extra query is negligible.
-     */
-    val todayLogs: StateFlow<List<ReminderLog>> = today
-        .flatMapLatest { date -> logRepository.getLogsForDateRange(date.atStartOfDay(), date.endOfDay()) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIPTION_TIMEOUT_MS), emptyList())
-
     /** Re-points [calendarLogs] as the pager moves or a different day is tapped. */
     fun setCalendarWindow(month: YearMonth, selectedDate: LocalDate) {
         calendarWindow.value = CalendarWindow(month, selectedDate)
-    }
-
-    /** Re-points [todayLogs] when the calendar date rolls over while the app is open. */
-    fun setToday(date: LocalDate) {
-        today.value = date
     }
 
     fun insert(reminder: Reminder) = viewModelScope.launch {
