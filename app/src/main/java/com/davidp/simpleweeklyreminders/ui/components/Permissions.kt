@@ -1,10 +1,8 @@
 package com.davidp.simpleweeklyreminders.ui.components
 
-import android.Manifest
 import android.app.AlarmManager
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
 import androidx.annotation.RequiresApi
@@ -15,7 +13,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.ContextCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -38,9 +36,10 @@ fun ReminderPermissions.notice(): PermissionNotice? = when {
 }
 
 fun Context.readReminderPermissions(): ReminderPermissions = ReminderPermissions(
-    notifications = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-        ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
-        PackageManager.PERMISSION_GRANTED,
+    // Not the POST_NOTIFICATIONS check: that permission only exists from 13, but the per-app
+    // "show notifications" switch exists on every version. This reads the switch everywhere
+    // and, on 13+, also reflects the runtime permission.
+    notifications = NotificationManagerCompat.from(this).areNotificationsEnabled(),
     exactAlarms = Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
         (getSystemService(Context.ALARM_SERVICE) as AlarmManager).canScheduleExactAlarms()
 )

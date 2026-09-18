@@ -9,6 +9,7 @@ import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderLog
 import com.davidp.simpleweeklyreminders.data.model.archivedSince
 import com.davidp.simpleweeklyreminders.data.model.isArchived
+import com.davidp.simpleweeklyreminders.data.notification.NotificationActionReceiver
 import com.davidp.simpleweeklyreminders.data.notification.ReminderWorker
 import com.davidp.simpleweeklyreminders.data.repository.ReminderLogRepository
 import com.davidp.simpleweeklyreminders.data.repository.ReminderRepository
@@ -116,8 +117,18 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun delete(reminder: Reminder) = viewModelScope.launch {
+        val context = getApplication<Application>()
+        // Cancel what's armed and shown before the rows go: the worker's re-arm pass only
+        // sees reminders that still exist, so nothing else would ever clean these up. The
+        // stray chain alarm would fire and no-op, but a notification already in the tray
+        // would sit there with dead actions.
+        val elapsed = repository.elapsedLogs(reminder)
+        ReminderWorker.cancelAlarm(context, reminder.id)
+        elapsed.filter { it.snoozedUntil != null }.forEach { ReminderWorker.cancelSnoozeAlarm(context, it.id) }
+        NotificationActionReceiver.cancelNotifications(context, elapsed.map { it.id })
+
         repository.delete(reminder)
-        ReminderWorker.schedule(getApplication())
+        ReminderWorker.schedule(context)
     }
 
     /** Manual archive: stamp archivedAt and stop scheduling. endDate is left untouched. */

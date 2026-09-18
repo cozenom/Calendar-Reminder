@@ -1,6 +1,5 @@
 package com.davidp.simpleweeklyreminders.ui.archive
 
-import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -55,7 +54,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.davidp.simpleweeklyreminders.data.model.OccurrenceCounts
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderType
-import com.davidp.simpleweeklyreminders.data.model.archivedSince
 import com.davidp.simpleweeklyreminders.data.model.hasLapsed
 import com.davidp.simpleweeklyreminders.data.model.iconFromKey
 import com.davidp.simpleweeklyreminders.data.settings.ArchiveSettings
@@ -70,15 +68,6 @@ import com.davidp.simpleweeklyreminders.ui.theme.reminderColors
 import com.davidp.simpleweeklyreminders.viewmodel.ReminderViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-
-/**
- * Reminders that lapsed into the Archive after the user last viewed it. [today] is the
- * shared clock's date, the same one [archived] was filtered with.
- */
-fun newlyArchivedCount(archived: List<Reminder>, context: Context, today: LocalDate): Int {
-    val lastViewed = ArchiveSettings.getLastViewed(context)
-    return archived.count { it.archivedSince(today)?.isAfter(lastViewed) == true }
-}
 
 @Composable
 fun ArchiveScreen(viewModel: ReminderViewModel, onBack: () -> Unit) {

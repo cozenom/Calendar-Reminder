@@ -22,9 +22,12 @@ import com.davidp.simpleweeklyreminders.ui.theme.appShapes
 /**
  * Three-way repeat mode as a segmented control. Was an ExposedDropdownMenu — a dropdown hid
  * two of only three options behind a tap, and the choice changes which selector appears below.
+ *
+ * [enabled] = false shows the current mode but takes no taps: the type is fixed once a
+ * reminder exists (see ReminderForm), like its start date.
  */
 @Composable
-fun RecurrenceToggle(mode: ReminderType, onChanged: (ReminderType) -> Unit) {
+fun RecurrenceToggle(mode: ReminderType, onChanged: (ReminderType) -> Unit, enabled: Boolean = true) {
     val options = listOf(
         ReminderType.SPECIFIC_DAYS to "Weekdays",
         ReminderType.EVERY_N_DAYS to "Every N days",
@@ -51,18 +54,25 @@ fun RecurrenceToggle(mode: ReminderType, onChanged: (ReminderType) -> Unit) {
                     )
                     .selectable(
                         selected = selected,
+                        enabled = enabled,
                         onClick = { onChanged(type) },
                         role = Role.RadioButton
                     )
                     .padding(vertical = 9.dp),
                 contentAlignment = Alignment.Center
             ) {
+                // Locked: the unselected labels fade to M3's disabled alpha, the selected one
+                // stays readable so the current type is still obvious
+                val color = when {
+                    selected -> MaterialTheme.colorScheme.onPrimaryContainer
+                    enabled -> MaterialTheme.colorScheme.onSurfaceVariant
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                }
                 Text(
                     text = label,
                     style = MaterialTheme.typography.labelLarge,
                     textAlign = TextAlign.Center,
-                    color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
-                    else MaterialTheme.colorScheme.onSurfaceVariant
+                    color = color
                 )
             }
         }

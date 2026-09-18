@@ -175,16 +175,14 @@ private fun ReminderForm(
             ColorSelector(selectedKey = selectedColor, onChanged = { selectedColor = it })
         }
         SectionLabel("Repeats")
+        // Type is fixed once created, like the start date: a one-time reminder has a locked
+        // past date it could never fire on, and a recurring one switched to one-time would
+        // keep months of history under a schedule that no longer describes it. Delete and
+        // re-add instead. The days/interval below stay editable.
         RecurrenceToggle(
             mode = recurrenceMode,
-            onChanged = { mode ->
-                // One-time saves endDate = startDate; carried over to a repeating cadence it
-                // would run a single day. Leaving one-time resets Ends to Never.
-                if (recurrenceMode == ReminderType.ONE_TIME && mode != ReminderType.ONE_TIME) {
-                    endDate = null
-                }
-                recurrenceMode = mode
-            }
+            onChanged = { recurrenceMode = it },
+            enabled = initial == null
         )
         when (recurrenceMode) {
             ReminderType.EVERY_N_DAYS -> {
@@ -283,7 +281,7 @@ private fun ReminderForm(
         }
         if (initial != null) {
             Text(
-                "Start date is fixed once created — delete and re-add to change it",
+                "Start date and repeat type are fixed once created — delete and re-add to change them",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 6.dp, start = 4.dp)

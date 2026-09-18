@@ -105,6 +105,13 @@ class ReminderRepository(
     }
 
     /**
+     * This reminder's logs whose slot has already arrived — the only ones that can have a
+     * notification showing or a snooze armed. Read before [delete], which cascades them away.
+     */
+    suspend fun elapsedLogs(reminder: Reminder, now: LocalDateTime = LocalDateTime.now()): List<ReminderLog> =
+        reminderLogDao.getLogsForReminderInRange(reminder.id, reminder.startDate.atStartOfDay(), now)
+
+    /**
      * @param includePast generate occurrences that have already passed too (from startDate).
      * Only true on insert; update() keeps this false so it touches the future only and never
      * resurrects or re-flags completed past logs.

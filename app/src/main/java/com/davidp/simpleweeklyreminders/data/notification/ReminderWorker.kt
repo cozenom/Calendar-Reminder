@@ -128,14 +128,21 @@ class ReminderWorker(
             }
         }
 
-        fun cancelAlarm(context: Context, reminderId: Int) {
+        fun cancelAlarm(context: Context, reminderId: Int) = cancelShowAlarm(context, reminderId)
+
+        /** Counterpart of [scheduleSnoozeAlarm]: same negated-logId request code. */
+        fun cancelSnoozeAlarm(context: Context, logId: Int) = cancelShowAlarm(context, -logId)
+
+        // PendingIntent identity ignores extras, so a bare SHOW intent with the same request
+        // code matches whichever alarm was armed with it
+        private fun cancelShowAlarm(context: Context, requestCode: Int) {
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
             val intent = Intent(context, NotificationActionReceiver::class.java).apply {
                 action = ACTION_SHOW_NOTIFICATION
             }
             val pendingIntent = PendingIntent.getBroadcast(
                 context,
-                reminderId,
+                requestCode,
                 intent,
                 PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
             )

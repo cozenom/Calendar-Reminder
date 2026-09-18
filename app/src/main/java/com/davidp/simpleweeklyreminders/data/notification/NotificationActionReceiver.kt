@@ -312,18 +312,6 @@ class NotificationActionReceiver : BroadcastReceiver() {
         notificationManager.notify(GROUP_SUMMARY_ID, summary)
     }
 
-    /**
-     * Drops the group header once its last child is gone. Android usually clears an empty
-     * summary itself, but not on every OEM build — a stranded header that can't be dismissed
-     * is worse than no grouping at all.
-     */
-    private fun cancelSummaryIfEmpty(context: Context, notificationManager: NotificationManager) {
-        val childrenLeft = notificationManager.activeNotifications.any {
-            it.id != GROUP_SUMMARY_ID && it.notification.group == GROUP_KEY
-        }
-        if (!childrenLeft) notificationManager.cancel(GROUP_SUMMARY_ID)
-    }
-
     private suspend fun markAsCompleted(context: Context, logId: Int) {
         val database = AppDatabase.getDatabase(context)
         val reminderLogDao = database.reminderLogDao()
@@ -331,7 +319,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
 
         val notificationManager = context.notificationManager
         notificationManager.cancel(logId)
-        cancelSummaryIfEmpty(context, notificationManager)
+        cancelSummaryIfEmpty(notificationManager)
 
         // Acting on a notification counts as seeing it — advances the missed baseline
         BootReceiver.markSeenNow(context)
@@ -341,7 +329,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
         // Action-button taps don't auto-dismiss; harmless no-op after a swipe
         val notificationManager = context.notificationManager
         notificationManager.cancel(logId)
-        cancelSummaryIfEmpty(context, notificationManager)
+        cancelSummaryIfEmpty(notificationManager)
 
         val database = AppDatabase.getDatabase(context)
         val log = database.reminderLogDao().getLogById(logId) ?: return
@@ -366,7 +354,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
     private fun dismiss(context: Context, logId: Int) {
         val notificationManager = context.notificationManager
         notificationManager.cancel(logId)
-        cancelSummaryIfEmpty(context, notificationManager)
+        cancelSummaryIfEmpty(notificationManager)
 
         BootReceiver.markSeenNow(context)
 
@@ -413,6 +401,28 @@ class NotificationActionReceiver : BroadcastReceiver() {
             Importance.LOW -> CHANNEL_ID_LOW
             Importance.MEDIUM -> CHANNEL_ID_MEDIUM
             Importance.HIGH -> CHANNEL_ID_HIGH
+        }
+
+        /**
+         * Clears every notification shown for these logs — used when their reminder is
+         * deleted, since nothing else would ever cancel them once the rows are gone.
+         */
+        fun cancelNotifications(context: Context, logIds: List<Int>) {
+            val notificationManager = context.notificationManager
+            logIds.forEach(notificationManager::cancel)
+            cancelSummaryIfEmpty(notificationManager)
+        }
+
+        /**
+         * Drops the group header once its last child is gone. Android usually clears an empty
+         * summary itself, but not on every OEM build — a stranded header that can't be
+         * dismissed is worse than no grouping at all.
+         */
+        private fun cancelSummaryIfEmpty(notificationManager: NotificationManager) {
+            val childrenLeft = notificationManager.activeNotifications.any {
+                it.id != GROUP_SUMMARY_ID && it.notification.group == GROUP_KEY
+            }
+            if (!childrenLeft) notificationManager.cancel(GROUP_SUMMARY_ID)
         }
     }
 }
