@@ -88,11 +88,12 @@ class BootReceiver : BroadcastReceiver() {
             .map { "${it.title} · ${it.logDateTime.format(DateTimeFormatter.ofPattern(timePattern))}" }
         val inbox = NotificationCompat.InboxStyle()
             .setBigContentTitle(title)
-            .also { style -> lines.take(MAX_MISSED_LINES).forEach(style::addLine) }
+            // Newest, not oldest: after a long gap the oldest misses are the least useful
+            .also { style -> lines.takeLast(MAX_MISSED_LINES).forEach(style::addLine) }
             .also { style ->
                 // The tray silently truncates past ~6 lines, so account for the rest
                 val hidden = lines.size - MAX_MISSED_LINES
-                style.setSummaryText(if (hidden > 0) "+$hidden more" else summaryLine)
+                style.setSummaryText(if (hidden > 0) "+$hidden earlier" else summaryLine)
             }
 
         val notification = NotificationCompat.Builder(context, MISSED_CHANNEL_ID)
@@ -115,7 +116,7 @@ class BootReceiver : BroadcastReceiver() {
     companion object {
         private const val MISSED_CHANNEL_ID = "MissedRemindersChannel"
         private const val MISSED_NOTIFICATION_ID = 9999
-        /** InboxStyle renders at most ~6 lines; the rest become a "+N more" summary. */
+        /** InboxStyle renders at most ~6 lines; older ones become a "+N earlier" summary. */
         private const val MAX_MISSED_LINES = 6
         const val PREFS_NAME = "missed_notification_prefs"
         // Baseline for "missed" reports: bumped on every app open, when the missed
