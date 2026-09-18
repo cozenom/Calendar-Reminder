@@ -24,7 +24,6 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.YearMonth
@@ -60,10 +59,11 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
      */
     val now: StateFlow<LocalDateTime> = flow {
         while (true) {
-            val minute = LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES)
-            emit(minute)
-            val untilNext = Duration.between(LocalDateTime.now(), minute.plusMinutes(1)).toMillis()
-            delay(untilNext.coerceAtLeast(1))
+            // One clock read per loop: the sleep is measured from the same instant that was
+            // emitted, so an early wake just re-emits the same minute (deduped) and waits again
+            val exact = LocalDateTime.now()
+            emit(exact.truncatedTo(ChronoUnit.MINUTES))
+            delay(millisUntilNextMinute(exact))
         }
     }.stateIn(
         viewModelScope,
