@@ -19,6 +19,7 @@ import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.viewmodel.ReminderViewModel
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
+import java.time.LocalDate
 
 /**
  * @param dragEnabled false whenever [reminders] isn't the full list in manual order. A drop
@@ -28,6 +29,7 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 @Composable
 fun ReminderList(
     reminders: List<Reminder>,
+    today: LocalDate,
     onArchiveReminder: (Reminder) -> Unit,
     viewModel: ReminderViewModel,
     dragEnabled: Boolean = true
@@ -63,6 +65,7 @@ fun ReminderList(
             ) { _ ->
                 ReminderItem(
                     reminder = reminder,
+                    today = today,
                     onArchive = { onArchiveReminder(reminder) },
                     viewModel = viewModel,
                     dragEnabled = dragEnabled,

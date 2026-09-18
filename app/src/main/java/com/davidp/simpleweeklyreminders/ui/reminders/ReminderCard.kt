@@ -64,6 +64,8 @@ private val DRAG_HANDLE_SIZE = 20.dp
 @Composable
 fun ReminderItem(
     reminder: Reminder,
+    /** The shared clock's date (ReminderViewModel.now), for the "starts …" qualifier. */
+    today: LocalDate,
     onArchive: () -> Unit,
     viewModel: ReminderViewModel,
     modifier: Modifier = Modifier,
@@ -163,7 +165,7 @@ fun ReminderItem(
                             timePattern = timePattern,
                             datePattern = datePattern,
                             dateNoYearPattern = dateNoYearPattern,
-                            today = LocalDate.now()
+                            today = today
                         ),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,

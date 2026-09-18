@@ -58,6 +58,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.davidp.simpleweeklyreminders.data.notification.BootReceiver
 import com.davidp.simpleweeklyreminders.data.notification.ReminderWorker
 import com.davidp.simpleweeklyreminders.data.settings.SettingsRepository
@@ -186,11 +187,12 @@ fun ReminderApp(viewModel: ReminderViewModel) {
     // user last viewed it, surface a heads-up notice (the badge on the Archive icon
     // persists the same information until they actually open it).
     var hasShownArchiveNotice by rememberSaveable { mutableStateOf(false) }
-    val archivedReminders by viewModel.archivedReminders.collectAsState()
+    val archivedReminders by viewModel.archivedReminders.collectAsStateWithLifecycle()
+    val now by viewModel.now.collectAsStateWithLifecycle()
     LaunchedEffect(archivedReminders) {
         if (hasShownArchiveNotice) return@LaunchedEffect
         val archived = archivedReminders ?: return@LaunchedEffect
-        val newCount = newlyArchivedCount(archived, context)
+        val newCount = newlyArchivedCount(archived, context, now.toLocalDate())
         if (newCount > 0) {
             hasShownArchiveNotice = true
             snackbarHostState.showSnackbar(

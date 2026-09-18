@@ -48,13 +48,18 @@ private val NOTCH_SIZE = 5.dp
  *  hollow segment rather than a solid one. */
 private val MISSED_OUTLINE = 0.5.dp
 
-/** @param minDate picker-only: days before it are dimmed and not tappable. Null = all days. */
+/**
+ * @param today drives the today ring and past-day dimming. Passed in (from the shared clock,
+ * or a snapshot for a short-lived picker) rather than read here, so the grid redraws at midnight.
+ * @param minDate picker-only: days before it are dimmed and not tappable. Null = all days.
+ */
 @Composable
 fun CalendarView(
     currentMonth: YearMonth,
     onDateSelected: (LocalDate) -> Unit,
     selectedDate: LocalDate?,
     statuses: Map<LocalDate, DayStatus>,
+    today: LocalDate,
     minDate: LocalDate? = null
 ) {
     val daysInMonth = currentMonth.lengthOfMonth()
@@ -64,7 +69,6 @@ fun CalendarView(
     val leadingBlanks = leadingBlankCount(firstDow, weekStart)
     val totalCells = daysInMonth + leadingBlanks
     val weekdayLabels = weekdayOrder(weekStart).map(::weekdayMiniName)
-    val today = LocalDate.now()
 
     // Plain grid, not LazyVerticalGrid: ≤42 cells, all on screen, so laziness saves
     // nothing. Its item provider also defers state reads, leaving cells stale after

@@ -26,7 +26,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.davidp.simpleweeklyreminders.data.model.ALL_IMPORTANCES
 import com.davidp.simpleweeklyreminders.data.model.SortMode
 import com.davidp.simpleweeklyreminders.data.model.defaultDirection
@@ -52,13 +52,17 @@ import kotlinx.coroutines.launch
 fun RemindersTab(viewModel: ReminderViewModel, onOpenArchive: () -> Unit, snackbarHostState: SnackbarHostState) {
     // null = first DB emission hasn't arrived yet — show nothing rather than
     // flashing the empty state on every switch to this tab
-    val reminders by viewModel.allReminders.collectAsState()
-    val archived by viewModel.archivedReminders.collectAsState()
+    val reminders by viewModel.allReminders.collectAsStateWithLifecycle()
+    val archived by viewModel.archivedReminders.collectAsStateWithLifecycle()
+    // Shared clock: the row subtitles, the archive badge and the next-occurrence sort all
+    // read it, so they roll over at midnight together
+    val now by viewModel.now.collectAsStateWithLifecycle()
+    val today = now.toLocalDate()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     val loadedReminders = reminders ?: return
-    val badgeCount = newlyArchivedCount(archived ?: emptyList(), context)
+    val badgeCount = newlyArchivedCount(archived ?: emptyList(), context, today)
 
     // Sort mode, direction, search text, and the importance filter reset on a real relaunch
     // (fresh process, so this composable starts over) but survive a background-and-resume
@@ -76,13 +80,13 @@ fun RemindersTab(viewModel: ReminderViewModel, onOpenArchive: () -> Unit, snackb
         searchQuery.isNotBlank() || hidePaused
 
     val visibleReminders = remember(
-        loadedReminders, sortMode, sortDirection, selectedImportances, searchQuery, hidePaused
+        loadedReminders, sortMode, sortDirection, selectedImportances, searchQuery, hidePaused, now
     ) {
         loadedReminders
             .filter { selectedImportances.contains(it.importance) }
             .filter { searchQuery.isBlank() || it.title.contains(searchQuery, ignoreCase = true) }
             .filter { !hidePaused || it.isActive }
-            .sortedFor(sortMode, sortDirection)
+            .sortedFor(sortMode, sortDirection, now)
     }
 
     Column {
@@ -170,6 +174,7 @@ fun RemindersTab(viewModel: ReminderViewModel, onOpenArchive: () -> Unit, snackb
         } else {
             ReminderList(
                 reminders = visibleReminders,
+                today = today,
                 onArchiveReminder = { reminder ->
                     viewModel.archive(reminder)
                     scope.launch {

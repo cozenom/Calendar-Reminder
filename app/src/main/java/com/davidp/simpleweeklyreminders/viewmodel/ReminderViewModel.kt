@@ -13,17 +13,22 @@ import com.davidp.simpleweeklyreminders.data.notification.ReminderWorker
 import com.davidp.simpleweeklyreminders.data.repository.ReminderLogRepository
 import com.davidp.simpleweeklyreminders.data.repository.ReminderRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.YearMonth
+import java.time.temporal.ChronoUnit
 
 /**
  * Owns the app's two database observers. Room flows are cold, so every extra collector
@@ -43,16 +48,44 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
     val reminders: StateFlow<List<Reminder>?> = repository.allReminders
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIPTION_TIMEOUT_MS), null)
 
-    /** Active (non-archived) reminders — a filter of [reminders], not a second query. */
-    val allReminders: StateFlow<List<Reminder>?> = reminders
-        .map { list -> list?.filterNot { it.isArchived() } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIPTION_TIMEOUT_MS), null)
+    /**
+     * The app's clock, to the minute. Screens read this instead of calling `.now()` at
+     * composition: a plain `.now()` isn't state, so Compose never redraws when the minute,
+     * the day or the time zone changes — a screen left open over midnight kept yesterday.
+     *
+     * Ticks on the minute boundary while anyone collects. Collect it (and the flows derived
+     * from it) with `collectAsStateWithLifecycle`, so collection stops when the app is in
+     * the background and the flow restarts on resume — which re-reads the clock for free.
+     * Truncated so equal minutes compare equal and downstream `remember` keys stay stable.
+     */
+    val now: StateFlow<LocalDateTime> = flow {
+        while (true) {
+            val minute = LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES)
+            emit(minute)
+            val untilNext = Duration.between(LocalDateTime.now(), minute.plusMinutes(1)).toMillis()
+            delay(untilNext.coerceAtLeast(1))
+        }
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(SUBSCRIPTION_TIMEOUT_MS),
+        LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES)
+    )
+
+    /**
+     * Active (non-archived) reminders — a filter of [reminders], not a second query.
+     * Combined with [now] so a reminder that lapses at midnight moves to the Archive on
+     * the next tick, not on the next unrelated DB write.
+     */
+    val allReminders: StateFlow<List<Reminder>?> = combine(reminders, now) { list, now ->
+        list?.filterNot { it.isArchived(now.toLocalDate()) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIPTION_TIMEOUT_MS), null)
 
     /** Archived reminders, most recently archived first — also a filter of [reminders]. */
-    val archivedReminders: StateFlow<List<Reminder>?> = reminders
+    val archivedReminders: StateFlow<List<Reminder>?> = combine(reminders, now) { list, now ->
+        val today = now.toLocalDate()
         // archivedSince, not endDate: a manual archive keeps the user's end date (or none)
-        .map { list -> list?.filter { it.isArchived() }?.sortedByDescending { it.archivedSince() } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIPTION_TIMEOUT_MS), null)
+        list?.filter { it.isArchived(today) }?.sortedByDescending { it.archivedSince(today) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIPTION_TIMEOUT_MS), null)
 
     private val calendarWindow = MutableStateFlow(CalendarWindow(YearMonth.now(), LocalDate.now()))
 

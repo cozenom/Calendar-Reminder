@@ -77,6 +77,8 @@ fun CalendarDialog(
                     selectedDate = selectedDate,
                     // Date picker, not a status view — no occurrence bars here
                     statuses = emptyMap(),
+                    // A snapshot is fine: the picker lives for seconds, not overnight
+                    today = remember { LocalDate.now() },
                     minDate = minDate
                 )
             }

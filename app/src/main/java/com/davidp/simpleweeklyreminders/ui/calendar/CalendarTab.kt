@@ -29,7 +29,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,6 +43,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.davidp.simpleweeklyreminders.data.model.Importance
 import com.davidp.simpleweeklyreminders.data.model.coversDate
 import com.davidp.simpleweeklyreminders.data.model.statusOf
@@ -52,19 +52,33 @@ import com.davidp.simpleweeklyreminders.ui.theme.LocalAppSettings
 import com.davidp.simpleweeklyreminders.ui.theme.reminderColors
 import com.davidp.simpleweeklyreminders.viewmodel.ReminderViewModel
 import kotlinx.coroutines.launch
-import java.time.LocalDate
-import java.time.LocalDateTime
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 
 @Composable
 fun CalendarTab(viewModel: ReminderViewModel) {
-    var selectedDate by remember { mutableStateOf(LocalDate.now()) }
+    // The shared clock (see ReminderViewModel.now): drives the done/missed split, the today
+    // ring and the midnight rollover below. Never LocalDateTime.now() here — that's a
+    // one-off read Compose can't react to.
+    val now by viewModel.now.collectAsStateWithLifecycle()
+    val today = now.toLocalDate()
+    var selectedDate by remember { mutableStateOf(today) }
     val haptics = LocalHapticFeedback.current
 
+    // At midnight, follow today only if today was what's selected; a day the user
+    // deliberately tapped stays put.
+    var lastToday by remember { mutableStateOf(today) }
+    LaunchedEffect(today) {
+        if (selectedDate == lastToday) selectedDate = today
+        lastToday = today
+    }
+
+    // The pager anchors page 600 on the month it was first composed in. Frozen with
+    // remember: re-reading it on every redraw shifted every page once the month rolled over.
     val initialPage = 600
-    val baseYearMonth = YearMonth.now()
+    val baseYearMonth = remember { YearMonth.from(today) }
+    val todayPage = initialPage + ChronoUnit.MONTHS.between(baseYearMonth, YearMonth.from(today)).toInt()
     val pagerState = rememberPagerState(initialPage = initialPage, pageCount = { 1200 })
     val coroutineScope = rememberCoroutineScope()
 
@@ -74,12 +88,8 @@ fun CalendarTab(viewModel: ReminderViewModel) {
 
     // Pips and the day list slice one emission, so they can't disagree about a day
     LaunchedEffect(currentMonth, selectedDate) { viewModel.setCalendarWindow(currentMonth, selectedDate) }
-    val calendarLogs by viewModel.calendarLogs.collectAsState()
-    val allReminders by viewModel.reminders.collectAsState()
-
-    // The done/missed/pending split needs a "now". Truncated to the minute so it stays a
-    // stable remember key between recompositions instead of invalidating on every frame.
-    val now = LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES)
+    val calendarLogs by viewModel.calendarLogs.collectAsStateWithLifecycle()
+    val allReminders by viewModel.reminders.collectAsStateWithLifecycle()
 
     // Logs don't carry their reminder's colour, so the grid looks it up by id. Built from the
     // reminders flow the tab already collects — no extra query.
@@ -97,7 +107,7 @@ fun CalendarTab(viewModel: ReminderViewModel) {
         first.atDay(1)..last.atEndOfMonth()
     }
     val displayLogs = remember(calendarLogs, allReminders, visibleRange, now) {
-        calendarLogs + syntheticFutureLogs(allReminders.orEmpty(), calendarLogs, visibleRange, now.toLocalDate())
+        calendarLogs + syntheticFutureLogs(allReminders.orEmpty(), calendarLogs, visibleRange, today)
     }
 
     val selectedDateLogs = remember(displayLogs, selectedDate) {
@@ -122,8 +132,8 @@ fun CalendarTab(viewModel: ReminderViewModel) {
                 coroutineScope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
             },
             onToday = {
-                selectedDate = LocalDate.now()
-                coroutineScope.launch { pagerState.animateScrollToPage(initialPage) }
+                selectedDate = today
+                coroutineScope.launch { pagerState.animateScrollToPage(todayPage) }
             }
         )
 
@@ -149,7 +159,8 @@ fun CalendarTab(viewModel: ReminderViewModel) {
                 currentMonth = monthForPage,
                 onDateSelected = { selectedDate = it },
                 selectedDate = selectedDate,
-                statuses = statuses
+                statuses = statuses,
+                today = today
             )
         }
 

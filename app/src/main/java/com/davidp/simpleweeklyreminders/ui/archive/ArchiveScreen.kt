@@ -38,7 +38,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,6 +51,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.davidp.simpleweeklyreminders.data.model.OccurrenceCounts
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderType
@@ -71,15 +71,18 @@ import com.davidp.simpleweeklyreminders.viewmodel.ReminderViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-/** Reminders that lapsed into the Archive after the user last viewed it. */
-fun newlyArchivedCount(archived: List<Reminder>, context: Context): Int {
+/**
+ * Reminders that lapsed into the Archive after the user last viewed it. [today] is the
+ * shared clock's date, the same one [archived] was filtered with.
+ */
+fun newlyArchivedCount(archived: List<Reminder>, context: Context, today: LocalDate): Int {
     val lastViewed = ArchiveSettings.getLastViewed(context)
-    return archived.count { it.archivedSince()?.isAfter(lastViewed) == true }
+    return archived.count { it.archivedSince(today)?.isAfter(lastViewed) == true }
 }
 
 @Composable
 fun ArchiveScreen(viewModel: ReminderViewModel, onBack: () -> Unit) {
-    val archived by viewModel.archivedReminders.collectAsState()
+    val archived by viewModel.archivedReminders.collectAsStateWithLifecycle()
     val loadedArchived = archived ?: return
     val context = LocalContext.current
     // Viewing this screen clears the "new since last checked" badge/notice.
