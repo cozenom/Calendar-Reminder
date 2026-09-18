@@ -212,7 +212,13 @@ fun SettingsScreen(onBack: () -> Unit) {
                 ActionRow(
                     label = "Privacy policy",
                     subtitle = null,
-                    onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, PRIVACY_POLICY_URL.toUri())) }
+                    onClick = {
+                        // No browser installed: ACTION_VIEW throws rather than failing quietly
+                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, PRIVACY_POLICY_URL.toUri())) }
+                            .onFailure {
+                                Toast.makeText(context, "No browser found. $PRIVACY_POLICY_URL", Toast.LENGTH_LONG).show()
+                            }
+                    }
                 )
             }
         }

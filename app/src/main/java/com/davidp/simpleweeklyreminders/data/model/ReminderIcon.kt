@@ -72,7 +72,7 @@ val ReminderIconCategories: List<IconCategory> = listOf(
         ReminderIconOption("restaurant",      "Restaurant", Icons.Filled.Restaurant),
         ReminderIconOption("localCafe",       "Cafe",       Icons.Filled.LocalCafe),
         ReminderIconOption("localBar",        "Bar",        Icons.Filled.LocalBar),
-        ReminderIconOption("emojiFoodBev",    "Drink",      Icons.Filled.EmojiFoodBeverage),
+        ReminderIconOption("emojiFoodBev",    "Tea",        Icons.Filled.EmojiFoodBeverage),
         ReminderIconOption("lunchDining",     "Lunch",      Icons.Filled.LunchDining),
         ReminderIconOption("localDrink",      "Drink",      Icons.Filled.LocalDrink),
         ReminderIconOption("bakeryDining",    "Bakery",     Icons.Filled.BakeryDining),
@@ -129,11 +129,11 @@ val ReminderIconCategories: List<IconCategory> = listOf(
         ReminderIconOption("sportsTennis",     "Tennis",     Icons.Filled.SportsTennis),
         ReminderIconOption("sailing",          "Sail",       Icons.Filled.Sailing),
         ReminderIconOption("snowboarding",     "Snowboard",  Icons.Filled.Snowboarding),
-        ReminderIconOption("skateboarding",    "Skate",      Icons.Filled.Skateboarding),
+        ReminderIconOption("skateboarding",    "Skateboard", Icons.Filled.Skateboarding),
         ReminderIconOption("directionsWalk",   "Walk",       Icons.AutoMirrored.Filled.DirectionsWalk),
         ReminderIconOption("nordicWalking",    "Nordic",     Icons.Filled.NordicWalking),
         ReminderIconOption("kayaking",         "Kayak",      Icons.Filled.Kayaking),
-        ReminderIconOption("iceSkating",       "Skate",      Icons.Filled.IceSkating),
+        ReminderIconOption("iceSkating",       "Ice skate",  Icons.Filled.IceSkating),
     )),
 )
 

@@ -112,6 +112,9 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun update(reminder: Reminder) = viewModelScope.launch {
+        // Pausing withdraws any snooze: update() clears it from the DB, but an alarm already
+        // armed would still fire for a paused reminder. Read the rows before they're cleared.
+        if (!reminder.isActive) cancelPendingSnoozes(reminder)
         repository.update(reminder)
         ReminderWorker.schedule(getApplication())
     }
@@ -124,7 +127,7 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
         // would sit there with dead actions.
         val elapsed = repository.elapsedLogs(reminder)
         ReminderWorker.cancelAlarm(context, reminder.id)
-        elapsed.filter { it.snoozedUntil != null }.forEach { ReminderWorker.cancelSnoozeAlarm(context, it.id) }
+        cancelPendingSnoozes(reminder)
         NotificationActionReceiver.cancelNotifications(context, elapsed.map { it.id })
 
         repository.delete(reminder)
@@ -133,6 +136,7 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
 
     /** Manual archive: stamp archivedAt and stop scheduling. endDate is left untouched. */
     fun archive(reminder: Reminder) = viewModelScope.launch {
+        cancelPendingSnoozes(reminder)
         repository.update(reminder.copy(isActive = false, archivedAt = LocalDateTime.now()))
         ReminderWorker.schedule(getApplication())
     }
@@ -141,10 +145,27 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
      * Undo of [archive] and the Archive screen's Restore. Keeps the reminder's end date by
      * default; a lapsed reminder (see hasLapsed) needs [endDate] passed as null or a date from
      * today on — restoring it with its old past date would drop it straight back in the Archive.
+     *
+     * [appendToEnd] puts it last in manual order — the Archive screen's Restore, where the old
+     * position is long gone. The Undo snackbar leaves it false so the row goes straight back.
      */
-    fun restore(reminder: Reminder, endDate: LocalDate? = reminder.endDate) = viewModelScope.launch {
-        repository.update(reminder.copy(isActive = true, endDate = endDate, archivedAt = null))
+    fun restore(
+        reminder: Reminder,
+        endDate: LocalDate? = reminder.endDate,
+        appendToEnd: Boolean = false
+    ) = viewModelScope.launch {
+        val restored = reminder.copy(isActive = true, endDate = endDate, archivedAt = null)
+        repository.update(if (appendToEnd) restored.copy(sortOrder = repository.nextSortOrder()) else restored)
         ReminderWorker.schedule(getApplication())
+    }
+
+    /**
+     * Disarms every snooze alarm this reminder has pending. The worker re-derives snoozes from
+     * the DB, but an alarm that's already armed fires regardless of what the row says now.
+     */
+    private suspend fun cancelPendingSnoozes(reminder: Reminder) {
+        val context = getApplication<Application>()
+        repository.pendingSnoozes(reminder).forEach { ReminderWorker.cancelSnoozeAlarm(context, it.id) }
     }
 
     fun updateLogCompletedStatus(logId: Int, completed: Boolean) = viewModelScope.launch {

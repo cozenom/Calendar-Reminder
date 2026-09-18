@@ -89,7 +89,7 @@ fun ArchiveScreen(viewModel: ReminderViewModel, onBack: () -> Unit) {
         }
         Text(
             text = if (loadedArchived.isEmpty()) "Reminders you end or archive are kept here"
-            else "${loadedArchived.size} lapsed reminder${if (loadedArchived.size == 1) "" else "s"} · kept until you delete them",
+            else "${loadedArchived.size} archived reminder${if (loadedArchived.size == 1) "" else "s"} · kept until you delete them",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(start = 57.dp, end = 20.dp, bottom = 12.dp)
@@ -107,7 +107,8 @@ fun ArchiveScreen(viewModel: ReminderViewModel, onBack: () -> Unit) {
                     ArchivedReminderItem(
                         reminder = reminder,
                         loadStats = { viewModel.loadArchiveStats(reminder) },
-                        onRestore = { endDate -> viewModel.restore(reminder, endDate) },
+                        // Its old spot in manual order is long gone; put it at the end
+                        onRestore = { endDate -> viewModel.restore(reminder, endDate, appendToEnd = true) },
                         onDelete = { viewModel.delete(reminder) }
                     )
                 }

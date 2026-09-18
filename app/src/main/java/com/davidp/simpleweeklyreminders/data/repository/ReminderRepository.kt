@@ -27,7 +27,7 @@ class ReminderRepository(
     suspend fun insert(reminder: Reminder, now: LocalDateTime = LocalDateTime.now()): Long {
         // Append to manual order. Without this the model default (0) ties with whatever row
         // a past drag renumbered to 0, and createdAt drops the new reminder in at position 2.
-        val positioned = reminder.copy(sortOrder = (reminderDao.getMaxSortOrder() ?: -1) + 1)
+        val positioned = reminder.copy(sortOrder = nextSortOrder())
         val id = reminderDao.insertReminder(positioned)
         // Backfill the whole run from startDate: a backdated start fills past occurrences
         // (shown missed, still tappable) so the calendar and chips have real rows to draw.
@@ -46,6 +46,9 @@ class ReminderRepository(
             // Paused: nothing gets regenerated, so keep completed-early logs —
             // the carry-over below handles them when the reminder is reactivated
             reminderLogDao.deleteFutureIncompleteLogsForReminder(reminder.id, now)
+            // A snooze is a promise to re-fire; pausing withdraws it. The ViewModel disarms
+            // the alarm itself (it has the Context), reading pendingSnoozes() before this.
+            reminderLogDao.clearSnoozesForReminder(reminder.id)
             return
         }
 
@@ -113,6 +116,13 @@ class ReminderRepository(
      */
     suspend fun elapsedLogs(reminder: Reminder, now: LocalDateTime = LocalDateTime.now()): List<ReminderLog> =
         reminderLogDao.getLogsForReminderInRange(reminder.id, reminder.startDate.atStartOfDay(), now)
+
+    /** This reminder's logs with a snooze still recorded — each has an alarm armed under its negated id. */
+    suspend fun pendingSnoozes(reminder: Reminder): List<ReminderLog> =
+        reminderLogDao.getSnoozedLogsList().filter { it.reminderId == reminder.id }
+
+    /** One past the highest manual position, so a new or restored row lands at the end. */
+    suspend fun nextSortOrder(): Int = (reminderDao.getMaxSortOrder() ?: -1) + 1
 
     /**
      * @param includePast generate occurrences that have already passed too (from startDate).

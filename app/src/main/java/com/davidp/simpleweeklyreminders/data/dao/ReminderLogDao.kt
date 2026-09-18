@@ -62,4 +62,8 @@ interface ReminderLogDao {
 
     @Query("SELECT * FROM reminder_logs WHERE snoozedUntil IS NOT NULL AND completed = 0")
     suspend fun getSnoozedLogsList(): List<ReminderLog>
+
+    /** Withdraws every pending snooze for one reminder (pause/archive). The caller disarms the alarms. */
+    @Query("UPDATE reminder_logs SET snoozedUntil = NULL WHERE reminderId = :reminderId")
+    suspend fun clearSnoozesForReminder(reminderId: Int)
 }

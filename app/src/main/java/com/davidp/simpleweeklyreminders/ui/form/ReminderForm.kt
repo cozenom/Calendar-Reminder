@@ -368,10 +368,13 @@ private fun ReminderForm(
         )
     }
     if (showEndDatePicker) {
+        // Can't end before it starts, and a past end date would archive it on save
+        val earliestEnd = maxOf(startDate, LocalDate.now())
         CalendarDialog(
             onDismissRequest = { showEndDatePicker = false },
             onDateSelected = { endDate = it; showEndDatePicker = false },
-            initialDate = endDate ?: LocalDate.now()
+            initialDate = endDate?.takeIf { it >= earliestEnd } ?: earliestEnd,
+            minDate = earliestEnd
         )
     }
     if (showIconPicker) {

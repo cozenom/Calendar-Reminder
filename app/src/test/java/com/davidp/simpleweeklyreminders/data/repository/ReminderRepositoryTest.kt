@@ -256,6 +256,25 @@ class ReminderRepositoryTest {
     }
 
     @Test
+    fun `pausing withdraws a pending snooze but keeps the fired log`() = runBlocking {
+        val (repo, _, logDao) = newRepository()
+        val original = reminder(startDate = monday, endDate = monday.plusDays(10))
+        val id = repo.insert(original, now = beforeStart).toInt()
+        val firedSlot = LocalDateTime.of(monday.plusDays(2), LocalTime.of(9, 0))
+        val fired = logDao.getFutureLogsForReminder(id, epoch).single { it.logDateTime == firedSlot }
+        logDao.updateSnoozedUntil(fired.id, firedSlot.plusMinutes(10))
+        assertEquals(1, repo.pendingSnoozes(original.copy(id = id)).size)
+
+        repo.update(original.copy(id = id, isActive = false), now = firedSlot.plusMinutes(5))
+
+        assertTrue("snooze should be cleared", repo.pendingSnoozes(original.copy(id = id)).isEmpty())
+        assertTrue(
+            "the fired log itself stays (it's past, and reads as missed)",
+            allLogsFor(logDao, id).any { it.logDateTime == firedSlot }
+        )
+    }
+
+    @Test
     fun `regenerating an unchanged schedule preserves completion at the same datetime`() = runBlocking {
         val (repo, _, logDao) = newRepository()
         val original = reminder(startDate = monday, endDate = monday.plusDays(5))
