@@ -30,7 +30,7 @@ import com.davidp.simpleweeklyreminders.ui.theme.appShapes
 fun RecurrenceToggle(mode: ReminderType, onChanged: (ReminderType) -> Unit, enabled: Boolean = true) {
     val options = listOf(
         ReminderType.SPECIFIC_DAYS to "Weekdays",
-        ReminderType.EVERY_N_DAYS to "Every N days",
+        ReminderType.EVERY_N_DAYS to "Every X days",
         ReminderType.ONE_TIME to "One-time"
     )
 
