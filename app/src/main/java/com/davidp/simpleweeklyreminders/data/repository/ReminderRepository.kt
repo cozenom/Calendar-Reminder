@@ -25,12 +25,15 @@ class ReminderRepository(
     val allReminders: Flow<List<Reminder>> = reminderDao.getAllReminders()
 
     suspend fun insert(reminder: Reminder, now: LocalDateTime = LocalDateTime.now()): Long {
-        val id = reminderDao.insertReminder(reminder)
+        // Append to manual order. Without this the model default (0) ties with whatever row
+        // a past drag renumbered to 0, and createdAt drops the new reminder in at position 2.
+        val positioned = reminder.copy(sortOrder = (reminderDao.getMaxSortOrder() ?: -1) + 1)
+        val id = reminderDao.insertReminder(positioned)
         // Backfill the whole run from startDate: a backdated start fills past occurrences
         // (shown missed, still tappable) so the calendar and chips have real rows to draw.
         // Safe because the start date is locked once created (see ReminderForm), so update()
         // never has to re-backfill.
-        generateLogsForReminder(reminder.copy(id = id.toInt()), now, includePast = true)
+        generateLogsForReminder(positioned.copy(id = id.toInt()), now, includePast = true)
         return id
     }
 

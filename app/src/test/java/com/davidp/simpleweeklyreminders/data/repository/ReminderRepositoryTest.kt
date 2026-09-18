@@ -3,6 +3,7 @@ package com.davidp.simpleweeklyreminders.data.repository
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderLog
 import com.davidp.simpleweeklyreminders.data.model.ReminderType
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -426,5 +427,32 @@ class ReminderRepositoryTest {
         val all = allLogsFor(logDao, id)
         assertTrue(all.size > countAfterInsert)          // additive: new future rows added
         assertTrue(all.any { it.logDateTime > t1 })       // a next occurrence now exists past t1
+    }
+
+    // --- insert: manual sort order ---
+
+    @Test
+    fun `insert appends each new reminder to the end of manual order`() = runBlocking {
+        val (repo, dao, _) = newRepository()
+
+        repeat(3) { i -> repo.insert(reminder(title = "R$i"), now = beforeStart) }
+
+        val order = dao.getAllRemindersList().sortedBy { it.id }.map { it.sortOrder }
+        assertEquals(listOf(0, 1, 2), order)
+    }
+
+    @Test
+    fun `insert after a drag reorder still lands last, not second`() = runBlocking {
+        val (repo, dao, _) = newRepository()
+        val first = repo.insert(reminder(title = "A"), now = beforeStart).toInt()
+        val second = repo.insert(reminder(title = "B"), now = beforeStart).toInt()
+        // A drop renumbers every visible row 0..n-1, so the top row holds sortOrder 0
+        dao.updateSortOrder(second, 0)
+        dao.updateSortOrder(first, 1)
+
+        repo.insert(reminder(title = "C"), now = beforeStart)
+
+        val titles = dao.getAllReminders().first().map { it.title }
+        assertEquals(listOf("B", "A", "C"), titles)
     }
 }

@@ -31,4 +31,8 @@ interface ReminderDao {
 
     @Query("UPDATE reminders SET sortOrder = :sortOrder WHERE id = :id")
     suspend fun updateSortOrder(id: Int, sortOrder: Int)
+
+    /** Null when the table is empty. Used to append new reminders to the end of manual order. */
+    @Query("SELECT MAX(sortOrder) FROM reminders")
+    suspend fun getMaxSortOrder(): Int?
 }

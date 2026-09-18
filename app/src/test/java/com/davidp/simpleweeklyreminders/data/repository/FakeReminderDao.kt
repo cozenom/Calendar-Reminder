@@ -37,4 +37,6 @@ class FakeReminderDao : ReminderDao {
     override suspend fun updateSortOrder(id: Int, sortOrder: Int) {
         reminders.value = reminders.value.map { if (it.id == id) it.copy(sortOrder = sortOrder) else it }
     }
+
+    override suspend fun getMaxSortOrder(): Int? = reminders.value.maxOfOrNull { it.sortOrder }
 }
