@@ -79,7 +79,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
             if (nextLog == null) {
                 // Chain reached its last materialized row — extend the horizon so firing never
                 // stops, then re-arm from the freshly generated logs (todo #13).
-                database.reminderDao().getReminderByIdOnce(log.reminderId)?.let { reminder ->
+                database.reminderDao().getReminderById(log.reminderId)?.let { reminder ->
                     ReminderRepository(database.reminderDao(), database.reminderLogDao()).topUpLogs(reminder)
                     nextLog = database.reminderLogDao().getNextLogForReminder(log.reminderId, log.logDateTime)
                 }
@@ -97,7 +97,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
         // Completed early via the calendar — nothing to notify about
         if (log.completed) return
 
-        val reminder = database.reminderDao().getReminderByIdOnce(log.reminderId)
+        val reminder = database.reminderDao().getReminderById(log.reminderId)
         // Matches Reminder.importance's default if the reminder row is somehow gone
         val importance = reminder?.importance ?: Importance.HIGH
 

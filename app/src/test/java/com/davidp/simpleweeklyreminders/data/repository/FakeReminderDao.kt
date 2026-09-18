@@ -17,7 +17,9 @@ class FakeReminderDao : ReminderDao {
     override suspend fun insertReminder(reminder: Reminder): Long {
         val id = if (reminder.id != 0) reminder.id else nextId
         if (id >= nextId) nextId = id + 1
-        reminders.value = reminders.value.filterNot { it.id == id } + reminder.copy(id = id)
+        // Room's default ABORT strategy throws on a duplicate key; mirror it so the fake can't hide one
+        check(reminders.value.none { it.id == id }) { "Reminder $id already exists" }
+        reminders.value = reminders.value + reminder.copy(id = id)
         return id.toLong()
     }
 
@@ -29,7 +31,7 @@ class FakeReminderDao : ReminderDao {
         reminders.value = reminders.value.filterNot { it.id == reminder.id }
     }
 
-    override suspend fun getReminderByIdOnce(id: Int): Reminder? =
+    override suspend fun getReminderById(id: Int): Reminder? =
         reminders.value.find { it.id == id }
 
     override suspend fun getAllRemindersList(): List<Reminder> = reminders.value
