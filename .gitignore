@@ -23,6 +23,7 @@ app/release/
 
 # Local dev notes
 *.txt
+!app/src/main/assets/OFL.txt
 
 # Ignore markdown files except README and schema docs
 *.md

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Android 11 and below. Back up reminders (Room) and settings (DataStore); skip
-     WorkManager's queue -- it holds device-specific job state that must not follow
+     WorkManager's queue: it holds device-specific job state that must not follow
      a restore to a new phone. Alarms are re-armed on next app open / boot anyway. -->
 <full-backup-content>
     <include domain="database" path="app_database" />

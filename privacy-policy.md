@@ -1,8 +1,8 @@
-# Privacy Policy for Simple Weekly Reminders
+# Privacy Policy for Simple Reminders
 
 *Last updated: September 18, 2026*
 
-Simple Weekly Reminders does not collect, store, or share any personal data. All reminder data is stored locally on your device and is never transmitted anywhere.
+Simple Reminders does not collect, store, or share any personal data. All reminder data is stored locally on your device and is never transmitted anywhere.
 
 ## Permissions
 
