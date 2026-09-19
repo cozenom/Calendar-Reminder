@@ -1,0 +1,14 @@
+Simple Reminders is a no-fuss app for the things you do on repeat — medications, plants, pets, chores, habits. Set a reminder once and let the app track whether it got done.
+
+Why not a calendar app? Calendars are built for events; this is built for habits. Every occurrence is marked done or missed, and it works fully offline with no account.
+
+The calendar is the home screen: each day shows what's done, pending or missed, so you can see the week at a glance.
+
+• Repeat on chosen weekdays, every N days, or just once — with multiple times per day
+• Snooze, pause, or archive without losing history
+• Importance levels control how insistent the notification is
+• Missed summary after a restart
+• 100 icons and 8 theme packs, light and dark
+• Reminders survive reboots
+
+100% offline. No account, no ads, no analytics. Everything stays on your device.

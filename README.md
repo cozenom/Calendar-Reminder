@@ -2,6 +2,8 @@
 
 Lightweight Android app for offloading recurring tasks from your brain. Set up a reminder once — watering plants, taking vitamins, feeding pets, any habit — and let the app track whether it got done.
 
+**Why not a calendar app?** Calendars are built for events; this is built for habits. Every occurrence is marked done or missed, and it works fully offline with no account, so your routines stay private.
+
 <!-- Play Store badge goes here once the listing is live:
 [<img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" height="60">](https://play.google.com/store/apps/details?id=com.davidp.simpleweeklyreminders)
 -->
