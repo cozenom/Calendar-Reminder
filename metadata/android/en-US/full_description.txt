@@ -1,6 +1,6 @@
 Simple Reminders is a no-fuss app for the things you do on repeat — medications, plants, pets, chores, habits. Set a reminder once and let the app track whether it got done.
 
-Why not a calendar app? Calendars are built for events; this is built for habits. Every occurrence is marked done or missed, and it works fully offline with no account.
+Ever wonder "Did I fill the cat feeder? Water the plants? Take my meds?" Every occurrence is marked done or missed, and it works fully offline with no account.
 
 The calendar is the home screen: each day shows what's done, pending or missed, so you can see the week at a glance.
 

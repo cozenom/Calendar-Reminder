@@ -2,6 +2,8 @@
 
 Lightweight Android app for offloading recurring tasks from your brain. Set up a reminder once — watering plants, taking vitamins, feeding pets, any habit — and let the app track whether it got done.
 
+**Why I built it:** I made this because I could never remember whether I'd already taken my meds, filled the cat feeder, or watered the plants. Every reminder is marked done or missed, so the answer is always one glance away.
+
 **Why not a calendar app?** Calendars are built for events; this is built for habits. Every occurrence is marked done or missed, and it works fully offline with no account, so your routines stay private.
 
 <!-- Play Store badge goes here once the listing is live:
