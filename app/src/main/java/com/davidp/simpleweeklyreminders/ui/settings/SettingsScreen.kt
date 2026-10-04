@@ -48,6 +48,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import com.davidp.simpleweeklyreminders.data.model.Importance
+import com.davidp.simpleweeklyreminders.data.notification.NotificationActionReceiver
 import com.davidp.simpleweeklyreminders.data.settings.DateFormatPref
 import com.davidp.simpleweeklyreminders.data.settings.SettingsRepository
 import com.davidp.simpleweeklyreminders.data.settings.ThemeMode
@@ -191,6 +193,32 @@ fun SettingsScreen(onBack: () -> Unit) {
         }
 
         SettingsSection("Notifications") {
+            SwitchRow(
+                label = "Per-reminder sounds",
+                subtitle = "Adds a tone picker to Medium and High reminders",
+                checked = settings.perReminderSounds,
+                onCheckedChange = { enabled ->
+                    scope.launch { repo.setPerReminderSounds(enabled) }
+                    // Tones stay saved on each reminder, so turning this back on restores them
+                    if (!enabled) NotificationActionReceiver.deleteAllReminderChannels(context)
+                }
+            )
+            Spacer(Modifier.height(8.dp))
+            // No Low row: its channel is silent, so a tone there would never play
+            ActionRow(
+                label = "High importance sound",
+                subtitle = "Opens system settings",
+                onClick = {
+                    context.startActivity(NotificationActionReceiver.soundSettingsIntent(context, Importance.HIGH))
+                }
+            )
+            ActionRow(
+                label = "Medium importance sound",
+                subtitle = "Opens system settings",
+                onClick = {
+                    context.startActivity(NotificationActionReceiver.soundSettingsIntent(context, Importance.MEDIUM))
+                }
+            )
             ActionRow(
                 label = "Sound & vibration",
                 subtitle = "Per-importance channels — opens system settings",

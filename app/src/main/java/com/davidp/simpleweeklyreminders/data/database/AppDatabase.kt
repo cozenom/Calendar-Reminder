@@ -5,14 +5,23 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.davidp.simpleweeklyreminders.data.dao.ReminderDao
 import com.davidp.simpleweeklyreminders.data.dao.ReminderLogDao
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderLog
 
+/** v9: per-reminder notification tone. Nullable, so existing rows keep their level's tone. */
+val MIGRATION_8_9 = object : Migration(8, 9) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE reminders ADD COLUMN sound TEXT")
+    }
+}
+
 @Database(
     entities = [Reminder::class, ReminderLog::class],
-    version = 8,
+    version = 9,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -35,7 +44,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "app_database"
-                ).build()
+                ).addMigrations(MIGRATION_8_9).build()
                 INSTANCE = instance
                 instance
             }

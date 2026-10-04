@@ -129,6 +129,7 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
         ReminderWorker.cancelAlarm(context, reminder.id)
         cancelPendingSnoozes(reminder)
         NotificationActionReceiver.cancelNotifications(context, elapsed.map { it.id })
+        NotificationActionReceiver.deleteReminderChannels(context, reminder.id)
 
         repository.delete(reminder)
         ReminderWorker.schedule(context)

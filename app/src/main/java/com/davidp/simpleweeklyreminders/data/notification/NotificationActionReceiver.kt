@@ -15,12 +15,16 @@ import android.graphics.PorterDuff
 import android.graphics.PorterDuffColorFilter
 import android.media.AudioAttributes
 import android.media.RingtoneManager
+import android.net.Uri
+import android.provider.Settings
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.davidp.simpleweeklyreminders.R
 import com.davidp.simpleweeklyreminders.data.database.AppDatabase
 import com.davidp.simpleweeklyreminders.data.model.Importance
+import com.davidp.simpleweeklyreminders.data.model.Reminder
+import com.davidp.simpleweeklyreminders.data.model.SILENT_SOUND
 import com.davidp.simpleweeklyreminders.data.model.iconDrawableRes
 import com.davidp.simpleweeklyreminders.data.repository.ReminderRepository
 import com.davidp.simpleweeklyreminders.data.settings.SettingsRepository
@@ -30,6 +34,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.toColorInt
+import androidx.core.net.toUri
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -65,7 +70,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
     private suspend fun showNotification(context: Context, logId: Int, isSnooze: Boolean) {
         val notificationManager = context.notificationManager
 
-        createNotificationChannels(context, notificationManager)
+        createNotificationChannels(context)
 
         val database = AppDatabase.getDatabase(context)
         val log = database.reminderLogDao().getLogById(logId) ?: return
@@ -138,8 +143,6 @@ class NotificationActionReceiver : BroadcastReceiver() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-
         val largeIcon: Bitmap? = reminder?.icon
             ?.let { iconDrawableRes(it) }
             ?.let { resId -> buildIconBitmap(context, resId) }
@@ -162,7 +165,11 @@ class NotificationActionReceiver : BroadcastReceiver() {
         // button is always present for a deliberate "leave this honestly missed" choice.
         val swipePendingIntent = if (importance == Importance.HIGH) snoozePendingIntent else dismissPendingIntent
 
-        val builder = NotificationCompat.Builder(context, channelIdFor(importance))
+        val channelId = reminder
+            ?.let { reminderChannel(context, it, settings.perReminderSounds) }
+            ?: channelIdFor(importance)
+
+        val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(smallIconRes)
             .setContentTitle(title)
             .setContentText(contentText)
@@ -193,9 +200,8 @@ class NotificationActionReceiver : BroadcastReceiver() {
                 snoozePendingIntent
             )
             .addAction(R.drawable.ic_notification, "Complete", completedPendingIntent)
+            // Sound and vibration come from the channel (API 26+), which the user can change
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setSound(soundUri)
-            .setVibrate(longArrayOf(0, 250))
             .setOnlyAlertOnce(true)
 
         if (largeIcon != null) {
@@ -208,80 +214,6 @@ class NotificationActionReceiver : BroadcastReceiver() {
         } catch (e: Exception) {
             Log.e("NotificationActionReceiver", "Error showing notification: ${e.message}", e)
         }
-    }
-
-    /**
-     * One channel per importance level, mapped 1:1 onto Android's own channel
-     * importance (Low/Default/High) — heads-up display, sound eligibility, and
-     * tray sort order all follow from this for free. Channel sound/importance is
-     * locked in per ID the first time it's created on a real device, so this is
-     * called on every notification post (createNotificationChannel is a no-op if
-     * the channel already exists) rather than once at app start.
-     */
-    private fun createNotificationChannels(context: Context, notificationManager: NotificationManager) {
-        val soundAttributes = AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_NOTIFICATION)
-            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-            .build()
-        val defaultSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-        // A more insistent tone for High, borrowed from the alarm sound slot —
-        // no bundled audio asset needed
-        val urgentSound = RingtoneManager.getActualDefaultRingtoneUri(context, RingtoneManager.TYPE_ALARM)
-            ?: defaultSound
-
-        val low = NotificationChannel(
-            CHANNEL_ID_LOW,
-            "Reminders (Low importance)",
-            NotificationManager.IMPORTANCE_LOW
-        ).apply {
-            description = "Low-importance reminders — quiet, swipe clears them"
-            lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            setShowBadge(true)
-        }
-        val medium = NotificationChannel(
-            CHANNEL_ID_MEDIUM,
-            "Reminders (Medium importance)",
-            NotificationManager.IMPORTANCE_DEFAULT
-        ).apply {
-            description = "Medium-importance reminders"
-            lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            setShowBadge(true)
-            enableLights(true)
-            enableVibration(true)
-            vibrationPattern = longArrayOf(0, 250)
-            setSound(defaultSound, soundAttributes)
-        }
-        val high = NotificationChannel(
-            CHANNEL_ID_HIGH,
-            "Reminders (High importance)",
-            NotificationManager.IMPORTANCE_HIGH
-        ).apply {
-            description = "High-importance reminders — sticky, swipe snoozes"
-            lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            setShowBadge(true)
-            enableLights(true)
-            enableVibration(true)
-            vibrationPattern = longArrayOf(0, 250)
-            setSound(urgentSound, soundAttributes)
-        }
-        // The group summary spans every importance level, so it can't sit on any of the
-        // three above — a stack of Low reminders would inherit High's alarm tone. It gets a
-        // silent channel of its own; the children still alert individually.
-        val group = NotificationChannel(
-            CHANNEL_ID_GROUP,
-            "Grouped reminders",
-            NotificationManager.IMPORTANCE_LOW
-        ).apply {
-            description = "The header shown when several reminders arrive together"
-            lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            setShowBadge(false)
-            setSound(null, null)
-            enableVibration(false)
-        }
-        notificationManager.createNotificationChannel(low)
-        notificationManager.createNotificationChannel(medium)
-        notificationManager.createNotificationChannel(high)
-        notificationManager.createNotificationChannel(group)
     }
 
     /**
@@ -395,6 +327,147 @@ class NotificationActionReceiver : BroadcastReceiver() {
             Importance.LOW -> CHANNEL_ID_LOW
             Importance.MEDIUM -> CHANNEL_ID_MEDIUM
             Importance.HIGH -> CHANNEL_ID_HIGH
+        }
+
+        /**
+         * The system page for one importance level's channel, where the user picks its tone.
+         * Android owns channel sound once created, so this is the only way to change it.
+         * Creates the channels first: the page doesn't exist before the first reminder fires.
+         */
+        fun soundSettingsIntent(context: Context, importance: Importance): Intent {
+            createNotificationChannels(context)
+            return Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+                .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                .putExtra(Settings.EXTRA_CHANNEL_ID, channelIdFor(importance))
+        }
+
+        /**
+         * The reminder's own channel when it has a custom tone and the setting is on; null means
+         * use its level's channel. Also deletes the reminder's channels for any older tone.
+         * - LOW is excluded: its channel is silent, so a tone would never play.
+         * - A tone that's gone (e.g. backup restored to another phone) needs no check here:
+         *   Android plays its fallback tone for an unplayable URI.
+         */
+        private fun reminderChannel(context: Context, reminder: Reminder, enabled: Boolean): String? {
+            val sound = reminder.sound
+            val id = if (enabled && sound != null && reminder.importance != Importance.LOW) {
+                reminderChannelId(reminder.id, sound, reminder.importance)
+            } else {
+                null
+            }
+            deleteReminderChannels(context, reminder.id, keep = id)
+            if (id == null || sound == null) return null
+
+            // createNotificationChannel on an existing ID only updates the name, so a renamed
+            // reminder shows its new title in system settings; the sound stays as created
+            val channel = soundChannel(
+                id = id,
+                name = reminder.title,
+                description = "Custom tone for this reminder",
+                importance = if (reminder.importance == Importance.HIGH) NotificationManager.IMPORTANCE_HIGH
+                else NotificationManager.IMPORTANCE_DEFAULT,
+                sound = if (sound == SILENT_SOUND) null else sound.toUri()
+            )
+            context.notificationManager.createNotificationChannel(channel)
+            return id
+        }
+
+        /** Deletes one reminder's tone channels — on reminder delete, or when its tone changes. */
+        fun deleteReminderChannels(context: Context, reminderId: Int, keep: String? = null) {
+            val notificationManager = context.notificationManager
+            notificationManager.notificationChannels
+                .filter { it.id.startsWith(reminderChannelPrefix(reminderId)) && it.id != keep }
+                .forEach { notificationManager.deleteNotificationChannel(it.id) }
+        }
+
+        /** Deletes every per-reminder channel — when "Per-reminder sounds" is turned off. */
+        fun deleteAllReminderChannels(context: Context) {
+            val notificationManager = context.notificationManager
+            notificationManager.notificationChannels
+                .filter { it.id.startsWith(REMINDER_CHANNEL_PREFIX) }
+                .forEach { notificationManager.deleteNotificationChannel(it.id) }
+        }
+
+        /** Sounding channel shared by the Medium/High level channels and per-reminder tones. */
+        private fun soundChannel(
+            id: String,
+            name: String,
+            description: String,
+            importance: Int,
+            sound: Uri?
+        ) = NotificationChannel(id, name, importance).apply {
+            this.description = description
+            lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            setShowBadge(true)
+            enableLights(true)
+            enableVibration(true)
+            vibrationPattern = longArrayOf(0, 250)
+            // null sound = silent ("None" in the picker); vibration still applies
+            setSound(sound, if (sound == null) null else SOUND_ATTRIBUTES)
+        }
+
+        private val SOUND_ATTRIBUTES: AudioAttributes = AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build()
+
+        /**
+         * One channel per importance level, mapped 1:1 onto Android's own channel
+         * importance (Low/Default/High) — heads-up display, sound eligibility, and
+         * tray sort order all follow from this for free. Channel sound/importance is
+         * locked in per ID the first time it's created on a real device, so this is
+         * called on every notification post (createNotificationChannel is a no-op if
+         * the channel already exists) rather than once at app start.
+         */
+        private fun createNotificationChannels(context: Context) {
+            val notificationManager = context.notificationManager
+            val defaultSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            // A more insistent tone for High, borrowed from the alarm sound slot —
+            // no bundled audio asset needed
+            val urgentSound = RingtoneManager.getActualDefaultRingtoneUri(context, RingtoneManager.TYPE_ALARM)
+                ?: defaultSound
+
+            val low = NotificationChannel(
+                CHANNEL_ID_LOW,
+                "Reminders (Low importance)",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Low-importance reminders — quiet, swipe clears them"
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                setShowBadge(true)
+            }
+            val medium = soundChannel(
+                id = CHANNEL_ID_MEDIUM,
+                name = "Reminders (Medium importance)",
+                description = "Medium-importance reminders",
+                importance = NotificationManager.IMPORTANCE_DEFAULT,
+                sound = defaultSound
+            )
+            val high = soundChannel(
+                id = CHANNEL_ID_HIGH,
+                name = "Reminders (High importance)",
+                description = "High-importance reminders — sticky, swipe snoozes",
+                importance = NotificationManager.IMPORTANCE_HIGH,
+                sound = urgentSound
+            )
+            // The group summary spans every importance level, so it can't sit on any of the
+            // three above — a stack of Low reminders would inherit High's alarm tone. It gets a
+            // silent channel of its own; the children still alert individually.
+            val group = NotificationChannel(
+                CHANNEL_ID_GROUP,
+                "Grouped reminders",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "The header shown when several reminders arrive together"
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                setShowBadge(false)
+                setSound(null, null)
+                enableVibration(false)
+            }
+            notificationManager.createNotificationChannel(low)
+            notificationManager.createNotificationChannel(medium)
+            notificationManager.createNotificationChannel(high)
+            notificationManager.createNotificationChannel(group)
         }
 
         /**

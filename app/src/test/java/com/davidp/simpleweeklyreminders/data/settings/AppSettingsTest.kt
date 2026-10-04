@@ -49,6 +49,7 @@ class AppSettingsTest {
             // Opposite of the default, so this asserts the stored value is actually read
             this[SettingsKeys.DYNAMIC_COLOR] = true
             this[SettingsKeys.PER_REMINDER_COLORS] = true
+            this[SettingsKeys.PER_REMINDER_SOUNDS] = true
             this[SettingsKeys.THEME_PACK] = ThemePack.PLUM.name
             this[SettingsKeys.WEEK_START] = WeekStart.SUNDAY.name
             this[SettingsKeys.SNOOZE_MINUTES] = 30
@@ -58,6 +59,7 @@ class AppSettingsTest {
         assertEquals(ThemeMode.DARK, state.themeMode)
         assertEquals(true, state.dynamicColor)
         assertEquals(true, state.perReminderColors)
+        assertEquals(true, state.perReminderSounds)
         assertEquals(ThemePack.PLUM, state.themePack)
         assertEquals(WeekStart.SUNDAY, state.weekStart)
         assertEquals(30, state.snoozeMinutes)

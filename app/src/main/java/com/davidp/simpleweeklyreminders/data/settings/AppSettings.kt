@@ -35,6 +35,8 @@ data class AppSettingsState(
     val themePack: ThemePack = ThemePack.PAPER,
     // When on, each reminder gets a colour field in its form and draws itself in that colour.
     val perReminderColors: Boolean = false,
+    // When on, Medium/High reminders get a tone picker; each custom tone gets its own channel.
+    val perReminderSounds: Boolean = false,
     val timeFormat: TimeFormatPref = TimeFormatPref.SYSTEM,
     val dateFormat: DateFormatPref = DateFormatPref.SYSTEM,
     val weekStart: WeekStart = WeekStart.MONDAY,
@@ -75,6 +77,9 @@ class SettingsRepository(private val context: Context) {
     suspend fun setPerReminderColors(enabled: Boolean) =
         edit { it[SettingsKeys.PER_REMINDER_COLORS] = enabled }
 
+    suspend fun setPerReminderSounds(enabled: Boolean) =
+        edit { it[SettingsKeys.PER_REMINDER_SOUNDS] = enabled }
+
     suspend fun setTimeFormat(pref: TimeFormatPref) =
         edit { it[SettingsKeys.TIME_FORMAT] = pref.name }
 
@@ -102,6 +107,7 @@ internal object SettingsKeys {
     val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
     val THEME_PACK = stringPreferencesKey("theme_pack")
     val PER_REMINDER_COLORS = booleanPreferencesKey("per_reminder_colors")
+    val PER_REMINDER_SOUNDS = booleanPreferencesKey("per_reminder_sounds")
     val TIME_FORMAT = stringPreferencesKey("time_format")
     val DATE_FORMAT = stringPreferencesKey("date_format")
     val WEEK_START = stringPreferencesKey("week_start")
@@ -114,6 +120,7 @@ internal fun Preferences.toAppSettingsState() = AppSettingsState(
     dynamicColor = this[SettingsKeys.DYNAMIC_COLOR] ?: false,
     themePack = parseEnum(this[SettingsKeys.THEME_PACK], ThemePack.PAPER),
     perReminderColors = this[SettingsKeys.PER_REMINDER_COLORS] ?: false,
+    perReminderSounds = this[SettingsKeys.PER_REMINDER_SOUNDS] ?: false,
     timeFormat = parseEnum(this[SettingsKeys.TIME_FORMAT], TimeFormatPref.SYSTEM),
     dateFormat = parseEnum(this[SettingsKeys.DATE_FORMAT], DateFormatPref.SYSTEM),
     weekStart = parseEnum(this[SettingsKeys.WEEK_START], WeekStart.MONDAY),

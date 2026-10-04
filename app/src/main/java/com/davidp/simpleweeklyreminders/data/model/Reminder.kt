@@ -51,8 +51,14 @@ data class Reminder(
     val archivedAt: LocalDateTime? = null,
     // Default HIGH preserves today's actual notification behavior (sticky, swipe = snooze)
     // for every existing reminder until the importance-driven behavior work (2.2) ships.
-    val importance: Importance = Importance.HIGH
+    val importance: Importance = Importance.HIGH,
+    // Custom tone: a ringtone URI, SILENT_SOUND, or null for its importance level's tone.
+    // Only used while "Per-reminder sounds" is on, and never for LOW (silent channel).
+    val sound: String? = null
 )
+
+/** [Reminder.sound] value for "None" in the tone picker — distinct from null (= level tone). */
+const val SILENT_SOUND = "silent"
 
 /** Whether this reminder's schedule includes the given date (ignores isActive). */
 fun Reminder.isScheduledOn(date: LocalDate): Boolean {

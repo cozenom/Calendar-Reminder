@@ -119,6 +119,7 @@ private fun ReminderForm(
     // MEDIUM for a new reminder — the middle level is the safe assumption, and HIGH is
     // only a migration default (see Reminder.kt), not one to inherit silently
     var importance by remember { mutableStateOf(initial?.importance ?: Importance.MEDIUM) }
+    var sound by remember { mutableStateOf(initial?.sound) }
     var showStartDatePicker by remember { mutableStateOf(false) }
     var showEndDatePicker by remember { mutableStateOf(false) }
     var showIconPicker by remember { mutableStateOf(false) }
@@ -249,6 +250,11 @@ private fun ReminderForm(
 
         SectionLabel("Importance")
         ImportanceSelector(importance = importance, onChanged = { importance = it })
+        // Hidden for Low: its channel is silent, so a tone would never play
+        if (LocalAppSettings.current.perReminderSounds && importance != Importance.LOW) {
+            Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
+            SoundSelector(sound = sound, onChanged = { sound = it })
+        }
 
         val dateFormat = LocalAppSettings.current.dateFormat
         val datePattern = dateFormat.datePattern(LocalContext.current)
@@ -349,7 +355,9 @@ private fun ReminderForm(
                             color = selectedColor,
                             dayInterval = if (recurrenceMode == ReminderType.EVERY_N_DAYS) dayInterval else null,
                             reminderType = recurrenceMode,
-                            importance = importance
+                            importance = importance,
+                            // Kept even while hidden (Low, or setting off), like colour
+                            sound = sound
                         )
                     )
                 },
