@@ -43,8 +43,8 @@ class ReminderRepositoryTest {
         startDate: LocalDate = monday,
         endDate: LocalDate? = null,
         reminderDays: Set<Int> = setOf(1, 2, 3, 4, 5, 6, 7),
-        dayInterval: Int? = null,
-        reminderType: ReminderType = if (dayInterval != null) ReminderType.EVERY_N_DAYS else ReminderType.SPECIFIC_DAYS,
+        interval: Int? = null,
+        reminderType: ReminderType = if (interval != null) ReminderType.INTERVAL else ReminderType.SPECIFIC_DAYS,
         isActive: Boolean = true,
         archivedAt: LocalDateTime? = null
     ) = Reminder(
@@ -54,7 +54,7 @@ class ReminderRepositoryTest {
         startDate = startDate,
         endDate = endDate,
         reminderDays = reminderDays,
-        dayInterval = dayInterval,
+        interval = interval,
         reminderType = reminderType,
         isActive = isActive,
         archivedAt = archivedAt
@@ -79,7 +79,7 @@ class ReminderRepositoryTest {
     @Test
     fun `insert on every-N-days interval steps by the interval from the start date`() = runBlocking {
         val (repo, _, logDao) = newRepository()
-        val r = reminder(startDate = monday, dayInterval = 3, endDate = monday.plusDays(10))
+        val r = reminder(startDate = monday, interval = 3, endDate = monday.plusDays(10))
 
         val id = repo.insert(r, now = beforeStart).toInt()
 
@@ -90,7 +90,7 @@ class ReminderRepositoryTest {
     @Test
     fun `update snaps an interval reminder forward to the next aligned day`() = runBlocking {
         val (repo, _, logDao) = newRepository()
-        val r = reminder(startDate = monday, dayInterval = 3, endDate = monday.plusDays(20))
+        val r = reminder(startDate = monday, interval = 3, endDate = monday.plusDays(20))
         val id = repo.insert(r, now = beforeStart).toInt()
         val midCycle = LocalDateTime.of(monday.plusDays(4), LocalTime.MIDNIGHT)
 
@@ -190,7 +190,7 @@ class ReminderRepositoryTest {
         val (repo, _, logDao) = newRepository()
         // Every 90 days, no end. The window must widen past the interval or the chain would
         // have nothing to arm — so at least the next occurrence must exist.
-        val r = reminder(startDate = monday, endDate = null, dayInterval = 90)
+        val r = reminder(startDate = monday, endDate = null, interval = 90)
         val today = LocalDateTime.of(monday, LocalTime.MIDNIGHT)
 
         val id = repo.insert(r, now = today).toInt()
@@ -401,7 +401,7 @@ class ReminderRepositoryTest {
     fun `insert backfills every-N-days on the correct cadence`() = runBlocking {
         val (repo, _, logDao) = newRepository()
         val now = LocalDateTime.of(monday.plusDays(10), LocalTime.NOON)
-        val r = reminder(startDate = monday, dayInterval = 3, endDate = monday.plusDays(9))
+        val r = reminder(startDate = monday, interval = 3, endDate = monday.plusDays(9))
 
         val id = repo.insert(r, now = now).toInt()
 

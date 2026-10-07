@@ -10,8 +10,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Builds a real v8 database from app/schemas/8.json, migrates it, and lets Room check the
- * result matches the v9 schema it expects. A mismatch fails here instead of crashing users.
+ * Builds a real database from an older app/schemas/<n>.json, migrates it, and lets Room check
+ * the result matches the next schema. A mismatch fails here instead of crashing users.
  */
 @RunWith(AndroidJUnit4::class)
 class MigrationTest {
@@ -42,6 +42,37 @@ class MigrationTest {
                 assertEquals("Water plants", cursor.getString(0))
                 // Existing reminders keep their importance level's tone
                 assertTrue(cursor.isNull(1))
+            }
+        }
+    }
+
+    @Test
+    fun migrate9To10_everyNDaysBecomesIntervalInDays() {
+        helper.createDatabase(DB_NAME, 9).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO reminders (id, title, reminderTimes, startDate, reminderDays, dayInterval,
+                    reminderType, isActive, createdAt, sortOrder, importance)
+                VALUES (1, 'Water plants', '09:00', '2026-01-01', '1,2,3', 3, 'EVERY_N_DAYS',
+                    1, '2026-01-01T08:00', 0, 'HIGH'),
+                    (2, 'Gym', '07:00', '2026-01-01', '1,3', NULL, 'SPECIFIC_DAYS',
+                    1, '2026-01-01T08:00', 1, 'HIGH')
+                """.trimIndent()
+            )
+        }
+
+        helper.runMigrationsAndValidate(DB_NAME, 10, true, MIGRATION_9_10).use { db ->
+            db.query(
+                "SELECT reminderType, dayInterval, intervalUnit, monthlyMode FROM reminders ORDER BY id"
+            ).use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("INTERVAL", cursor.getString(0))
+                assertEquals(3, cursor.getInt(1))
+                assertEquals("DAYS", cursor.getString(2))
+                assertEquals("DAY_OF_MONTH", cursor.getString(3))
+                // Other types are untouched
+                assertTrue(cursor.moveToNext())
+                assertEquals("SPECIFIC_DAYS", cursor.getString(0))
             }
         }
     }

@@ -5,14 +5,13 @@ import com.davidp.simpleweeklyreminders.data.dao.ReminderLogDao
 import com.davidp.simpleweeklyreminders.data.model.OccurrenceCounts
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderLog
-import com.davidp.simpleweeklyreminders.data.model.ReminderType
 import com.davidp.simpleweeklyreminders.data.model.countOutcomes
+import com.davidp.simpleweeklyreminders.data.model.cycleDays
 import com.davidp.simpleweeklyreminders.data.model.isScheduledOn
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
-import java.time.temporal.ChronoUnit
 
 class ReminderRepository(
     private val reminderDao: ReminderDao,
@@ -148,7 +147,7 @@ class ReminderRepository(
         // Anchored on max(today, loopStart) so a future-dated reminder still gets its first
         // occurrence; widened past a long interval so the next occurrence always lands inside
         // the window (otherwise the chain would have nothing to arm). endDate still caps it.
-        val windowDays = maxOf(FORWARD_WINDOW_DAYS, (reminder.dayInterval?.toLong() ?: 0L) + 1L)
+        val windowDays = maxOf(FORWARD_WINDOW_DAYS, reminder.cycleDays() + 1L)
         val horizon = maxOf(currentDate, loopStart).plusDays(windowDays)
         val endDate = reminder.endDate?.let { if (it < horizon) it else horizon } ?: horizon
         // distinct(): reminders saved before the form deduped times may still hold
@@ -173,23 +172,13 @@ class ReminderRepository(
             }
         }
 
-        if (reminder.reminderType == ReminderType.EVERY_N_DAYS) {
-            val interval = reminder.dayInterval ?: 1
-            val daysSinceStart = ChronoUnit.DAYS.between(reminder.startDate, loopStart)
-            val offset = daysSinceStart % interval
-            var date = if (offset == 0L) loopStart else loopStart.plusDays(interval - offset)
-            while (date <= endDate) {
+        // One walk for every type: isScheduledOn is the single source of truth for the cadence
+        var date = loopStart
+        while (date <= endDate) {
+            if (reminder.isScheduledOn(date)) {
                 for (time in times) addIfNew(date, time)
-                date = date.plusDays(interval.toLong())
             }
-        } else {
-            var date = loopStart
-            while (date <= endDate) {
-                if (reminder.reminderDays.contains(date.dayOfWeek.value)) {
-                    for (time in times) addIfNew(date, time)
-                }
-                date = date.plusDays(1)
-            }
+            date = date.plusDays(1)
         }
 
         if (newLogs.isNotEmpty()) reminderLogDao.insertAll(newLogs)

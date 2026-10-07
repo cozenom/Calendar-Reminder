@@ -150,7 +150,7 @@ object DebugTools {
             )),
             Sample(Reminder(
                 title = "Drink water", reminderTimes = listOf(t(10), t(13), t(16)),
-                startDate = daysAgo(21), reminderType = ReminderType.EVERY_N_DAYS, dayInterval = 1,
+                startDate = daysAgo(21), reminderType = ReminderType.INTERVAL, interval = 1,
                 icon = "waterDrop", color = "teal", importance = Importance.LOW
             )),
             Sample(Reminder(
@@ -164,7 +164,7 @@ object DebugTools {
             )),
             Sample(Reminder(
                 title = "Water the plants", reminderTimes = listOf(t(18)), startDate = daysAgo(30),
-                reminderType = ReminderType.EVERY_N_DAYS, dayInterval = 3, icon = "eco", color = "moss",
+                reminderType = ReminderType.INTERVAL, interval = 3, icon = "eco", color = "moss",
                 importance = Importance.LOW, notes = "Fern needs extra on hot days"
             )),
             Sample(Reminder(
@@ -187,7 +187,7 @@ object DebugTools {
             )),
             Sample(Reminder(
                 title = "Change bedsheets", reminderTimes = listOf(t(11)), startDate = daysAgo(42),
-                reminderType = ReminderType.EVERY_N_DAYS, dayInterval = 14, icon = "kingBed",
+                reminderType = ReminderType.INTERVAL, interval = 14, icon = "kingBed",
                 color = "indigo", importance = Importance.LOW
             )),
             // No icon, colour or notes — exercises the defaults

@@ -31,7 +31,7 @@ class ReminderSummaryTest {
     private fun reminder(
         reminderDays: Set<Int> = setOf(1, 2, 3, 4, 5, 6, 7),
         reminderType: ReminderType = ReminderType.SPECIFIC_DAYS,
-        dayInterval: Int? = null,
+        interval: Int? = null,
         startDate: LocalDate = monday,
         endDate: LocalDate? = null,
         times: List<LocalTime> = listOf(LocalTime.of(9, 0)),
@@ -42,7 +42,7 @@ class ReminderSummaryTest {
         startDate = startDate,
         endDate = endDate,
         reminderDays = reminderDays,
-        dayInterval = dayInterval,
+        interval = interval,
         reminderType = reminderType,
         isActive = isActive,
         importance = Importance.MEDIUM
@@ -58,12 +58,12 @@ class ReminderSummaryTest {
 
     @Test
     fun `every n days reads as every day when the interval is one`() {
-        assertEquals("Every day", summaryOf(reminder(reminderType = ReminderType.EVERY_N_DAYS, dayInterval = 1)))
+        assertEquals("Every day", summaryOf(reminder(reminderType = ReminderType.INTERVAL, interval = 1)))
     }
 
     @Test
     fun `every n days names the interval`() {
-        assertEquals("Every 3 days", summaryOf(reminder(reminderType = ReminderType.EVERY_N_DAYS, dayInterval = 3)))
+        assertEquals("Every 3 days", summaryOf(reminder(reminderType = ReminderType.INTERVAL, interval = 3)))
     }
 
     @Test

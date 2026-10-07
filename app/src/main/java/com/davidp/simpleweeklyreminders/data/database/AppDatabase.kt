@@ -19,9 +19,21 @@ val MIGRATION_8_9 = object : Migration(8, 9) {
     }
 }
 
+/**
+ * v10: EVERY_N_DAYS -> INTERVAL with a unit. Old rows become "every N days" (the DEFAULTs).
+ * The type rename must run: an unknown enum name crashes ReminderType.valueOf on read.
+ */
+val MIGRATION_9_10 = object : Migration(9, 10) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("UPDATE reminders SET reminderType = 'INTERVAL' WHERE reminderType = 'EVERY_N_DAYS'")
+        db.execSQL("ALTER TABLE reminders ADD COLUMN intervalUnit TEXT NOT NULL DEFAULT 'DAYS'")
+        db.execSQL("ALTER TABLE reminders ADD COLUMN monthlyMode TEXT NOT NULL DEFAULT 'DAY_OF_MONTH'")
+    }
+}
+
 @Database(
     entities = [Reminder::class, ReminderLog::class],
-    version = 9,
+    version = 10,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -44,7 +56,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "app_database"
-                ).addMigrations(MIGRATION_8_9).build()
+                ).addMigrations(MIGRATION_8_9, MIGRATION_9_10).build()
                 INSTANCE = instance
                 instance
             }

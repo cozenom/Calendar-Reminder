@@ -28,12 +28,26 @@ import com.davidp.simpleweeklyreminders.ui.theme.appShapes
  */
 @Composable
 fun RecurrenceToggle(mode: ReminderType, onChanged: (ReminderType) -> Unit, enabled: Boolean = true) {
-    val options = listOf(
-        ReminderType.SPECIFIC_DAYS to "Weekdays",
-        ReminderType.EVERY_N_DAYS to "Every X days",
-        ReminderType.ONE_TIME to "One-time"
+    SegmentedToggle(
+        options = listOf(
+            ReminderType.SPECIFIC_DAYS to "Weekdays",
+            ReminderType.INTERVAL to "Every…",
+            ReminderType.ONE_TIME to "One-time"
+        ),
+        selected = mode,
+        onChanged = onChanged,
+        enabled = enabled
     )
+}
 
+/** Equal-width segmented control: one option per segment, labels as given. */
+@Composable
+fun <T> SegmentedToggle(
+    options: List<Pair<T, String>>,
+    selected: T,
+    onChanged: (T) -> Unit,
+    enabled: Boolean = true
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -42,29 +56,29 @@ fun RecurrenceToggle(mode: ReminderType, onChanged: (ReminderType) -> Unit, enab
             .padding(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        options.forEach { (type, label) ->
-            val selected = type == mode
+        options.forEach { (value, label) ->
+            val isSelected = value == selected
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .clip(MaterialTheme.appShapes.small)
                     .background(
-                        if (selected) MaterialTheme.colorScheme.primaryContainer
+                        if (isSelected) MaterialTheme.colorScheme.primaryContainer
                         else MaterialTheme.colorScheme.surfaceVariant
                     )
                     .selectable(
-                        selected = selected,
+                        selected = isSelected,
                         enabled = enabled,
-                        onClick = { onChanged(type) },
+                        onClick = { onChanged(value) },
                         role = Role.RadioButton
                     )
                     .padding(vertical = 9.dp),
                 contentAlignment = Alignment.Center
             ) {
                 // Locked: the unselected labels fade to M3's disabled alpha, the selected one
-                // stays readable so the current type is still obvious
+                // stays readable so the current choice is still obvious
                 val color = when {
-                    selected -> MaterialTheme.colorScheme.onPrimaryContainer
+                    isSelected -> MaterialTheme.colorScheme.onPrimaryContainer
                     enabled -> MaterialTheme.colorScheme.onSurfaceVariant
                     else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
                 }

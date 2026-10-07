@@ -4,7 +4,7 @@ Ever wonder "Did I fill the cat feeder? Water the plants? Take my meds?" Every o
 
 The calendar is the home screen: each day shows what's done, pending or missed, so you can see the week at a glance.
 
-• Repeat on chosen weekdays, every N days, or just once — with multiple times per day
+• Repeat on chosen weekdays, every N days, weeks, months or years, or just once — with multiple times per day
 • Snooze, pause, or archive without losing history
 • Importance levels control how insistent the notification is, each with its own tone, or pick one per reminder
 • Missed summary after a restart

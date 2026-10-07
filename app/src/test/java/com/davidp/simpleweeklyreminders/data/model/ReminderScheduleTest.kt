@@ -25,8 +25,8 @@ class ReminderScheduleTest {
         startDate: LocalDate = monday,
         endDate: LocalDate? = null,
         reminderDays: Set<Int> = setOf(1, 2, 3, 4, 5, 6, 7),
-        dayInterval: Int? = null,
-        reminderType: ReminderType = if (dayInterval != null) ReminderType.EVERY_N_DAYS else ReminderType.SPECIFIC_DAYS,
+        interval: Int? = null,
+        reminderType: ReminderType = if (interval != null) ReminderType.INTERVAL else ReminderType.SPECIFIC_DAYS,
         archivedAt: LocalDateTime? = null
     ) = Reminder(
         title = "Test",
@@ -34,7 +34,7 @@ class ReminderScheduleTest {
         startDate = startDate,
         endDate = endDate,
         reminderDays = reminderDays,
-        dayInterval = dayInterval,
+        interval = interval,
         reminderType = reminderType,
         archivedAt = archivedAt
     )
@@ -94,11 +94,11 @@ class ReminderScheduleTest {
         assertTrue(r.isScheduledOn(monday.plusYears(10)))
     }
 
-    // --- Every-N-days (dayInterval) mode ---
+    // --- Every-N-days (interval) mode ---
 
     @Test
     fun `interval of 3 hits every third day from start`() {
-        val r = reminder(startDate = monday, dayInterval = 3)
+        val r = reminder(startDate = monday, interval = 3)
         assertTrue(r.isScheduledOn(monday))
         assertFalse(r.isScheduledOn(monday.plusDays(1)))
         assertFalse(r.isScheduledOn(monday.plusDays(2)))
@@ -108,7 +108,7 @@ class ReminderScheduleTest {
 
     @Test
     fun `interval of 1 hits every day`() {
-        val r = reminder(startDate = monday, dayInterval = 1)
+        val r = reminder(startDate = monday, interval = 1)
         assertTrue(r.isScheduledOn(monday))
         assertTrue(r.isScheduledOn(monday.plusDays(1)))
         assertTrue(r.isScheduledOn(monday.plusDays(2)))
@@ -117,13 +117,13 @@ class ReminderScheduleTest {
     @Test
     fun `interval mode ignores selected weekdays`() {
         // Weekday set says Mondays only, but interval mode takes precedence
-        val r = reminder(startDate = monday, reminderDays = setOf(1), dayInterval = 2)
+        val r = reminder(startDate = monday, reminderDays = setOf(1), interval = 2)
         assertTrue(r.isScheduledOn(monday.plusDays(2))) // a Wednesday
     }
 
     @Test
     fun `interval respects start and end boundaries`() {
-        val r = reminder(startDate = monday, endDate = monday.plusDays(6), dayInterval = 3)
+        val r = reminder(startDate = monday, endDate = monday.plusDays(6), interval = 3)
         assertFalse(r.isScheduledOn(monday.minusDays(3)))
         assertTrue(r.isScheduledOn(monday.plusDays(6)))
         assertFalse(r.isScheduledOn(monday.plusDays(9)))
@@ -157,7 +157,7 @@ class ReminderScheduleTest {
 
     @Test
     fun `coversDate ignores the every-N-days cadence`() {
-        val r = reminder(startDate = monday, dayInterval = 3)
+        val r = reminder(startDate = monday, interval = 3)
         assertFalse(r.isScheduledOn(tuesday))
         assertTrue(r.coversDate(tuesday))
     }

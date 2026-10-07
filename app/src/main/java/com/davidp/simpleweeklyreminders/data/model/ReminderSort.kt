@@ -8,7 +8,8 @@ fun nextOccurrence(reminder: Reminder, now: LocalDateTime = LocalDateTime.now())
 
     val sortedTimes = reminder.reminderTimes.sorted()
     var date = maxOf(reminder.startDate, now.toLocalDate())
-    val endDate = reminder.endDate ?: date.plusYears(1)
+    // Reaches one full cycle, so "every 2 years" still finds its next date
+    val endDate = reminder.endDate ?: date.plusDays(reminder.cycleDays())
 
     while (date <= endDate) {
         if (reminder.isScheduledOn(date)) {

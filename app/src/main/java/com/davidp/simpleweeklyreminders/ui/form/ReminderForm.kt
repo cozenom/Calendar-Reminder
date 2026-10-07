@@ -49,6 +49,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.davidp.simpleweeklyreminders.data.model.DEFAULT_ICON_KEY
 import com.davidp.simpleweeklyreminders.data.model.Importance
+import com.davidp.simpleweeklyreminders.data.model.IntervalUnit
+import com.davidp.simpleweeklyreminders.data.model.MonthlyMode
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderType
 import com.davidp.simpleweeklyreminders.data.model.iconFromKey
@@ -60,6 +62,7 @@ import com.davidp.simpleweeklyreminders.debug.DebugTools
 import com.davidp.simpleweeklyreminders.ui.calendar.CalendarDialog
 import com.davidp.simpleweeklyreminders.ui.components.GroupSurface
 import com.davidp.simpleweeklyreminders.ui.components.SectionLabel
+import com.davidp.simpleweeklyreminders.ui.reminders.monthlyDayLabel
 import com.davidp.simpleweeklyreminders.ui.theme.LocalAppSettings
 import com.davidp.simpleweeklyreminders.ui.theme.appShapes
 import com.davidp.simpleweeklyreminders.ui.theme.dimensions
@@ -112,7 +115,9 @@ private fun ReminderForm(
     var endDate by remember { mutableStateOf(initial?.endDate) }
     var reminderDays by remember { mutableStateOf(initial?.reminderDays ?: setOf(1, 2, 3, 4, 5, 6, 7)) }
     var recurrenceMode by remember { mutableStateOf(initial?.reminderType ?: ReminderType.SPECIFIC_DAYS) }
-    var dayInterval by remember { mutableIntStateOf(initial?.dayInterval ?: 1) }
+    var interval by remember { mutableIntStateOf(initial?.interval ?: 1) }
+    var intervalUnit by remember { mutableStateOf(initial?.intervalUnit ?: IntervalUnit.DAYS) }
+    var monthlyMode by remember { mutableStateOf(initial?.monthlyMode ?: MonthlyMode.DAY_OF_MONTH) }
     var notes by remember { mutableStateOf(initial?.notes ?: "") }
     var selectedIcon by remember { mutableStateOf(initial?.icon ?: DEFAULT_ICON_KEY) }
     var selectedColor by remember { mutableStateOf(initial?.color) }
@@ -189,9 +194,30 @@ private fun ReminderForm(
             enabled = initial == null
         )
         when (recurrenceMode) {
-            ReminderType.EVERY_N_DAYS -> {
+            ReminderType.INTERVAL -> {
                 Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-                DayIntervalSelector(interval = dayInterval, onIntervalChange = { dayInterval = it })
+                IntervalSelector(
+                    interval = interval,
+                    unit = intervalUnit,
+                    onIntervalChange = { interval = it },
+                    onUnitChange = { intervalUnit = it }
+                )
+                when (intervalUnit) {
+                    IntervalUnit.WEEKS -> {
+                        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
+                        WeekdaySelector(selectedDays = reminderDays, onDaysChanged = { reminderDays = it })
+                    }
+                    // Both choices read off the start date, so they relabel as it changes
+                    IntervalUnit.MONTHS -> {
+                        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
+                        SegmentedToggle(
+                            options = MonthlyMode.entries.map { it to "On ${monthlyDayLabel(startDate, it)}" },
+                            selected = monthlyMode,
+                            onChanged = { monthlyMode = it }
+                        )
+                    }
+                    IntervalUnit.DAYS, IntervalUnit.YEARS -> {} // start date says it all
+                }
             }
             ReminderType.SPECIFIC_DAYS -> {
                 Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
@@ -353,8 +379,10 @@ private fun ReminderForm(
                             notes = notes.ifBlank { null },
                             icon = selectedIcon,
                             color = selectedColor,
-                            dayInterval = if (recurrenceMode == ReminderType.EVERY_N_DAYS) dayInterval else null,
+                            interval = if (recurrenceMode == ReminderType.INTERVAL) interval else null,
                             reminderType = recurrenceMode,
+                            intervalUnit = intervalUnit,
+                            monthlyMode = monthlyMode,
                             importance = importance,
                             // Kept even while hidden (Low, or setting off), like colour
                             sound = sound
