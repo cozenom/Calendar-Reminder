@@ -1,5 +1,7 @@
 package com.davidp.simpleweeklyreminders.data.database
 
+import com.davidp.simpleweeklyreminders.data.model.IntervalUnit
+import com.davidp.simpleweeklyreminders.data.model.MonthlyMode
 import com.davidp.simpleweeklyreminders.data.model.ReminderType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -102,6 +104,20 @@ class ConvertersTest {
     fun `reminderType round trips for every value`() {
         ReminderType.entries.forEach { value ->
             assertEquals(value, converters.toReminderType(converters.fromReminderType(value)))
+        }
+    }
+
+    @Test
+    fun `intervalUnit round trips for every value`() {
+        IntervalUnit.entries.forEach { value ->
+            assertEquals(value, converters.toIntervalUnit(converters.fromIntervalUnit(value)))
+        }
+    }
+
+    @Test
+    fun `monthlyMode round trips for every value`() {
+        MonthlyMode.entries.forEach { value ->
+            assertEquals(value, converters.toMonthlyMode(converters.fromMonthlyMode(value)))
         }
     }
 }

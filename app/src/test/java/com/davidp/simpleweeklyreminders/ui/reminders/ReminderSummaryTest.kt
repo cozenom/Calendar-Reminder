@@ -1,6 +1,8 @@
 package com.davidp.simpleweeklyreminders.ui.reminders
 
 import com.davidp.simpleweeklyreminders.data.model.Importance
+import com.davidp.simpleweeklyreminders.data.model.IntervalUnit
+import com.davidp.simpleweeklyreminders.data.model.MonthlyMode
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderType
 import com.davidp.simpleweeklyreminders.ui.components.weekdayShortName
@@ -32,6 +34,7 @@ class ReminderSummaryTest {
         reminderDays: Set<Int> = setOf(1, 2, 3, 4, 5, 6, 7),
         reminderType: ReminderType = ReminderType.SPECIFIC_DAYS,
         interval: Int? = null,
+        intervalUnit: IntervalUnit = IntervalUnit.DAYS,
         startDate: LocalDate = monday,
         endDate: LocalDate? = null,
         times: List<LocalTime> = listOf(LocalTime.of(9, 0)),
@@ -44,6 +47,7 @@ class ReminderSummaryTest {
         reminderDays = reminderDays,
         interval = interval,
         reminderType = reminderType,
+        intervalUnit = intervalUnit,
         isActive = isActive,
         importance = Importance.MEDIUM
     )
@@ -64,6 +68,55 @@ class ReminderSummaryTest {
     @Test
     fun `every n days names the interval`() {
         assertEquals("Every 3 days", summaryOf(reminder(reminderType = ReminderType.INTERVAL, interval = 3)))
+    }
+
+    @Test
+    fun `every n weeks lists its days`() {
+        val days = listOf(1, 3).joinToString(", ") { weekdayShortName(it) }
+        val r = reminder(
+            reminderType = ReminderType.INTERVAL, interval = 2,
+            intervalUnit = IntervalUnit.WEEKS, reminderDays = setOf(3, 1)
+        )
+        assertEquals("Every 2 weeks on $days", summaryOf(r))
+    }
+
+    @Test
+    fun `monthly names the day of month`() {
+        val start = LocalDate.of(2026, 1, 15)
+        val r = reminder(
+            reminderType = ReminderType.INTERVAL, interval = 2,
+            intervalUnit = IntervalUnit.MONTHS, startDate = start
+        )
+        assertEquals("Every 2 months on the 15th", summaryOf(r, today = start))
+    }
+
+    @Test
+    fun `yearly names the date without a year`() {
+        val start = LocalDate.of(2026, 3, 4)
+        val r = reminder(
+            reminderType = ReminderType.INTERVAL, interval = 1,
+            intervalUnit = IntervalUnit.YEARS, startDate = start
+        )
+        // Month name comes from the locale, so build it the same way
+        val date = start.format(DateTimeFormatter.ofPattern(dateNoYearPattern))
+        assertEquals("Every year on $date", summaryOf(r, today = start))
+    }
+
+    @Test
+    fun `monthly day labels use the right ordinal suffix`() {
+        mapOf(1 to "1st", 2 to "2nd", 3 to "3rd", 4 to "4th", 11 to "11th", 12 to "12th",
+            13 to "13th", 21 to "21st", 22 to "22nd", 23 to "23rd", 31 to "31st"
+        ).forEach { (day, expected) ->
+            assertEquals("the $expected", monthlyDayLabel(LocalDate.of(2026, 1, day), MonthlyMode.DAY_OF_MONTH))
+        }
+    }
+
+    @Test
+    fun `nth weekday label names the week and the day`() {
+        // 2026-01-19 is the 3rd Monday; 2026-03-30 the 5th, which reads as "last"
+        val mon = weekdayShortName(1)
+        assertEquals("the 3rd $mon", monthlyDayLabel(LocalDate.of(2026, 1, 19), MonthlyMode.NTH_WEEKDAY))
+        assertEquals("the last $mon", monthlyDayLabel(LocalDate.of(2026, 3, 30), MonthlyMode.NTH_WEEKDAY))
     }
 
     @Test
