@@ -125,6 +125,7 @@ private fun ReminderForm(
     // only a migration default (see Reminder.kt), not one to inherit silently
     var importance by remember { mutableStateOf(initial?.importance ?: Importance.MEDIUM) }
     var sound by remember { mutableStateOf(initial?.sound) }
+    var snoozeMinutes by remember { mutableStateOf(initial?.snoozeMinutes) }
     var showStartDatePicker by remember { mutableStateOf(false) }
     var showEndDatePicker by remember { mutableStateOf(false) }
     var showIconPicker by remember { mutableStateOf(false) }
@@ -281,6 +282,8 @@ private fun ReminderForm(
             Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
             SoundSelector(sound = sound, onChanged = { sound = it })
         }
+        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
+        SnoozeSelector(minutes = snoozeMinutes, onChanged = { snoozeMinutes = it })
 
         val dateFormat = LocalAppSettings.current.dateFormat
         val datePattern = dateFormat.datePattern(LocalContext.current)
@@ -385,7 +388,8 @@ private fun ReminderForm(
                             monthlyMode = monthlyMode,
                             importance = importance,
                             // Kept even while hidden (Low, or setting off), like colour
-                            sound = sound
+                            sound = sound,
+                            snoozeMinutes = snoozeMinutes
                         )
                     )
                 },

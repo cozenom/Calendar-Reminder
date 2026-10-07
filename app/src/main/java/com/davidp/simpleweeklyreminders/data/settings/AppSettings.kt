@@ -48,6 +48,9 @@ data class AppSettingsState(
     }
 }
 
+/** Snooze lengths offered in Settings and the reminder form, in minutes. */
+val SNOOZE_PRESET_MINUTES = listOf(5, 10, 15, 30, 45, 60)
+
 // One DataStore file per process; the delegate must be top-level (a single instance).
 private val Context.settingsDataStore by preferencesDataStore(name = "settings")
 

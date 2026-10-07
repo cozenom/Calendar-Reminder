@@ -196,7 +196,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
             .addAction(R.drawable.ic_notification, "Dismiss", dismissPendingIntent)
             .addAction(
                 R.drawable.ic_notification,
-                "Snooze ${settings.snoozeMinutes}m",
+                "Snooze ${reminder?.snoozeMinutes ?: settings.snoozeMinutes}m",
                 snoozePendingIntent
             )
             .addAction(R.drawable.ic_notification, "Complete", completedPendingIntent)
@@ -264,7 +264,9 @@ class NotificationActionReceiver : BroadcastReceiver() {
         val database = AppDatabase.getDatabase(context)
         val log = database.reminderLogDao().getLogById(logId) ?: return
 
-        val snoozeMinutes = SettingsRepository(context).read().snoozeMinutes
+        // Same lookup as the button label, so the tap matches what it said
+        val snoozeMinutes = database.reminderDao().getReminderById(log.reminderId)?.snoozeMinutes
+            ?: SettingsRepository(context).read().snoozeMinutes
         val snoozedUntil = LocalDateTime.now().plusMinutes(snoozeMinutes.toLong())
         // DB first so the snooze survives reboot/force-stop; the alarm is re-derivable
         database.reminderLogDao().updateSnoozedUntil(logId, snoozedUntil)

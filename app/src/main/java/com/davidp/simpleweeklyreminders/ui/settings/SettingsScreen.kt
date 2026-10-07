@@ -51,6 +51,7 @@ import androidx.core.net.toUri
 import com.davidp.simpleweeklyreminders.data.model.Importance
 import com.davidp.simpleweeklyreminders.data.notification.NotificationActionReceiver
 import com.davidp.simpleweeklyreminders.data.settings.DateFormatPref
+import com.davidp.simpleweeklyreminders.data.settings.SNOOZE_PRESET_MINUTES
 import com.davidp.simpleweeklyreminders.data.settings.SettingsRepository
 import com.davidp.simpleweeklyreminders.data.settings.ThemeMode
 import com.davidp.simpleweeklyreminders.data.settings.TimeFormatPref
@@ -71,9 +72,6 @@ import kotlinx.coroutines.launch
 // Console listing. Editing the markdown updates this page on the next push.
 private const val PRIVACY_POLICY_URL =
     "https://cozenom.github.io/Calendar-Reminder/privacy-policy"
-
-/** Snooze lengths offered in Settings, in minutes. */
-private val SNOOZE_PRESET_MINUTES = listOf(5, 10, 15, 30, 45, 60)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

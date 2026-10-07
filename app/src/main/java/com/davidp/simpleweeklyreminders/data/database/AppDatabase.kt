@@ -22,12 +22,14 @@ val MIGRATION_8_9 = object : Migration(8, 9) {
 /**
  * v10: EVERY_N_DAYS -> INTERVAL with a unit. Old rows become "every N days" (the DEFAULTs).
  * The type rename must run: an unknown enum name crashes ReminderType.valueOf on read.
+ * Also per-reminder snooze length: nullable, so existing rows keep the global length.
  */
 val MIGRATION_9_10 = object : Migration(9, 10) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("UPDATE reminders SET reminderType = 'INTERVAL' WHERE reminderType = 'EVERY_N_DAYS'")
         db.execSQL("ALTER TABLE reminders ADD COLUMN intervalUnit TEXT NOT NULL DEFAULT 'DAYS'")
         db.execSQL("ALTER TABLE reminders ADD COLUMN monthlyMode TEXT NOT NULL DEFAULT 'DAY_OF_MONTH'")
+        db.execSQL("ALTER TABLE reminders ADD COLUMN snoozeMinutes INTEGER")
     }
 }
 

@@ -63,13 +63,15 @@ class MigrationTest {
 
         helper.runMigrationsAndValidate(DB_NAME, 10, true, MIGRATION_9_10).use { db ->
             db.query(
-                "SELECT reminderType, dayInterval, intervalUnit, monthlyMode FROM reminders ORDER BY id"
+                "SELECT reminderType, dayInterval, intervalUnit, monthlyMode, snoozeMinutes FROM reminders ORDER BY id"
             ).use { cursor ->
                 assertTrue(cursor.moveToFirst())
                 assertEquals("INTERVAL", cursor.getString(0))
                 assertEquals(3, cursor.getInt(1))
                 assertEquals("DAYS", cursor.getString(2))
                 assertEquals("DAY_OF_MONTH", cursor.getString(3))
+                // Existing reminders keep the global snooze length
+                assertTrue(cursor.isNull(4))
                 // Other types are untouched
                 assertTrue(cursor.moveToNext())
                 assertEquals("SPECIFIC_DAYS", cursor.getString(0))

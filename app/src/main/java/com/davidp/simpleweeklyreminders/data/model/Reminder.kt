@@ -69,7 +69,9 @@ data class Reminder(
     val importance: Importance = Importance.HIGH,
     // Custom tone: a ringtone URI, SILENT_SOUND, or null for its importance level's tone.
     // Only used while "Per-reminder sounds" is on, and never for LOW (silent channel).
-    val sound: String? = null
+    val sound: String? = null,
+    // Snooze length in minutes, or null for the global Settings length
+    val snoozeMinutes: Int? = null
 )
 
 /** [Reminder.sound] value for "None" in the tone picker — distinct from null (= level tone). */

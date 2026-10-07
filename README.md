@@ -40,7 +40,7 @@ The same calendar in three of the eight packs — each works in light and dark.
 - **Multiple Daily Times** — Schedule a reminder to fire more than once per day
 - **Completion Tracking** — The calendar (the default screen) shows done, pending and missed at a glance, one pip per occurrence
 - **Importance Levels** — Low, medium or high, which drives how insistent the notification is, with a tone you pick per level, or per reminder (optional)
-- **Snooze** — Defer an occurrence without it counting as missed; snooze length is configurable
+- **Snooze** — Defer an occurrence without it counting as missed; snooze length is configurable, globally or per reminder
 - **Pause & Resume** — Silence a reminder for a while without losing its schedule or history
 - **Notes** — Attach free-form notes to a reminder, tucked behind a toggle on the card
 - **Missed Summary** — On restart, a notification lists what was missed while the device was off (can be turned off)
