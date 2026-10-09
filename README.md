@@ -50,7 +50,7 @@ The same calendar in three of the eight packs — each works in light and dark.
 - **8 Theme Packs + Material You** — Light, dark or system, with optional per-reminder colours
 - **100 Custom Icons** — Choose from icons across 7 categories: General, Health, Nature, Food, Home, Work, and Sport
 - **Your Formats** — 12/24-hour time, date format and first day of the week, or follow the system
-- **Optional End Date** — Set a reminder to expire after a certain date, or leave it open-ended
+- **Optional End** — End on a date or after a number of times, or leave it open-ended
 - **Discrete Notifications** — Notifications show only the name you give the reminder, nothing else
 - **Always Works** — Survives device reboots, no internet connection required
 

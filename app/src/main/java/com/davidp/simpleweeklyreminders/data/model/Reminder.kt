@@ -145,6 +145,24 @@ fun Reminder.cycleDays(): Long {
 }
 
 /**
+ * Date of the [n]th scheduled day on or after [from] (ignores endDate), for "End after N
+ * times". Counts days, not times: two times a day still counts once. Null if none is found.
+ */
+fun Reminder.nthOccurrenceDate(n: Int, from: LocalDate): LocalDate? {
+    if (n < 1) return null
+    val open = copy(endDate = null)
+    var date = maxOf(from, startDate)
+    // Each occurrence is at most cycleDays() after the last, so n cycles always reach the nth
+    val last = date.plusDays(n * cycleDays())
+    var seen = 0
+    while (date <= last) {
+        if (open.isScheduledOn(date) && ++seen == n) return date
+        date = date.plusDays(1)
+    }
+    return null
+}
+
+/**
  * Whether this reminder's date range covers the given date. Unlike [isScheduledOn] this
  * ignores the day-of-week/interval cadence — it answers "did this reminder exist on that
  * day", which is what looking up a log's icon/importance needs (including for reminders

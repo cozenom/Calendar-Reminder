@@ -14,13 +14,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -36,6 +40,7 @@ import androidx.compose.material3.TimePickerDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -43,8 +48,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.davidp.simpleweeklyreminders.data.model.DEFAULT_ICON_KEY
@@ -54,6 +63,7 @@ import com.davidp.simpleweeklyreminders.data.model.MonthlyMode
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderType
 import com.davidp.simpleweeklyreminders.data.model.iconFromKey
+import com.davidp.simpleweeklyreminders.data.model.nthOccurrenceDate
 import com.davidp.simpleweeklyreminders.data.settings.datePattern
 import com.davidp.simpleweeklyreminders.data.settings.dateNoYearPattern
 import com.davidp.simpleweeklyreminders.data.settings.is24Hour
@@ -132,6 +142,10 @@ private fun ReminderForm(
     var snoozeMinutes by remember { mutableStateOf(initial?.snoozeMinutes) }
     var showStartDatePicker by remember { mutableStateOf(false) }
     var showEndDatePicker by remember { mutableStateOf(false) }
+    // Count for "End after N times"; null = end by date (or never)
+    var endAfter by remember { mutableStateOf<Int?>(null) }
+    var showEndMenu by remember { mutableStateOf(false) }
+    var showEndCountDialog by remember { mutableStateOf(false) }
     var showIconPicker by remember { mutableStateOf(false) }
 
     Column(
@@ -292,7 +306,25 @@ private fun ReminderForm(
         val dateFormat = LocalAppSettings.current.dateFormat
         val datePattern = dateFormat.datePattern(LocalContext.current)
         val dateNoYearPattern = dateFormat.dateNoYearPattern(LocalContext.current)
-        val endBeforeStart = recurrenceMode != ReminderType.ONE_TIME && endDate?.isBefore(startDate) == true
+        // "After N times" stays a count while the form is open, so changing the schedule moves
+        // the end with it. Only the resulting date is saved: no column for the count.
+        val countFrom = maxOf(startDate, LocalDate.now())
+        val countedEnd = remember(endAfter, countFrom, reminderDays, recurrenceMode, interval, intervalUnit, monthlyMode) {
+            endAfter?.let { n ->
+                Reminder(
+                    title = "",
+                    reminderTimes = times,
+                    startDate = startDate,
+                    reminderDays = reminderDays,
+                    interval = interval,
+                    reminderType = recurrenceMode,
+                    intervalUnit = intervalUnit,
+                    monthlyMode = monthlyMode
+                ).nthOccurrenceDate(n, countFrom)
+            }
+        }
+        val effectiveEnd = if (endAfter != null) countedEnd else endDate
+        val endBeforeStart = recurrenceMode != ReminderType.ONE_TIME && effectiveEnd?.isBefore(startDate) == true
         val oneTimeInPast = recurrenceMode == ReminderType.ONE_TIME &&
             times.all { LocalDateTime.of(startDate, it) <= LocalDateTime.now() }
 
@@ -308,17 +340,34 @@ private fun ReminderForm(
             )
             if (recurrenceMode != ReminderType.ONE_TIME) {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                ValueRow(
-                    label = "Ends",
-                    value = endDate?.format(DateTimeFormatter.ofPattern(dateNoYearPattern)) ?: "Never",
-                    muted = endDate == null,
-                    onClick = { showEndDatePicker = true },
-                    trailing = {
-                        if (endDate != null) {
-                            TextButton(onClick = { endDate = null }) { Text("Clear") }
+                val endText = effectiveEnd?.format(DateTimeFormatter.ofPattern(dateNoYearPattern))
+                // Box anchors the menu under the row
+                Box {
+                    ValueRow(
+                        label = "Ends",
+                        value = when {
+                            endAfter != null -> listOfNotNull("After $endAfter times", endText).joinToString(" · ")
+                            else -> endText ?: "Never"
+                        },
+                        muted = effectiveEnd == null && endAfter == null,
+                        onClick = { showEndMenu = true },
+                        trailing = {
+                            if (endDate != null || endAfter != null) {
+                                TextButton(onClick = { endDate = null; endAfter = null }) { Text("Clear") }
+                            }
                         }
+                    )
+                    DropdownMenu(expanded = showEndMenu, onDismissRequest = { showEndMenu = false }) {
+                        DropdownMenuItem(
+                            text = { Text("On a date") },
+                            onClick = { showEndMenu = false; showEndDatePicker = true }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("After a number of times") },
+                            onClick = { showEndMenu = false; showEndCountDialog = true }
+                        )
                     }
-                )
+                }
             }
         }
         if (!isNew) {
@@ -381,7 +430,7 @@ private fun ReminderForm(
                             title = title.ifBlank { "Reminder" },
                             reminderTimes = distinctTimes,
                             startDate = startDate,
-                            endDate = if (isOneTime) startDate else endDate,
+                            endDate = if (isOneTime) startDate else effectiveEnd,
                             reminderDays = if (isOneTime) setOf(startDate.dayOfWeek.value) else reminderDays,
                             notes = notes.ifBlank { null },
                             icon = selectedIcon,
@@ -420,9 +469,17 @@ private fun ReminderForm(
         val earliestEnd = maxOf(startDate, LocalDate.now())
         CalendarDialog(
             onDismissRequest = { showEndDatePicker = false },
-            onDateSelected = { endDate = it; showEndDatePicker = false },
+            onDateSelected = { endDate = it; endAfter = null; showEndDatePicker = false },
             initialDate = endDate?.takeIf { it >= earliestEnd } ?: earliestEnd,
             minDate = earliestEnd
+        )
+    }
+    if (showEndCountDialog) {
+        EndCountDialog(
+            initial = endAfter,
+            countFrom = maxOf(startDate, LocalDate.now()),
+            onConfirm = { endAfter = it; showEndCountDialog = false },
+            onDismiss = { showEndCountDialog = false }
         )
     }
     if (showIconPicker) {
@@ -432,6 +489,54 @@ private fun ReminderForm(
             onDismiss = { showIconPicker = false }
         )
     }
+}
+
+private const val MAX_END_COUNT = 999
+
+/**
+ * Number entry for "End after N times". Counts from [countFrom] (today, or a future start).
+ * - Starts empty (or the current count) with the keyboard up: typing is the only step
+ * - Keyboard "Done" confirms
+ */
+@Composable
+private fun EndCountDialog(
+    initial: Int?,
+    countFrom: LocalDate,
+    onConfirm: (Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var text by remember { mutableStateOf(initial?.toString().orEmpty()) }
+    val count = text.toIntOrNull()?.takeIf { it in 1..MAX_END_COUNT }
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    val datePattern = LocalAppSettings.current.dateFormat.datePattern(LocalContext.current)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("End after") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it.filter(Char::isDigit).take(3) },
+                    suffix = { Text("times") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { count?.let(onConfirm) }),
+                    modifier = Modifier.focusRequester(focusRequester)
+                )
+                Text(
+                    "Counting days from ${countFrom.format(DateTimeFormatter.ofPattern(datePattern))}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 6.dp, start = 4.dp)
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { count?.let(onConfirm) }, enabled = count != null) { Text("OK") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
 }
 
 /** Label on the left, current value on the right — the settings-style row used by "Runs". */

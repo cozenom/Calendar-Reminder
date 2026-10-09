@@ -395,4 +395,52 @@ class ReminderScheduleTest {
         val r = reminder(endDate = null, archivedAt = stamp)
         assertEquals(stamp, r.archivedSince(today = monday))
     }
+
+    // --- nthOccurrenceDate ("End after N times") ---
+
+    @Test
+    fun `nth occurrence counts selected weekdays`() {
+        val r = reminder(reminderDays = setOf(1, 3, 5)) // Mon/Wed/Fri
+        assertEquals(monday, r.nthOccurrenceDate(1, monday))
+        assertEquals(LocalDate.of(2026, 1, 9), r.nthOccurrenceDate(3, monday))
+        assertEquals(LocalDate.of(2026, 1, 12), r.nthOccurrenceDate(4, monday))
+    }
+
+    @Test
+    fun `nth occurrence counts from the given date, not the start`() {
+        val r = reminder(reminderDays = setOf(1)) // Mondays, started this Monday
+        assertEquals(LocalDate.of(2026, 1, 12), r.nthOccurrenceDate(1, tuesday))
+    }
+
+    @Test
+    fun `nth occurrence ignores the current end date`() {
+        val r = reminder(endDate = monday, reminderDays = setOf(1, 3, 5))
+        assertEquals(LocalDate.of(2026, 1, 9), r.nthOccurrenceDate(3, monday))
+    }
+
+    @Test
+    fun `nth occurrence every 2 weeks`() {
+        val r = reminder(interval = 2, intervalUnit = IntervalUnit.WEEKS, reminderDays = setOf(1))
+        assertEquals(LocalDate.of(2026, 2, 2), r.nthOccurrenceDate(3, monday)) // Jan 5, 19, Feb 2
+    }
+
+    @Test
+    fun `nth occurrence monthly on the 31st clamps short months`() {
+        val r = reminder(startDate = LocalDate.of(2026, 1, 31), interval = 1, intervalUnit = IntervalUnit.MONTHS)
+        assertEquals(LocalDate.of(2026, 2, 28), r.nthOccurrenceDate(2, LocalDate.of(2026, 1, 31)))
+        assertEquals(LocalDate.of(2026, 3, 31), r.nthOccurrenceDate(3, LocalDate.of(2026, 1, 31)))
+    }
+
+    @Test
+    fun `nth occurrence yearly from Feb 29`() {
+        val start = LocalDate.of(2028, 2, 29)
+        val r = reminder(startDate = start, interval = 1, intervalUnit = IntervalUnit.YEARS)
+        assertEquals(LocalDate.of(2029, 2, 28), r.nthOccurrenceDate(2, start))
+    }
+
+    @Test
+    fun `nth occurrence is null with no days or a count below 1`() {
+        assertNull(reminder(reminderDays = emptySet()).nthOccurrenceDate(1, monday))
+        assertNull(reminder().nthOccurrenceDate(0, monday))
+    }
 }
