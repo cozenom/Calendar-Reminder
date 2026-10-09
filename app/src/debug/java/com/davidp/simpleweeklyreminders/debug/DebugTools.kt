@@ -7,6 +7,7 @@ import com.davidp.simpleweeklyreminders.data.database.AppDatabase
 import com.davidp.simpleweeklyreminders.data.model.Importance
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderType
+import com.davidp.simpleweeklyreminders.data.model.nthOccurrenceDate
 import com.davidp.simpleweeklyreminders.data.notification.ReminderWorker
 import com.davidp.simpleweeklyreminders.data.repository.ReminderRepository
 import kotlinx.coroutines.Dispatchers
@@ -135,6 +136,9 @@ object DebugTools {
 
     private fun t(hour: Int, minute: Int = 0) = LocalTime.of(hour, minute)
 
+    /** "End after [n] times", counted from the start date. */
+    private fun Reminder.endingAfter(n: Int) = copy(endDate = nthOccurrenceDate(n, startDate))
+
     private fun sampleReminders(today: LocalDate): List<Sample> {
         fun daysAgo(n: Long) = today.minusDays(n)
         // One-time = start and end on the same date, on that date's weekday (as ReminderForm saves it)
@@ -207,6 +211,16 @@ object DebugTools {
                 reminderType = ReminderType.ONE_TIME, icon = "medicalServices", color = "amber",
                 importance = Importance.HIGH, notes = "Bring insurance card"
             )),
+            // Ends after N times — endDate computed the way ReminderForm saves it
+            Sample(Reminder(
+                title = "Allergy pills", reminderTimes = listOf(t(8), t(20)), startDate = daysAgo(4),
+                reminderDays = EVERY_DAY, icon = "localPharmacy", color = "amber",
+                importance = Importance.HIGH, notes = "10-day course"
+            ).endingAfter(10)),
+            Sample(Reminder(
+                title = "Swimming lessons", reminderTimes = listOf(t(17, 30)), startDate = daysAgo(10),
+                reminderDays = setOf(1, 3, 5), icon = "pool", color = "indigo", importance = Importance.MEDIUM
+            ).endingAfter(8)),
             // Paused
             Sample(Reminder(
                 title = "Read before bed", reminderTimes = listOf(t(21, 30)), startDate = daysAgo(20),
