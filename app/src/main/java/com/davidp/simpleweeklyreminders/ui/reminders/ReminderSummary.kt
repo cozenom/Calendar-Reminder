@@ -33,7 +33,9 @@ fun scheduleSummary(
                     reminder.startDate.format(DateTimeFormatter.ofPattern(dateNoYearPattern))
             }
         }
-        ReminderType.ONE_TIME -> "One-time"
+        // endDate == startDate here, so "starts X · until X" would repeat the one date
+        ReminderType.ONE_TIME ->
+            return "One-time · ${reminder.startDate.format(DateTimeFormatter.ofPattern(datePattern))}"
         ReminderType.SPECIFIC_DAYS -> when {
             reminder.reminderDays.size == 7 -> "Every day"
             reminder.reminderDays == setOf(1, 2, 3, 4, 5) -> "Weekdays"

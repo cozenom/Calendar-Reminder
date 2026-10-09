@@ -120,8 +120,12 @@ class ReminderSummaryTest {
     }
 
     @Test
-    fun `a one-time reminder says so`() {
-        assertEquals("One-time", summaryOf(reminder(reminderType = ReminderType.ONE_TIME)))
+    fun `a one-time reminder names its date once`() {
+        // Saved one-time rows carry endDate == startDate; that must not read "starts X · until X"
+        val day = monday.plusDays(10)
+        val expected = "One-time · ${day.format(DateTimeFormatter.ofPattern(datePattern))}"
+        val r = reminder(reminderType = ReminderType.ONE_TIME, startDate = day, endDate = day)
+        assertEquals(expected, summaryOf(r))
     }
 
     @Test
