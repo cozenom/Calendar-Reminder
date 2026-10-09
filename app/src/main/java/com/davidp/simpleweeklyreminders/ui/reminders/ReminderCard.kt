@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.automirrored.outlined.Notes
 import androidx.compose.material.icons.outlined.Archive
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -38,6 +39,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.davidp.simpleweeklyreminders.data.model.Reminder
+import com.davidp.simpleweeklyreminders.data.model.asDuplicate
 import com.davidp.simpleweeklyreminders.data.model.iconFromKey
 import com.davidp.simpleweeklyreminders.data.settings.datePattern
 import com.davidp.simpleweeklyreminders.data.settings.dateNoYearPattern
@@ -75,6 +77,7 @@ fun ReminderItem(
     dragHandleModifier: Modifier = Modifier
 ) {
     var showEditSheet by remember { mutableStateOf(false) }
+    var showDuplicateSheet by remember { mutableStateOf(false) }
     // Saveable, not plain remember: losing an expanded note on a scroll out of view (or a
     // rotation) would be irritating. LazyColumn restores this per item key when the row
     // scrolls back in.
@@ -192,6 +195,11 @@ fun ReminderItem(
                             onClick = { showMenu = false; showEditSheet = true }
                         )
                         DropdownMenuItem(
+                            text = { Text("Duplicate") },
+                            leadingIcon = { Icon(Icons.Outlined.ContentCopy, contentDescription = null) },
+                            onClick = { showMenu = false; showDuplicateSheet = true }
+                        )
+                        DropdownMenuItem(
                             text = { Text("Archive") },
                             leadingIcon = { Icon(Icons.Outlined.Archive, contentDescription = null) },
                             onClick = { showMenu = false; onArchive() }
@@ -223,6 +231,19 @@ fun ReminderItem(
             onSave = { updated ->
                 viewModel.update(updated)
                 showEditSheet = false
+            }
+        )
+    }
+    if (showDuplicateSheet) {
+        // Opens the form instead of inserting straight away: a duplicate is almost always
+        // tweaked first, and an exact twin would double-alert until it was
+        ReminderFormSheet(
+            initial = reminder.asDuplicate(today),
+            isNew = true,
+            onDismiss = { showDuplicateSheet = false },
+            onSave = { copy ->
+                viewModel.insert(copy)
+                showDuplicateSheet = false
             }
         )
     }

@@ -42,6 +42,7 @@ The same calendar in three of the eight packs — each works in light and dark.
 - **Importance Levels** — Low, medium or high, which drives how insistent the notification is, with a tone you pick per level, or per reminder (optional)
 - **Snooze** — Defer an occurrence without it counting as missed; snooze length is configurable, globally or per reminder
 - **Pause & Resume** — Silence a reminder for a while without losing its schedule or history
+- **Duplicate** — Copy a reminder into a prefilled form to make a variant fast
 - **Notes** — Attach free-form notes to a reminder, tucked behind a toggle on the card
 - **Missed Summary** — On restart, a notification lists what was missed while the device was off (can be turned off)
 - **Sort, Filter & Search** — Drag to reorder, or sort by next occurrence, importance, date added or title

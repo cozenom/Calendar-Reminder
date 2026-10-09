@@ -77,6 +77,14 @@ data class Reminder(
 /** [Reminder.sound] value for "None" in the tone picker — distinct from null (= level tone). */
 const val SILENT_SOUND = "silent"
 
+/**
+ * Prefill for "Duplicate": same settings, but a fresh row starting [today].
+ * - id = 0 so Room inserts; insert() assigns sortOrder
+ * - Active and unarchived, whatever the original was
+ */
+fun Reminder.asDuplicate(today: LocalDate, now: LocalDateTime = LocalDateTime.now()): Reminder =
+    copy(id = 0, startDate = today, isActive = true, archivedAt = null, createdAt = now)
+
 /** Whether this reminder's schedule includes the given date (ignores isActive). */
 fun Reminder.isScheduledOn(date: LocalDate): Boolean {
     if (date < startDate) return false

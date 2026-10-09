@@ -86,26 +86,30 @@ private fun defaultNewTime(): LocalTime {
 
 /**
  * Bottom sheet with the shared add/edit reminder form.
- * Pass [initial] = null to create a new reminder, or an existing one to edit it.
+ * - [initial] = null: blank new reminder
+ * - [initial] + [isNew] = true: new reminder prefilled from it (Duplicate)
+ * - [initial] alone: edit it
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReminderFormSheet(
     initial: Reminder?,
     onDismiss: () -> Unit,
-    onSave: (Reminder) -> Unit
+    onSave: (Reminder) -> Unit,
+    isNew: Boolean = initial == null
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ) {
-        ReminderForm(initial = initial, onSave = onSave, onCancel = onDismiss)
+        ReminderForm(initial = initial, isNew = isNew, onSave = onSave, onCancel = onDismiss)
     }
 }
 
 @Composable
 private fun ReminderForm(
     initial: Reminder?,
+    isNew: Boolean,
     onSave: (Reminder) -> Unit,
     onCancel: () -> Unit
 ) {
@@ -137,7 +141,7 @@ private fun ReminderForm(
             .navigationBarsPadding()
     ) {
         Text(
-            if (initial == null) "New reminder" else "Edit reminder",
+            if (isNew) "New reminder" else "Edit reminder",
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.padding(start = 4.dp)
         )
@@ -192,7 +196,7 @@ private fun ReminderForm(
         RecurrenceToggle(
             mode = recurrenceMode,
             onChanged = { recurrenceMode = it },
-            enabled = initial == null
+            enabled = isNew
         )
         when (recurrenceMode) {
             ReminderType.INTERVAL -> {
@@ -300,7 +304,7 @@ private fun ReminderForm(
                 label = if (recurrenceMode == ReminderType.ONE_TIME) "Date" else "Starts",
                 value = startDate.format(DateTimeFormatter.ofPattern(datePattern)),
                 onClick = { showStartDatePicker = true },
-                enabled = initial == null
+                enabled = isNew
             )
             if (recurrenceMode != ReminderType.ONE_TIME) {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -317,7 +321,7 @@ private fun ReminderForm(
                 )
             }
         }
-        if (initial != null) {
+        if (!isNew) {
             Text(
                 "Start date and repeat type are fixed once created — delete and re-add to change them",
                 style = MaterialTheme.typography.bodySmall,
