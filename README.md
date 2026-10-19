@@ -58,7 +58,7 @@ The same calendar in three of the eight packs — each works in light and dark.
 
 **100% offline. Zero data collection.**
 
-All data is stored locally using SQLite. No cloud sync, no analytics, no external servers. The only permissions used are notifications and exact alarms (so reminders fire on time).
+All data is stored locally using SQLite. No cloud sync, no analytics, no external servers. Permissions are only used to deliver reminders on time: notifications, exact alarms, and restoring them after a reboot.
 
 If you have Android's built-in app backup turned on, your reminders and settings are included in it so they can be restored on a new phone. That backup is handled by Android and your Google account, not by this app.
 
