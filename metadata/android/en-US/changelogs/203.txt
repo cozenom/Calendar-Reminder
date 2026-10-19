@@ -1,0 +1,5 @@
+• Redesigned reminder form: Save stays pinned at the bottom, times show as chips, and sound, snooze and dates share one Details card
+• "Repeat every" reads as a sentence, with Day/Week/Month/Year buttons and a preview of the next three dates
+• Repeat options renamed to Days / Every… / Once
+• Past days with a missed reminder now get a dashed outline (today is never flagged); can be turned off in Settings
+• Date format options show example dates
