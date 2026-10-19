@@ -5,19 +5,16 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,6 +29,8 @@ import com.davidp.simpleweeklyreminders.ui.theme.LocalIsDarkTheme
 import com.davidp.simpleweeklyreminders.ui.theme.ReminderSwatches
 import com.davidp.simpleweeklyreminders.ui.theme.onReminderAccent
 
+private val SWATCH_SIZE = 36.dp
+
 /**
  * Per-reminder colour. Only shown when "Per-reminder colours" is on in Settings — the form
  * decides that, this composable just renders the row.
@@ -43,33 +42,26 @@ import com.davidp.simpleweeklyreminders.ui.theme.onReminderAccent
 fun ColorSelector(selectedKey: String?, onChanged: (String?) -> Unit) {
     val dark = LocalIsDarkTheme.current
 
-    Column {
-        Text(
-            "Colour",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+    // Capped size instead of filling the width: 8 full-width circles crowded the sheet edges
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Swatch(
+            color = MaterialTheme.colorScheme.primary,
+            label = "Theme colour",
+            isSelected = selectedKey == null,
+            onClick = { onChanged(null) },
+            modifier = Modifier.weight(1f, fill = false)
         )
-        Spacer(modifier = Modifier.height(6.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
+        ReminderSwatches.forEach { swatch ->
             Swatch(
-                color = MaterialTheme.colorScheme.primary,
-                label = "Theme colour",
-                isSelected = selectedKey == null,
-                onClick = { onChanged(null) },
-                modifier = Modifier.weight(1f)
+                color = if (dark) swatch.dark else swatch.light,
+                label = swatch.label,
+                isSelected = selectedKey == swatch.key,
+                onClick = { onChanged(swatch.key) },
+                modifier = Modifier.weight(1f, fill = false)
             )
-            ReminderSwatches.forEach { swatch ->
-                Swatch(
-                    color = if (dark) swatch.dark else swatch.light,
-                    label = swatch.label,
-                    isSelected = selectedKey == swatch.key,
-                    onClick = { onChanged(swatch.key) },
-                    modifier = Modifier.weight(1f)
-                )
-            }
         }
     }
 }
@@ -84,6 +76,7 @@ private fun Swatch(
 ) {
     Box(
         modifier = modifier
+            .sizeIn(maxWidth = SWATCH_SIZE)
             .aspectRatio(1f)
             .clip(CircleShape)
             .background(color)

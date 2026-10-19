@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.IntentCompat
 import androidx.core.net.toUri
 import com.davidp.simpleweeklyreminders.data.model.SILENT_SOUND
-import com.davidp.simpleweeklyreminders.ui.components.GroupSurface
 
 /**
  * Tone row. Opens Android's own tone picker, so there's no list of sounds to maintain.
@@ -42,24 +41,22 @@ fun SoundSelector(sound: String?, onChanged: (String?) -> Unit) {
     }
     val label = remember(sound) { soundLabel(context, sound) }
 
-    GroupSurface(Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { launcher.launch(pickerIntent(sound)) }
-                .padding(start = 14.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Sound", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-            Text(
-                label,
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (sound == null) MaterialTheme.colorScheme.onSurfaceVariant
-                else MaterialTheme.colorScheme.onSurface
-            )
-            if (sound != null) {
-                TextButton(onClick = { onChanged(null) }) { Text("Clear") }
-            }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { launcher.launch(pickerIntent(sound)) }
+            .padding(start = 14.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text("Sound", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (sound == null) MaterialTheme.colorScheme.onSurfaceVariant
+            else MaterialTheme.colorScheme.onSurface
+        )
+        if (sound != null) {
+            TextButton(onClick = { onChanged(null) }) { Text("Clear") }
         }
     }
 }

@@ -36,12 +36,7 @@ fun scheduleSummary(
         // endDate == startDate here, so "starts X · until X" would repeat the one date
         ReminderType.ONE_TIME ->
             return "One-time · ${reminder.startDate.format(DateTimeFormatter.ofPattern(datePattern))}"
-        ReminderType.SPECIFIC_DAYS -> when {
-            reminder.reminderDays.size == 7 -> "Every day"
-            reminder.reminderDays == setOf(1, 2, 3, 4, 5) -> "Weekdays"
-            reminder.reminderDays == setOf(6, 7) -> "Weekends"
-            else -> reminder.reminderDays.sorted().joinToString(", ") { weekdayShortName(it) }
-        }
+        ReminderType.SPECIFIC_DAYS -> daysSummary(reminder.reminderDays)
     }
 
     val qualifiers = buildList {
@@ -51,6 +46,14 @@ fun scheduleSummary(
         reminder.endDate?.let { add("until ${it.format(DateTimeFormatter.ofPattern(datePattern))}") }
     }
     return (listOf(base) + qualifiers).joinToString(" · ")
+}
+
+/** "Every day" / "Weekdays" / "Weekends" / "Mon, Wed, Fri" — shared by the row and the form. */
+fun daysSummary(days: Set<Int>): String = when {
+    days.size == 7 -> "Every day"
+    days == setOf(1, 2, 3, 4, 5) -> "Weekdays"
+    days == setOf(6, 7) -> "Weekends"
+    else -> days.sorted().joinToString(", ") { weekdayShortName(it) }
 }
 
 /** "Every day" / "Every 3 days" */

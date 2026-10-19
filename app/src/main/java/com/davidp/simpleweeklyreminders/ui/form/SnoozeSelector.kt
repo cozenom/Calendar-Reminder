@@ -18,7 +18,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.davidp.simpleweeklyreminders.data.settings.SNOOZE_PRESET_MINUTES
-import com.davidp.simpleweeklyreminders.ui.components.GroupSurface
 import com.davidp.simpleweeklyreminders.ui.theme.LocalAppSettings
 
 /**
@@ -30,34 +29,32 @@ fun SnoozeSelector(minutes: Int?, onChanged: (Int?) -> Unit) {
     val globalMinutes = LocalAppSettings.current.snoozeMinutes
     var showMenu by remember { mutableStateOf(false) }
 
-    GroupSurface(Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { showMenu = true }
-                .padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Snooze", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-            // Box anchors the menu under the value
-            Box {
-                Text(
-                    if (minutes == null) "Default (${globalMinutes}m)" else "${minutes}m",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (minutes == null) MaterialTheme.colorScheme.onSurfaceVariant
-                    else MaterialTheme.colorScheme.onSurface
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { showMenu = true }
+            .padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text("Snooze", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        // Box anchors the menu under the value
+        Box {
+            Text(
+                if (minutes == null) "Default (${globalMinutes}m)" else "${minutes}m",
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (minutes == null) MaterialTheme.colorScheme.onSurfaceVariant
+                else MaterialTheme.colorScheme.onSurface
+            )
+            DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                DropdownMenuItem(
+                    text = { Text("Default (${globalMinutes}m)") },
+                    onClick = { onChanged(null); showMenu = false }
                 )
-                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                SNOOZE_PRESET_MINUTES.forEach { preset ->
                     DropdownMenuItem(
-                        text = { Text("Default (${globalMinutes}m)") },
-                        onClick = { onChanged(null); showMenu = false }
+                        text = { Text("${preset}m") },
+                        onClick = { onChanged(preset); showMenu = false }
                     )
-                    SNOOZE_PRESET_MINUTES.forEach { preset ->
-                        DropdownMenuItem(
-                            text = { Text("${preset}m") },
-                            onClick = { onChanged(preset); showMenu = false }
-                        )
-                    }
                 }
             }
         }

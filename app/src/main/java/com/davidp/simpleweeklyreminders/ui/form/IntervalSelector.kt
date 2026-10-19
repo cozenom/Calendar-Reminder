@@ -1,26 +1,20 @@
 package com.davidp.simpleweeklyreminders.ui.form
 
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,14 +23,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.davidp.simpleweeklyreminders.data.model.IntervalUnit
 import com.davidp.simpleweeklyreminders.ui.theme.dimensions
 
-/** "Repeat every [ - N + ] [unit ▾]" — the count stepper plus a unit dropdown. */
+/**
+ * Reads as a sentence: "Every [– N +] months", with the unit as a segmented row below.
+ * Was a unit dropdown: all four units fit on screen, so hiding them cost a tap for nothing.
+ */
 @Composable
 fun IntervalSelector(
     interval: Int,
@@ -46,60 +44,50 @@ fun IntervalSelector(
 ) {
     var inputText by remember { mutableStateOf(interval.toString()) }
     LaunchedEffect(interval) { inputText = interval.toString() }
-    var showUnits by remember { mutableStateOf(false) }
 
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            "Repeat every",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.height(4.dp))
+    Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.dimensions.spacingSmall)) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Button(
-                onClick = { if (interval > 1) onIntervalChange(interval - 1) },
-                modifier = Modifier.width(MaterialTheme.dimensions.frequencyButtonWidth),
-                contentPadding = PaddingValues(0.dp)
-            ) { Text(text = "-", fontSize = 20.sp) }
-            OutlinedTextField(
-                value = inputText,
-                onValueChange = { text ->
-                    inputText = text
-                    val parsed = text.toIntOrNull()
-                    if (parsed != null && parsed >= 1) onIntervalChange(parsed)
-                },
+            Text("Every", style = MaterialTheme.typography.titleMedium)
+            Row(
                 modifier = Modifier
-                    .padding(horizontal = 8.dp)
-                    .width(72.dp),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
-                textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center)
-            )
-            Button(
-                onClick = { onIntervalChange(interval + 1) },
-                modifier = Modifier.width(MaterialTheme.dimensions.frequencyButtonWidth),
-                contentPadding = PaddingValues(0.dp)
-            ) { Text(text = "+", fontSize = 20.sp) }
-            Spacer(modifier = Modifier.width(4.dp))
-            // Box anchors the menu under the button
-            Box {
-                TextButton(onClick = { showUnits = true }) {
-                    Text(unit.label(interval))
-                    Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
-                }
-                DropdownMenu(expanded = showUnits, onDismissRequest = { showUnits = false }) {
-                    IntervalUnit.entries.forEach { option ->
-                        DropdownMenuItem(
-                            text = { Text(option.label(interval)) },
-                            onClick = { onUnitChange(option); showUnits = false }
-                        )
-                    }
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = { onIntervalChange(interval - 1) },
+                    enabled = interval > 1
+                ) { Icon(Icons.Filled.Remove, contentDescription = "Decrease") }
+                // Still typeable: stepping to "every 30 days" one tap at a time would be a chore
+                BasicTextField(
+                    value = inputText,
+                    onValueChange = { text ->
+                        inputText = text.filter(Char::isDigit).take(3)
+                        inputText.toIntOrNull()?.takeIf { it >= 1 }?.let(onIntervalChange)
+                    },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    textStyle = MaterialTheme.typography.titleMedium.copy(
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurface
+                    ),
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                    modifier = Modifier.width(40.dp)
+                )
+                IconButton(onClick = { onIntervalChange(interval + 1) }) {
+                    Icon(Icons.Filled.Add, contentDescription = "Increase")
                 }
             }
+            Text(unit.label(interval), style = MaterialTheme.typography.titleMedium)
         }
+        SegmentedToggle(
+            options = IntervalUnit.entries.map { it to it.title },
+            selected = unit,
+            onChanged = onUnitChange
+        )
     }
 }
 
@@ -113,3 +101,7 @@ private fun IntervalUnit.label(count: Int): String {
     }
     return if (count == 1) singular else "${singular}s"
 }
+
+/** Segment label: "Day", "Week"… */
+private val IntervalUnit.title: String
+    get() = label(1).replaceFirstChar(Char::uppercase)

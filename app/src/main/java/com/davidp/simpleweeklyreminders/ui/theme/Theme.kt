@@ -32,9 +32,6 @@ object AppDimensions {
     // Spacing
     val spacingSmall = 8.dp
     val spacingMedium = 16.dp
-
-    // Button sizes
-    val frequencyButtonWidth = 48.dp
 }
 
 /** Custom theme values off MaterialTheme, e.g. `MaterialTheme.appShapes.medium`. */

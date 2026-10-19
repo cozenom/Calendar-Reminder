@@ -30,9 +30,10 @@ import com.davidp.simpleweeklyreminders.ui.theme.appShapes
 fun RecurrenceToggle(mode: ReminderType, onChanged: (ReminderType) -> Unit, enabled: Boolean = true) {
     SegmentedToggle(
         options = listOf(
-            ReminderType.SPECIFIC_DAYS to "Weekdays",
+            // "Days", not "Weekdays": it picks any days of the week, not just Mon–Fri
+            ReminderType.SPECIFIC_DAYS to "Days",
             ReminderType.INTERVAL to "Every…",
-            ReminderType.ONE_TIME to "One-time"
+            ReminderType.ONE_TIME to "Once"
         ),
         selected = mode,
         onChanged = onChanged,

@@ -1,26 +1,31 @@
 package com.davidp.simpleweeklyreminders.ui.form
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -48,11 +53,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -64,14 +71,15 @@ import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderType
 import com.davidp.simpleweeklyreminders.data.model.iconFromKey
 import com.davidp.simpleweeklyreminders.data.model.nthOccurrenceDate
-import com.davidp.simpleweeklyreminders.data.settings.datePattern
 import com.davidp.simpleweeklyreminders.data.settings.dateNoYearPattern
+import com.davidp.simpleweeklyreminders.data.settings.datePattern
 import com.davidp.simpleweeklyreminders.data.settings.is24Hour
 import com.davidp.simpleweeklyreminders.data.settings.timePattern
 import com.davidp.simpleweeklyreminders.debug.DebugTools
 import com.davidp.simpleweeklyreminders.ui.calendar.CalendarDialog
 import com.davidp.simpleweeklyreminders.ui.components.GroupSurface
 import com.davidp.simpleweeklyreminders.ui.components.SectionLabel
+import com.davidp.simpleweeklyreminders.ui.reminders.daysSummary
 import com.davidp.simpleweeklyreminders.ui.reminders.monthlyDayLabel
 import com.davidp.simpleweeklyreminders.ui.theme.LocalAppSettings
 import com.davidp.simpleweeklyreminders.ui.theme.appShapes
@@ -116,6 +124,7 @@ fun ReminderFormSheet(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ReminderForm(
     initial: Reminder?,
@@ -148,267 +157,270 @@ private fun ReminderForm(
     var showEndCountDialog by remember { mutableStateOf(false) }
     var showIconPicker by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier
-            .padding(horizontal = 16.dp)
-            .verticalScroll(rememberScrollState())
-            .navigationBarsPadding()
-    ) {
-        Text(
-            if (isNew) "New reminder" else "Edit reminder",
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(start = 4.dp)
+    val dateFormat = LocalAppSettings.current.dateFormat
+    val datePattern = dateFormat.datePattern(LocalContext.current)
+    val dateNoYearPattern = dateFormat.dateNoYearPattern(LocalContext.current)
+    // The unsaved schedule as a Reminder, so "End after N" and the next-dates preview reuse
+    // the model's own date maths instead of a second copy of it
+    val draft = remember(times, startDate, reminderDays, recurrenceMode, interval, intervalUnit, monthlyMode) {
+        Reminder(
+            title = "",
+            reminderTimes = times,
+            startDate = startDate,
+            reminderDays = reminderDays,
+            interval = interval,
+            reminderType = recurrenceMode,
+            intervalUnit = intervalUnit,
+            monthlyMode = monthlyMode
         )
-        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
+    }
+    // "After N times" stays a count while the form is open, so changing the schedule moves
+    // the end with it. Only the resulting date is saved: no column for the count.
+    val countFrom = maxOf(startDate, LocalDate.now())
+    val countedEnd = remember(endAfter, countFrom, draft) {
+        endAfter?.let { n -> draft.nthOccurrenceDate(n, countFrom) }
+    }
+    val effectiveEnd = if (endAfter != null) countedEnd else endDate
+    val endBeforeStart = recurrenceMode != ReminderType.ONE_TIME && effectiveEnd?.isBefore(startDate) == true
+    val oneTimeInPast = recurrenceMode == ReminderType.ONE_TIME &&
+        times.all { LocalDateTime.of(startDate, it) <= LocalDateTime.now() }
 
-        // Identity: icon + title together; tapping the icon opens the picker
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Surface(
-                onClick = { showIconPicker = true },
-                shape = MaterialTheme.appShapes.medium,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                color = MaterialTheme.colorScheme.surface,
-                modifier = Modifier.size(56.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = iconFromKey(selectedIcon).icon,
-                        contentDescription = "Change icon",
-                        // Previews the reminder's own colour as soon as one is picked
-                        tint = reminderAccent(selectedColor),
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.width(MaterialTheme.dimensions.spacingSmall))
-            OutlinedTextField(
-                value = title,
-                onValueChange = { title = it },
-                label = { Text("Title") },
-                trailingIcon = {
-                    if (title.isNotEmpty()) {
-                        IconButton(onClick = { title = "" }) {
-                            Icon(Icons.Filled.Clear, contentDescription = "Clear")
-                        }
-                    }
-                },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                modifier = Modifier.weight(1f)
+    Column(modifier = Modifier.navigationBarsPadding()) {
+        // Only the fields scroll; Cancel/Save below stay pinned so Save is always reachable
+        Column(
+            modifier = Modifier
+                .weight(1f, fill = false)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
+        ) {
+            Text(
+                if (isNew) "New reminder" else "Edit reminder",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(start = 4.dp)
             )
-        }
-        // Only offered when the user has turned per-reminder colours on in Settings
-        if (LocalAppSettings.current.perReminderColors) {
             Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
-            ColorSelector(selectedKey = selectedColor, onChanged = { selectedColor = it })
-        }
-        SectionLabel("Repeats")
-        // Type is fixed once created, like the start date: a one-time reminder has a locked
-        // past date it could never fire on, and a recurring one switched to one-time would
-        // keep months of history under a schedule that no longer describes it. Delete and
-        // re-add instead. The days/interval below stay editable.
-        RecurrenceToggle(
-            mode = recurrenceMode,
-            onChanged = { recurrenceMode = it },
-            enabled = isNew
-        )
-        when (recurrenceMode) {
-            ReminderType.INTERVAL -> {
-                Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-                IntervalSelector(
-                    interval = interval,
-                    unit = intervalUnit,
-                    onIntervalChange = { interval = it },
-                    onUnitChange = { intervalUnit = it }
-                )
-                when (intervalUnit) {
-                    IntervalUnit.WEEKS -> {
-                        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-                        WeekdaySelector(selectedDays = reminderDays, onDaysChanged = { reminderDays = it })
-                    }
-                    // Both choices read off the start date, so they relabel as it changes
-                    IntervalUnit.MONTHS -> {
-                        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-                        SegmentedToggle(
-                            options = MonthlyMode.entries.map { it to "On ${monthlyDayLabel(startDate, it)}" },
-                            selected = monthlyMode,
-                            onChanged = { monthlyMode = it }
+
+            // Identity: icon + title together; tapping the icon opens the picker
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    onClick = { showIconPicker = true },
+                    shape = MaterialTheme.appShapes.medium,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                    color = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier.size(56.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = iconFromKey(selectedIcon).icon,
+                            contentDescription = "Change icon",
+                            // Previews the reminder's own colour as soon as one is picked
+                            tint = reminderAccent(selectedColor),
+                            modifier = Modifier.size(28.dp)
                         )
                     }
-                    IntervalUnit.DAYS, IntervalUnit.YEARS -> {} // start date says it all
                 }
+                Spacer(modifier = Modifier.width(MaterialTheme.dimensions.spacingSmall))
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Title") },
+                    trailingIcon = {
+                        if (title.isNotEmpty()) {
+                            IconButton(onClick = { title = "" }) {
+                                Icon(Icons.Filled.Clear, contentDescription = "Clear")
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                    modifier = Modifier.weight(1f)
+                )
             }
-            ReminderType.SPECIFIC_DAYS -> {
-                Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-                WeekdaySelector(selectedDays = reminderDays, onDaysChanged = { reminderDays = it })
+            // Only offered when the user has turned per-reminder colours on in Settings
+            if (LocalAppSettings.current.perReminderColors) {
+                SectionLabel("Colour")
+                ColorSelector(selectedKey = selectedColor, onChanged = { selectedColor = it })
             }
-            ReminderType.ONE_TIME -> {} // single date picked below, nothing to select here
-        }
+            SectionLabel("Repeats")
+            // Type is fixed once created, like the start date: a one-time reminder has a locked
+            // past date it could never fire on, and a recurring one switched to one-time would
+            // keep months of history under a schedule that no longer describes it. Delete and
+            // re-add instead. The days/interval below stay editable.
+            RecurrenceToggle(
+                mode = recurrenceMode,
+                onChanged = { recurrenceMode = it },
+                enabled = isNew
+            )
+            when (recurrenceMode) {
+                ReminderType.INTERVAL -> {
+                    Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
+                    IntervalSelector(
+                        interval = interval,
+                        unit = intervalUnit,
+                        onIntervalChange = { interval = it },
+                        onUnitChange = { intervalUnit = it }
+                    )
+                    when (intervalUnit) {
+                        IntervalUnit.WEEKS -> {
+                            Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
+                            WeekdaySelector(selectedDays = reminderDays, onDaysChanged = { reminderDays = it })
+                        }
+                        // Both choices read off the start date, so they relabel as it changes
+                        IntervalUnit.MONTHS -> {
+                            Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
+                            SegmentedToggle(
+                                options = MonthlyMode.entries.map { it to "On ${monthlyDayLabel(startDate, it)}" },
+                                selected = monthlyMode,
+                                onChanged = { monthlyMode = it }
+                            )
+                        }
+                        IntervalUnit.DAYS, IntervalUnit.YEARS -> {} // start date says it all
+                    }
+                    // A quick check that the rule means what the user thinks it does
+                    val nextDates = remember(draft, countFrom) {
+                        (1..3).mapNotNull { draft.nthOccurrenceDate(it, countFrom) }
+                    }
+                    if (nextDates.isNotEmpty()) {
+                        val pattern = DateTimeFormatter.ofPattern(dateNoYearPattern)
+                        HelperText("Next: " + nextDates.joinToString(" · ") { it.format(pattern) })
+                    }
+                }
+                ReminderType.SPECIFIC_DAYS -> {
+                    Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
+                    WeekdaySelector(selectedDays = reminderDays, onDaysChanged = { reminderDays = it })
+                    HelperText(daysSummary(reminderDays))
+                }
+                ReminderType.ONE_TIME -> {} // single date picked below, nothing to select here
+            }
 
-        SectionLabel("Times")
-        GroupSurface(Modifier.fillMaxWidth()) {
-            times.forEachIndexed { index, time ->
-                if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    TimePickerField(
+            SectionLabel("Times")
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                times.forEachIndexed { index, time ->
+                    TimeChip(
                         time = time,
                         onTimeSelected = { newTime ->
                             times = times.toMutableList().also { it[index] = newTime }
                         },
-                        modifier = Modifier.weight(1f)
-                    )
-                    IconButton(
-                        onClick = { times = times.toMutableList().also { it.removeAt(index) } },
                         // A reminder without times would silently never fire
-                        enabled = times.size > 1
-                    ) {
-                        Icon(
-                            Icons.Filled.Clear,
-                            contentDescription = "Remove time",
-                            modifier = Modifier.size(19.dp)
-                        )
-                    }
-                }
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { times = times + defaultNewTime() }
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    Icons.Filled.Add,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(19.dp)
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(
-                    "Add a time",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-        }
-
-        SectionLabel("Importance")
-        ImportanceSelector(importance = importance, onChanged = { importance = it })
-        // Hidden for Low: its channel is silent, so a tone would never play
-        if (LocalAppSettings.current.perReminderSounds && importance != Importance.LOW) {
-            Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-            SoundSelector(sound = sound, onChanged = { sound = it })
-        }
-        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingSmall))
-        SnoozeSelector(minutes = snoozeMinutes, onChanged = { snoozeMinutes = it })
-
-        val dateFormat = LocalAppSettings.current.dateFormat
-        val datePattern = dateFormat.datePattern(LocalContext.current)
-        val dateNoYearPattern = dateFormat.dateNoYearPattern(LocalContext.current)
-        // "After N times" stays a count while the form is open, so changing the schedule moves
-        // the end with it. Only the resulting date is saved: no column for the count.
-        val countFrom = maxOf(startDate, LocalDate.now())
-        val countedEnd = remember(endAfter, countFrom, reminderDays, recurrenceMode, interval, intervalUnit, monthlyMode) {
-            endAfter?.let { n ->
-                Reminder(
-                    title = "",
-                    reminderTimes = times,
-                    startDate = startDate,
-                    reminderDays = reminderDays,
-                    interval = interval,
-                    reminderType = recurrenceMode,
-                    intervalUnit = intervalUnit,
-                    monthlyMode = monthlyMode
-                ).nthOccurrenceDate(n, countFrom)
-            }
-        }
-        val effectiveEnd = if (endAfter != null) countedEnd else endDate
-        val endBeforeStart = recurrenceMode != ReminderType.ONE_TIME && effectiveEnd?.isBefore(startDate) == true
-        val oneTimeInPast = recurrenceMode == ReminderType.ONE_TIME &&
-            times.all { LocalDateTime.of(startDate, it) <= LocalDateTime.now() }
-
-        SectionLabel("Runs")
-        GroupSurface(Modifier.fillMaxWidth()) {
-            // Start date is fixed once created: its logs (incl. backfilled past ones) are
-            // already generated, and moving it would desync them / shift the interval phase.
-            ValueRow(
-                label = if (recurrenceMode == ReminderType.ONE_TIME) "Date" else "Starts",
-                value = startDate.format(DateTimeFormatter.ofPattern(datePattern)),
-                onClick = { showStartDatePicker = true },
-                enabled = isNew
-            )
-            if (recurrenceMode != ReminderType.ONE_TIME) {
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                val endText = effectiveEnd?.format(DateTimeFormatter.ofPattern(dateNoYearPattern))
-                // Box anchors the menu under the row
-                Box {
-                    ValueRow(
-                        label = "Ends",
-                        value = when {
-                            endAfter != null -> listOfNotNull("After $endAfter times", endText).joinToString(" · ")
-                            else -> endText ?: "Never"
-                        },
-                        muted = effectiveEnd == null && endAfter == null,
-                        onClick = { showEndMenu = true },
-                        trailing = {
-                            if (endDate != null || endAfter != null) {
-                                TextButton(onClick = { endDate = null; endAfter = null }) { Text("Clear") }
-                            }
-                        }
+                        onRemove = if (times.size > 1) {
+                            { times = times.toMutableList().also { it.removeAt(index) } }
+                        } else null
                     )
-                    DropdownMenu(expanded = showEndMenu, onDismissRequest = { showEndMenu = false }) {
-                        DropdownMenuItem(
-                            text = { Text("On a date") },
-                            onClick = { showEndMenu = false; showEndDatePicker = true }
+                }
+                Row(
+                    modifier = Modifier
+                        .heightIn(min = CHIP_HEIGHT)
+                        .clip(CircleShape)
+                        .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                        .clickable { times = times + defaultNewTime() }
+                        .padding(horizontal = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Filled.Add,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        "Add time",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            SectionLabel("Importance")
+            ImportanceSelector(importance = importance, onChanged = { importance = it })
+
+            // One card for the settings-style rows, instead of a label per row
+            SectionLabel("Details")
+            GroupSurface(Modifier.fillMaxWidth()) {
+                // Hidden for Low: its channel is silent, so a tone would never play
+                if (LocalAppSettings.current.perReminderSounds && importance != Importance.LOW) {
+                    SoundSelector(sound = sound, onChanged = { sound = it })
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
+                SnoozeSelector(minutes = snoozeMinutes, onChanged = { snoozeMinutes = it })
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                // Start date is fixed once created: its logs (incl. backfilled past ones) are
+                // already generated, and moving it would desync them / shift the interval phase.
+                ValueRow(
+                    label = if (recurrenceMode == ReminderType.ONE_TIME) "Date" else "Starts",
+                    value = startDate.format(DateTimeFormatter.ofPattern(datePattern)),
+                    onClick = { showStartDatePicker = true },
+                    enabled = isNew
+                )
+                if (recurrenceMode != ReminderType.ONE_TIME) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    val endText = effectiveEnd?.format(DateTimeFormatter.ofPattern(dateNoYearPattern))
+                    // Box anchors the menu under the row
+                    Box {
+                        ValueRow(
+                            label = "Ends",
+                            value = when {
+                                endAfter != null -> listOfNotNull("After $endAfter times", endText).joinToString(" · ")
+                                else -> endText ?: "Never"
+                            },
+                            muted = effectiveEnd == null && endAfter == null,
+                            onClick = { showEndMenu = true },
+                            trailing = {
+                                if (endDate != null || endAfter != null) {
+                                    TextButton(onClick = { endDate = null; endAfter = null }) { Text("Clear") }
+                                }
+                            }
                         )
-                        DropdownMenuItem(
-                            text = { Text("After a number of times") },
-                            onClick = { showEndMenu = false; showEndCountDialog = true }
-                        )
+                        DropdownMenu(expanded = showEndMenu, onDismissRequest = { showEndMenu = false }) {
+                            DropdownMenuItem(
+                                text = { Text("On a date") },
+                                onClick = { showEndMenu = false; showEndDatePicker = true }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("After a number of times") },
+                                onClick = { showEndMenu = false; showEndCountDialog = true }
+                            )
+                        }
                     }
                 }
             }
-        }
-        if (!isNew) {
-            Text(
-                "Start date and repeat type are fixed once created — delete and re-add to change them",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 6.dp, start = 4.dp)
+            if (!isNew) {
+                HelperText("Start date and repeat type are fixed once created — delete and re-add to change them")
+            }
+            if (endBeforeStart) {
+                HelperText(
+                    "End date is before the start date, so this reminder would never fire",
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+            if (oneTimeInPast) {
+                HelperText(
+                    "This date and time have already passed, so this reminder would never fire",
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+
+            SectionLabel("Notes")
+            OutlinedTextField(
+                value = notes,
+                onValueChange = { notes = it },
+                placeholder = { Text("Optional") },
+                shape = MaterialTheme.appShapes.medium,
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 2
             )
-        }
-        if (endBeforeStart) {
-            Text(
-                "End date is before the start date, so this reminder would never fire",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(top = 6.dp, start = 4.dp)
-            )
-        }
-        if (oneTimeInPast) {
-            Text(
-                "This date and time have already passed, so this reminder would never fire",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(top = 6.dp, start = 4.dp)
-            )
+            Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
         }
 
-        SectionLabel("Notes")
-        OutlinedTextField(
-            value = notes,
-            onValueChange = { notes = it },
-            placeholder = { Text("Optional") },
-            shape = MaterialTheme.appShapes.medium,
-            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-            modifier = Modifier.fillMaxWidth(),
-            minLines = 2
-        )
-        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
-
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             TextButton(
@@ -454,7 +466,6 @@ private fun ReminderForm(
                 Text("Save", modifier = Modifier.padding(vertical = 6.dp))
             }
         }
-        Spacer(modifier = Modifier.height(MaterialTheme.dimensions.spacingMedium))
     }
 
     if (showStartDatePicker) {
@@ -539,7 +550,7 @@ private fun EndCountDialog(
     )
 }
 
-/** Label on the left, current value on the right — the settings-style row used by "Runs". */
+/** Label on the left, current value on the right — the settings-style row used by "Details". */
 @Composable
 private fun ValueRow(
     label: String,
@@ -574,40 +585,58 @@ private fun ValueRow(
     }
 }
 
+/** Small grey line under a field: a summary, a hint, or (in [color] error) a problem. */
+@Composable
+private fun HelperText(text: String, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
+    Text(
+        text,
+        style = MaterialTheme.typography.bodySmall,
+        color = color,
+        modifier = Modifier.padding(top = 6.dp, start = 4.dp)
+    )
+}
+
+/** Min height of the time chips: the × inside is a 48dp touch target, so all chips match it. */
+private val CHIP_HEIGHT = 48.dp
+
 /**
- * Stateless time field: shows [time] and opens a Material 3 time picker on tap.
- * Unlike the old Material3TimePicker it doesn't cache the time internally, so
- * rows stay correct when a time is removed from the list above them.
+ * One time as a chip: tap to change it in a Material 3 time picker, × to remove it.
+ * Doesn't cache the time internally, so chips stay correct when one before them is removed.
+ * [onRemove] null hides the ×.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TimePickerField(
+private fun TimeChip(
     time: LocalTime,
     onTimeSelected: (LocalTime) -> Unit,
-    modifier: Modifier = Modifier
+    onRemove: (() -> Unit)?
 ) {
     val context = LocalContext.current
     val timePref = LocalAppSettings.current.timeFormat
     val is24HourFormat = timePref.is24Hour(context)
+    val label = time.format(DateTimeFormatter.ofPattern(timePref.timePattern(context)))
     var showTimePicker by remember { mutableStateOf(false) }
 
     Row(
-        modifier = modifier
+        modifier = Modifier
+            .heightIn(min = CHIP_HEIGHT)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable { showTimePicker = true }
-            .padding(start = 14.dp, top = 12.dp, bottom = 12.dp),
+            .padding(start = 16.dp, end = if (onRemove != null) 0.dp else 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            Icons.Outlined.Schedule,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(19.dp)
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        Text(
-            text = time.format(DateTimeFormatter.ofPattern(timePref.timePattern(context))),
-            style = MaterialTheme.typography.titleMedium
-        )
+        Text(text = label, style = MaterialTheme.typography.titleSmall)
+        if (onRemove != null) {
+            IconButton(onClick = onRemove) {
+                Icon(
+                    Icons.Filled.Clear,
+                    contentDescription = "Remove $label",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
     }
 
     if (showTimePicker) {
