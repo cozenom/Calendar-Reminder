@@ -56,6 +56,7 @@ import com.davidp.simpleweeklyreminders.data.settings.SettingsRepository
 import com.davidp.simpleweeklyreminders.data.settings.ThemeMode
 import com.davidp.simpleweeklyreminders.data.settings.TimeFormatPref
 import com.davidp.simpleweeklyreminders.data.settings.WeekStart
+import com.davidp.simpleweeklyreminders.data.settings.dateNoYearPattern
 import com.davidp.simpleweeklyreminders.debug.DebugTools
 import com.davidp.simpleweeklyreminders.ui.components.GroupSurface
 import com.davidp.simpleweeklyreminders.ui.components.SectionLabel
@@ -66,6 +67,8 @@ import com.davidp.simpleweeklyreminders.ui.theme.LocalAppSettings
 import com.davidp.simpleweeklyreminders.ui.theme.appShapes
 import com.davidp.simpleweeklyreminders.ui.theme.tonesFor
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 // GitHub Pages rendering of privacy-policy.md in this repo. Blank hides the About row,
 // so this must stay a URL that actually resolves — the same one goes in the Play
@@ -139,6 +142,12 @@ fun SettingsScreen(onBack: () -> Unit) {
                 checked = settings.perReminderColors,
                 onCheckedChange = { scope.launch { repo.setPerReminderColors(it) } }
             )
+            SwitchRow(
+                label = "Missed-day marker",
+                subtitle = "Corner flag on days with a missed reminder",
+                checked = settings.missedDayMarker,
+                onCheckedChange = { scope.launch { repo.setMissedDayMarker(it) } }
+            )
         }
 
         SettingsSection("Time & date") {
@@ -153,12 +162,16 @@ fun SettingsScreen(onBack: () -> Unit) {
                 onSelect = { scope.launch { repo.setTimeFormat(it) } }
             )
             Spacer(Modifier.height(12.dp))
+            // Labels show today's date in each order, built from the same pattern the app uses
+            val today = remember { LocalDate.now() }
+            fun example(pref: DateFormatPref) =
+                today.format(DateTimeFormatter.ofPattern(pref.dateNoYearPattern(context)))
             SegmentedRow(
                 label = "Date format",
                 options = listOf(
                     DateFormatPref.SYSTEM to "Auto",
-                    DateFormatPref.MONTH_FIRST to "Month 1st",
-                    DateFormatPref.DAY_FIRST to "Day 1st"
+                    DateFormatPref.MONTH_FIRST to example(DateFormatPref.MONTH_FIRST),
+                    DateFormatPref.DAY_FIRST to example(DateFormatPref.DAY_FIRST)
                 ),
                 selected = settings.dateFormat,
                 onSelect = { scope.launch { repo.setDateFormat(it) } }

@@ -172,7 +172,7 @@ private fun DayCell(
 
         // Corner wedge: a day that contains a miss is flagged without spending a colour on it,
         // so the state survives greyscale and colour-blind viewing.
-        if (status?.hasMissed == true) {
+        if (status?.hasMissed == true && LocalAppSettings.current.missedDayMarker) {
             Canvas(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
