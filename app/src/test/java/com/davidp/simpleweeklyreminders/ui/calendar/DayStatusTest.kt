@@ -269,4 +269,24 @@ class DayStatusTest {
 
         assertTrue(synth.isEmpty())
     }
+
+    private val withMiss = DayStatus(listOf(DaySegment(OccurrenceStatus.MISSED)), doneCount = 0, hasMissed = true)
+    private val allDone = DayStatus(listOf(DaySegment(OccurrenceStatus.DONE)), doneCount = 1, hasMissed = false)
+
+    @Test
+    fun missedOutline_onPastDayWithAMiss() {
+        assertTrue(showsMissedOutline(withMiss, today.minusDays(1), today))
+    }
+
+    @Test
+    fun missedOutline_neverOnToday_evenWithAMiss() {
+        // Today isn't over, so its misses can still be caught up
+        assertFalse(showsMissedOutline(withMiss, today, today))
+    }
+
+    @Test
+    fun missedOutline_notOnPastDayWithoutAMiss() {
+        assertFalse(showsMissedOutline(allDone, today.minusDays(1), today))
+        assertFalse(showsMissedOutline(null, today.minusDays(1), today))
+    }
 }

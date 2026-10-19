@@ -1,6 +1,5 @@
 package com.davidp.simpleweeklyreminders.ui.calendar
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -21,8 +19,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -42,7 +45,8 @@ import java.time.YearMonth
 
 private val STRIP_HEIGHT = 4.dp
 private val STRIP_RADIUS = 2.dp
-private val NOTCH_SIZE = 5.dp
+private val MISSED_DAY_STROKE = 1.5.dp
+private val MISSED_DAY_DASH = 3.dp
 
 /** Outline on a missed segment. Kept well under half the bar's height so it reads as a
  *  hollow segment rather than a solid one. */
@@ -104,8 +108,7 @@ fun CalendarView(
                         date = date,
                         status = statuses[date],
                         isSelected = date == selectedDate,
-                        isToday = date == today,
-                        isPast = date < today,
+                        today = today,
                         enabled = minDate == null || date >= minDate,
                         onClick = { onDateSelected(date) },
                         modifier = Modifier.weight(1f)
@@ -121,13 +124,14 @@ private fun DayCell(
     date: LocalDate,
     status: DayStatus?,
     isSelected: Boolean,
-    isToday: Boolean,
-    isPast: Boolean,
+    today: LocalDate,
     enabled: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val colors = MaterialTheme.reminderColors
+    val isToday = date == today
+    val isPast = date < today
     val dayColor = when {
         isSelected -> MaterialTheme.colorScheme.onPrimaryContainer
         // M3's disabled-content alpha, so an off-limits day reads as unavailable
@@ -135,11 +139,14 @@ private fun DayCell(
         isPast -> MaterialTheme.colorScheme.onSurfaceVariant
         else -> MaterialTheme.colorScheme.onSurface
     }
+    val shape = MaterialTheme.appShapes.small
+    val missedOutline = LocalAppSettings.current.missedDayMarker &&
+        showsMissedOutline(status, date, today)
 
     Box(
         modifier = modifier
             .padding(2.dp)
-            .clip(MaterialTheme.appShapes.small)
+            .clip(shape)
             .clickable(enabled = enabled, onClick = onClick)
             .background(
                 if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
@@ -152,6 +159,25 @@ private fun DayCell(
                     MaterialTheme.colorScheme.primary,
                     MaterialTheme.appShapes.small
                 ) else Modifier
+            )
+            .then(
+                // Dashed outline on a finished day with a miss: shape, not colour, carries it,
+                // so it survives greyscale and colour-blind viewing. Inset by half the stroke
+                // so the clip above doesn't shave it.
+                if (missedOutline) Modifier.drawBehind {
+                    val stroke = MISSED_DAY_STROKE.toPx()
+                    val dash = MISSED_DAY_DASH.toPx()
+                    drawRoundRect(
+                        color = colors.missed,
+                        topLeft = Offset(stroke / 2, stroke / 2),
+                        size = Size(size.width - stroke, size.height - stroke),
+                        cornerRadius = CornerRadius(shape.topStart.toPx(size, this) - stroke / 2),
+                        style = Stroke(
+                            width = stroke,
+                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, dash))
+                        )
+                    )
+                } else Modifier
             )
             .semantics(mergeDescendants = true) { }
     ) {
@@ -168,25 +194,6 @@ private fun DayCell(
             )
             Spacer(modifier = Modifier.height(5.dp))
             DayReminderStrip(status = status)
-        }
-
-        // Corner wedge: a day that contains a miss is flagged without spending a colour on it,
-        // so the state survives greyscale and colour-blind viewing.
-        if (status?.hasMissed == true && LocalAppSettings.current.missedDayMarker) {
-            Canvas(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(3.dp)
-                    .size(NOTCH_SIZE)
-            ) {
-                val wedge = Path().apply {
-                    moveTo(0f, 0f)
-                    lineTo(size.width, 0f)
-                    lineTo(size.width, size.height)
-                    close()
-                }
-                drawPath(wedge, colors.missed)
-            }
         }
     }
 }

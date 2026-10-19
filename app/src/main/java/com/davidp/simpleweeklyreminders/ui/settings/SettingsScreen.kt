@@ -144,7 +144,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             )
             SwitchRow(
                 label = "Missed-day marker",
-                subtitle = "Corner flag on days with a missed reminder",
+                subtitle = "Dashed outline on past days with a missed reminder",
                 checked = settings.missedDayMarker,
                 onCheckedChange = { scope.launch { repo.setMissedDayMarker(it) } }
             )

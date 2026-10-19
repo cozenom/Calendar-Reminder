@@ -75,6 +75,13 @@ data class DayStatus(
 }
 
 /**
+ * Whether [date] gets the missed-day outline. Past days only: today isn't over, so a miss
+ * there can still be caught up and stays on the bar and day list instead.
+ */
+fun showsMissedOutline(status: DayStatus?, date: LocalDate, today: LocalDate): Boolean =
+    date < today && status?.hasMissed == true
+
+/**
  * Folds a month's logs into one entry per day. Called once per calendar page instead of
  * filtering the whole list inside each of the 42 day cells.
  *
