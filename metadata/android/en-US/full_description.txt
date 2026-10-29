@@ -12,5 +12,6 @@ The calendar is the home screen: each day shows what's done, pending or missed, 
 • Missed summary after a restart
 • 100 icons and 8 theme packs, light and dark
 • Reminders survive reboots
+• Send feedback straight from Settings
 
 100% offline. No account, no ads, no analytics. Everything stays on your device.

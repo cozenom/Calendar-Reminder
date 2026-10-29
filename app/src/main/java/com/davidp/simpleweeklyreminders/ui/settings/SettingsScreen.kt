@@ -48,6 +48,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import com.davidp.simpleweeklyreminders.R
 import com.davidp.simpleweeklyreminders.data.model.Importance
 import com.davidp.simpleweeklyreminders.data.notification.NotificationActionReceiver
 import com.davidp.simpleweeklyreminders.data.settings.DateFormatPref
@@ -75,6 +76,9 @@ import java.time.format.DateTimeFormatter
 // Console listing. Editing the markdown updates this page on the next push.
 private const val PRIVACY_POLICY_URL =
     "https://cozenom.github.io/Calendar-Reminder/privacy-policy"
+
+// Same address as the Play listing's contact email, so nothing new is made public
+private const val FEEDBACK_EMAIL = "david.p_22@outlook.com"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -260,11 +264,36 @@ fun SettingsScreen(onBack: () -> Unit) {
                     }
                 )
             }
+            ActionRow(
+                label = "Send feedback",
+                subtitle = "Opens your email app",
+                onClick = { sendFeedback(context, versionName) }
+            )
         }
 
         // Compile-time false in release, so R8 drops the section and the stub it calls
         if (DebugTools.ENABLED) DeveloperSection(context)
     }
+}
+
+/** Prefills device info so reports are actionable without a back-and-forth. */
+private fun sendFeedback(context: Context, versionName: String) {
+    // SENDTO + mailto: limits the chooser to email apps, unlike SEND
+    val intent = Intent(Intent.ACTION_SENDTO, "mailto:".toUri()).apply {
+        putExtra(Intent.EXTRA_EMAIL, arrayOf(FEEDBACK_EMAIL))
+        putExtra(Intent.EXTRA_SUBJECT, "${context.getString(R.string.app_name)} feedback")
+        putExtra(
+            Intent.EXTRA_TEXT,
+            "\n\n---\nApp version: $versionName\n" +
+                "Android: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})\n" +
+                "Device: ${Build.MANUFACTURER} ${Build.MODEL}"
+        )
+    }
+    // No email app installed: startActivity throws
+    runCatching { context.startActivity(intent) }
+        .onFailure {
+            Toast.makeText(context, "No email app found. $FEEDBACK_EMAIL", Toast.LENGTH_LONG).show()
+        }
 }
 
 /** Debug builds only — seed/clear sample data for testing (see DebugTools in src/debug). */

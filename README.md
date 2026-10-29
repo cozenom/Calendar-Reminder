@@ -51,6 +51,7 @@ The same calendar in three of the eight packs — each works in light and dark.
 - **Optional End** — End on a date or after a number of times, or leave it open-ended
 - **Discrete Notifications** — Notifications show only the name you give the reminder, nothing else
 - **Always Works** — Survives device reboots, no internet connection required
+- **Send Feedback** — Email the developer from Settings, with app and device version prefilled
 
 ## Privacy
 
