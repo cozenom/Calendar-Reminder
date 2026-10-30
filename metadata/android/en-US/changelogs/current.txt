@@ -1,0 +1,5 @@
+• Send feedback from Settings → About; opens your email app with app and device version filled in
+• High-importance notifications now survive "Clear all" and stay until you act on them
+• The reminder form now explains what each importance level does
+• Completing a reminder in the calendar now clears its notification
+• New setting moves the notification's Complete button to the left, for left-handed use

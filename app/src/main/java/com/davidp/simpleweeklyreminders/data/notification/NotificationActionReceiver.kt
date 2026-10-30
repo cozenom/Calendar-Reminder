@@ -170,6 +170,12 @@ class NotificationActionReceiver : BroadcastReceiver() {
             ?.let { reminderChannel(context, it, settings.perReminderSounds) }
             ?: channelIdFor(importance)
 
+        val dismissAction = "Dismiss" to dismissPendingIntent
+        val completeAction = "Complete" to completedPendingIntent
+        val (firstAction, lastAction) =
+            if (settings.completeButtonFirst) completeAction to dismissAction
+            else dismissAction to completeAction
+
         val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(smallIconRes)
             .setContentTitle(title)
@@ -189,18 +195,19 @@ class NotificationActionReceiver : BroadcastReceiver() {
             .setAutoCancel(false)
             .setDeleteIntent(swipePendingIntent)
             // Dismiss, Snooze, Complete — increasing commitment left to right, same 3 actions
-            // at every importance level. Snooze names its own duration so the length is
+            // at every importance level (a setting swaps the two ends for left-thumb reach).
+            // Snooze names its own duration so the length is
             // visible without opening Settings. Action icons render on Wear OS / some OEM
             // skins but not on stock Android phone notifications, so one shared icon
             // (rather than a distinct one per action) avoids maintaining art nobody sees
             // on the common path.
-            .addAction(R.drawable.ic_notification, "Dismiss", dismissPendingIntent)
+            .addAction(R.drawable.ic_notification, firstAction.first, firstAction.second)
             .addAction(
                 R.drawable.ic_notification,
                 "Snooze ${reminder?.snoozeMinutes ?: settings.snoozeMinutes}m",
                 snoozePendingIntent
             )
-            .addAction(R.drawable.ic_notification, "Complete", completedPendingIntent)
+            .addAction(R.drawable.ic_notification, lastAction.first, lastAction.second)
             // Sound and vibration come from the channel (API 26+), which the user can change
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setOnlyAlertOnce(true)

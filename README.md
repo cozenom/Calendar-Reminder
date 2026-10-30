@@ -42,6 +42,7 @@ The same calendar in three of the eight packs — each works in light and dark.
 - **Pause & Resume** — Silence a reminder for a while without losing its schedule or history
 - **Duplicate** — Copy a reminder into a prefilled form to make a variant fast
 - **Notes** — Attach free-form notes to a reminder, tucked behind a toggle on the card
+- **Left-Handed Buttons** — Optionally move the notification's Complete button to the left
 - **Missed Summary** — On restart, a notification lists what was missed while the device was off (can be turned off)
 - **Sort, Filter & Search** — Drag to reorder, or sort by next occurrence, importance, date added or title
 - **Archive** — Lapsed reminders are kept with their history until you delete them, and can be restored

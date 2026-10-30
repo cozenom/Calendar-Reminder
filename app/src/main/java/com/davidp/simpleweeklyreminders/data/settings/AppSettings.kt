@@ -44,6 +44,8 @@ data class AppSettingsState(
     val weekStart: WeekStart = WeekStart.MONDAY,
     val snoozeMinutes: Int = DEFAULT_SNOOZE_MINUTES,
     val missedSummaryEnabled: Boolean = true,
+    // Swaps Dismiss and Complete on notifications, for left-thumb reach. Snooze stays centred.
+    val completeButtonFirst: Boolean = false,
 ) {
     companion object {
         const val DEFAULT_SNOOZE_MINUTES = 10
@@ -103,6 +105,9 @@ class SettingsRepository(private val context: Context) {
     suspend fun setMissedSummaryEnabled(enabled: Boolean) =
         edit { it[SettingsKeys.MISSED_SUMMARY] = enabled }
 
+    suspend fun setCompleteButtonFirst(enabled: Boolean) =
+        edit { it[SettingsKeys.COMPLETE_BUTTON_FIRST] = enabled }
+
     private suspend fun edit(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
         context.settingsDataStore.edit(block)
     }
@@ -122,6 +127,7 @@ internal object SettingsKeys {
     val WEEK_START = stringPreferencesKey("week_start")
     val SNOOZE_MINUTES = intPreferencesKey("snooze_minutes")
     val MISSED_SUMMARY = booleanPreferencesKey("missed_summary_enabled")
+    val COMPLETE_BUTTON_FIRST = booleanPreferencesKey("complete_button_first")
 }
 
 internal fun Preferences.toAppSettingsState() = AppSettingsState(
@@ -136,6 +142,7 @@ internal fun Preferences.toAppSettingsState() = AppSettingsState(
     weekStart = parseEnum(this[SettingsKeys.WEEK_START], WeekStart.MONDAY),
     snoozeMinutes = this[SettingsKeys.SNOOZE_MINUTES] ?: AppSettingsState.DEFAULT_SNOOZE_MINUTES,
     missedSummaryEnabled = this[SettingsKeys.MISSED_SUMMARY] ?: true,
+    completeButtonFirst = this[SettingsKeys.COMPLETE_BUTTON_FIRST] ?: false,
 )
 
 // Fall back to the default if the stored string is missing or no longer a valid constant.

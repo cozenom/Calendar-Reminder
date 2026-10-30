@@ -9,6 +9,7 @@ The calendar is the home screen: each day shows what's done, pending or missed, 
 • Snooze, pause, or archive without losing history
 • Duplicate a reminder to make a variant in seconds
 • Importance levels control how insistent the notification is — high ones stay until you act on them — each with its own tone, or pick one per reminder
+• Left-handed option for notification buttons
 • Missed summary after a restart
 • 100 icons and 8 theme packs, light and dark
 • Reminders survive reboots

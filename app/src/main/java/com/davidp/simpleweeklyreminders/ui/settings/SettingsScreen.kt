@@ -209,6 +209,12 @@ fun SettingsScreen(onBack: () -> Unit) {
 
         SettingsSection("Notifications") {
             SwitchRow(
+                label = "Complete button on the left",
+                subtitle = "Easier to reach with your left thumb",
+                checked = settings.completeButtonFirst,
+                onCheckedChange = { scope.launch { repo.setCompleteButtonFirst(it) } }
+            )
+            SwitchRow(
                 label = "Per-reminder sounds",
                 subtitle = "Adds a tone picker to Medium and High reminders",
                 checked = settings.perReminderSounds,
