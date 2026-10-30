@@ -37,7 +37,7 @@ The same calendar in three of the eight packs — each works in light and dark.
 - **Flexible Scheduling** — Specific weekdays, every N days/weeks/months/years (e.g. "3rd Monday"), or a one-time reminder
 - **Multiple Daily Times** — Schedule a reminder to fire more than once per day
 - **Completion Tracking** — The calendar (the default screen) shows done, pending and missed at a glance, one pip per occurrence
-- **Importance Levels** — Low, medium or high, which drives how insistent the notification is, with a tone you pick per level, or per reminder (optional)
+- **Importance Levels** — Low, medium or high, which drives how insistent the notification is (high stays until you act on it), with a tone you pick per level, or per reminder (optional)
 - **Snooze** — Defer an occurrence without it counting as missed; snooze length is configurable, globally or per reminder
 - **Pause & Resume** — Silence a reminder for a while without losing its schedule or history
 - **Duplicate** — Copy a reminder into a prefilled form to make a variant fast

@@ -160,10 +160,11 @@ class NotificationActionReceiver : BroadcastReceiver() {
             if (isSnooze) "Snoozed · scheduled for $timeText" else "Scheduled for $timeText"
 
         // Low/Medium: swipe clears this occurrence (log stays pending, not snoozed).
-        // High: swipe snoozes, same as the Snooze button — stickiness protects
-        // against losing something important to an accidental swipe. The Dismiss
-        // button is always present for a deliberate "leave this honestly missed" choice.
-        val swipePendingIntent = if (importance == Importance.HIGH) snoozePendingIntent else dismissPendingIntent
+        // High: ongoing, so "Clear all" and group swipes skip it. Android 14+ still allows
+        // a single swipe, which snoozes, same as the Snooze button. The Dismiss button is
+        // always present for a deliberate "leave this honestly missed" choice.
+        val isHigh = importance == Importance.HIGH
+        val swipePendingIntent = if (isHigh) snoozePendingIntent else dismissPendingIntent
 
         val channelId = reminder
             ?.let { reminderChannel(context, it, settings.perReminderSounds) }
@@ -184,7 +185,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setContentIntent(pendingIntent)
-            .setOngoing(false)
+            .setOngoing(isHigh)
             .setAutoCancel(false)
             .setDeleteIntent(swipePendingIntent)
             // Dismiss, Snooze, Complete — increasing commitment left to right, same 3 actions
@@ -434,7 +435,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
                 "Reminders (Low importance)",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Low-importance reminders — quiet, swipe clears them"
+                description = "Low-importance reminders — quiet, swipe to clear"
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
                 setShowBadge(true)
             }
@@ -448,7 +449,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
             val high = soundChannel(
                 id = CHANNEL_ID_HIGH,
                 name = "Reminders (High importance)",
-                description = "High-importance reminders — sticky, swipe snoozes",
+                description = "High-importance reminders — stay until you act on them",
                 importance = NotificationManager.IMPORTANCE_HIGH,
                 sound = urgentSound
             )

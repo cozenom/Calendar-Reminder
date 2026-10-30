@@ -171,6 +171,8 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
 
     fun updateLogCompletedStatus(logId: Int, completed: Boolean) = viewModelScope.launch {
         repository.updateLogCompletedStatus(logId, completed)
+        // A High notification is ongoing, so it can't be swiped away once done in the app
+        if (completed) NotificationActionReceiver.cancelNotifications(getApplication(), listOf(logId))
     }
 
     fun logAdHocCompletion(reminder: Reminder, dateTime: LocalDateTime) = viewModelScope.launch {

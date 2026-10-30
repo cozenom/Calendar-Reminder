@@ -3,6 +3,7 @@ package com.davidp.simpleweeklyreminders.ui.form
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -36,21 +37,37 @@ fun ImportanceSelector(importance: Importance, onChanged: (Importance) -> Unit) 
         Triple(Importance.HIGH, "High", reminderColors.importanceHigh)
     )
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        options.forEach { (level, label, color) ->
-            ImportanceButton(
-                label = label,
-                level = level,
-                color = color,
-                isSelected = importance == level,
-                onClick = { onChanged(level) },
-                modifier = Modifier.weight(1f)
-            )
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            options.forEach { (level, label, color) ->
+                ImportanceButton(
+                    label = label,
+                    level = level,
+                    color = color,
+                    isSelected = importance == level,
+                    onClick = { onChanged(level) },
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
+        // Explained at the point of choice: High's notification behaves differently from
+        // Android's swipe-to-clear default, and there's no other place a user would learn it
+        Text(
+            text = importanceCaption(importance),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 4.dp, top = 6.dp)
+        )
     }
+}
+
+private fun importanceCaption(importance: Importance): String = when (importance) {
+    Importance.LOW -> "Quiet. Swipe to clear."
+    Importance.MEDIUM -> "Plays a sound. Swipe to clear."
+    Importance.HIGH -> "Alarm tone. Stays until you act on it."
 }
 
 /**
