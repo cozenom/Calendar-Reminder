@@ -272,9 +272,13 @@ class NotificationActionReceiver : BroadcastReceiver() {
         val database = AppDatabase.getDatabase(context)
         val log = database.reminderLogDao().getLogById(logId) ?: return
 
+        val reminder = database.reminderDao().getReminderById(log.reminderId)
+        // Paused or archived (archive also clears isActive): the tap just clears it. Pausing
+        // withdrew any snooze, so re-arming here would bring back a reminder the user stopped.
+        if (reminder == null || !reminder.isActive) return
+
         // Same lookup as the button label, so the tap matches what it said
-        val snoozeMinutes = database.reminderDao().getReminderById(log.reminderId)?.snoozeMinutes
-            ?: SettingsRepository(context).read().snoozeMinutes
+        val snoozeMinutes = reminder.snoozeMinutes ?: SettingsRepository(context).read().snoozeMinutes
         val snoozedUntil = LocalDateTime.now().plusMinutes(snoozeMinutes.toLong())
         // DB first so the snooze survives reboot/force-stop; the alarm is re-derivable
         database.reminderLogDao().updateSnoozedUntil(logId, snoozedUntil)
