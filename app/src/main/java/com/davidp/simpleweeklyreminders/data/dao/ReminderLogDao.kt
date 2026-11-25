@@ -63,6 +63,13 @@ interface ReminderLogDao {
     @Query("SELECT * FROM reminder_logs WHERE snoozedUntil IS NOT NULL AND completed = 0")
     suspend fun getSnoozedLogsList(): List<ReminderLog>
 
+    /** Reminders with an uncompleted occurrence still in play: snooze pending or [shownLogIds] in the tray. */
+    @Query(
+        "SELECT DISTINCT reminderId FROM reminder_logs " +
+            "WHERE completed = 0 AND (snoozedUntil IS NOT NULL OR id IN (:shownLogIds))"
+    )
+    suspend fun getOpenReminderIds(shownLogIds: List<Int>): List<Int>
+
     /** Withdraws every pending snooze for one reminder (pause/archive). The caller disarms the alarms. */
     @Query("UPDATE reminder_logs SET snoozedUntil = NULL WHERE reminderId = :reminderId")
     suspend fun clearSnoozesForReminder(reminderId: Int)

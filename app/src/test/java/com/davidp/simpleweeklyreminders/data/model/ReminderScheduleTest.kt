@@ -342,6 +342,26 @@ class ReminderScheduleTest {
         assertTrue(r.isArchived(today = monday))
     }
 
+    @Test
+    fun `lapsed reminder held open stays active`() {
+        // Notification still in the tray or snooze pending: not archived until the user acts
+        val r = reminder(endDate = monday.minusDays(1)).copy(id = 7)
+        assertFalse(r.isArchived(today = monday, heldOpen = setOf(7)))
+        assertNull(r.archivedSince(today = monday, heldOpen = setOf(7)))
+    }
+
+    @Test
+    fun `another reminder held open doesn't keep this one active`() {
+        val r = reminder(endDate = monday.minusDays(1)).copy(id = 7)
+        assertTrue(r.isArchived(today = monday, heldOpen = setOf(8)))
+    }
+
+    @Test
+    fun `manual archive wins over held open`() {
+        val r = reminder(endDate = null, archivedAt = monday.atTime(9, 0)).copy(id = 7)
+        assertTrue(r.isArchived(today = monday, heldOpen = setOf(7)))
+    }
+
     // --- hasLapsed (drives Restore's "pick a new end date") ---
 
     @Test

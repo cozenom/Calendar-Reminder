@@ -120,6 +120,10 @@ class ReminderRepository(
     suspend fun pendingSnoozes(reminder: Reminder): List<ReminderLog> =
         reminderLogDao.getSnoozedLogsList().filter { it.reminderId == reminder.id }
 
+    /** Ids of reminders whose occurrence is still in play — see [Reminder.isArchived]. */
+    suspend fun openReminderIds(shownLogIds: Set<Int>): Set<Int> =
+        reminderLogDao.getOpenReminderIds(shownLogIds.toList()).toSet()
+
     /** One past the highest manual position, so a new or restored row lands at the end. */
     suspend fun nextSortOrder(): Int = (reminderDao.getMaxSortOrder() ?: -1) + 1
 

@@ -178,9 +178,12 @@ fun Reminder.hasLapsed(today: LocalDate = LocalDate.now()): Boolean = endDate !=
  * Archived either way it can happen: manually ([archivedAt] stamped) or by lapsing past its
  * end date. Archived no longer implies a past endDate — anything that projects the schedule
  * forward has to check this (or isActive), not trust endDate to stop it.
+ *
+ * [heldOpen]: reminder ids with an occurrence still in play (notification showing or snooze
+ * pending). A lapsed reminder in it stays active until the user completes or dismisses it.
  */
-fun Reminder.isArchived(today: LocalDate = LocalDate.now()): Boolean =
-    archivedAt != null || hasLapsed(today)
+fun Reminder.isArchived(today: LocalDate = LocalDate.now(), heldOpen: Set<Int> = emptySet()): Boolean =
+    archivedAt != null || (hasLapsed(today) && id !in heldOpen)
 
 /**
  * The moment this reminder became archived, or null if it isn't archived. Prefers the
@@ -188,7 +191,7 @@ fun Reminder.isArchived(today: LocalDate = LocalDate.now()): Boolean =
  * falls back to day-granularity (day after endDate) — the earliest moment it's provably true.
  * Non-null for everything [isArchived] accepts, so it can sort the Archive list.
  */
-fun Reminder.archivedSince(today: LocalDate = LocalDate.now()): LocalDateTime? {
-    if (!isArchived(today)) return null
+fun Reminder.archivedSince(today: LocalDate = LocalDate.now(), heldOpen: Set<Int> = emptySet()): LocalDateTime? {
+    if (!isArchived(today, heldOpen)) return null
     return archivedAt ?: endDate?.plusDays(1)?.atStartOfDay()
 }

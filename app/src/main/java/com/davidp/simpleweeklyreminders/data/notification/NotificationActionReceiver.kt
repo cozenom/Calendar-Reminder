@@ -496,10 +496,15 @@ class NotificationActionReceiver : BroadcastReceiver() {
          * dismissed is worse than no grouping at all.
          */
         private fun cancelSummaryIfEmpty(notificationManager: NotificationManager) {
-            val childrenLeft = notificationManager.activeNotifications.any {
-                it.id != GROUP_SUMMARY_ID && it.notification.group == GROUP_KEY
-            }
-            if (!childrenLeft) notificationManager.cancel(GROUP_SUMMARY_ID)
+            if (shownLogIds(notificationManager).isEmpty()) notificationManager.cancel(GROUP_SUMMARY_ID)
         }
+
+        /** Log ids of the reminder notifications in the tray right now (children use their log id). */
+        fun shownLogIds(context: Context): Set<Int> = shownLogIds(context.notificationManager)
+
+        private fun shownLogIds(notificationManager: NotificationManager): Set<Int> =
+            notificationManager.activeNotifications
+                .filter { it.id != GROUP_SUMMARY_ID && it.notification.group == GROUP_KEY }
+                .mapTo(HashSet()) { it.id }
     }
 }

@@ -8,6 +8,7 @@ import com.davidp.simpleweeklyreminders.data.model.OccurrenceCounts
 import com.davidp.simpleweeklyreminders.data.model.Reminder
 import com.davidp.simpleweeklyreminders.data.model.ReminderLog
 import com.davidp.simpleweeklyreminders.data.model.archivedSince
+import com.davidp.simpleweeklyreminders.data.model.hasLapsed
 import com.davidp.simpleweeklyreminders.data.model.isArchived
 import com.davidp.simpleweeklyreminders.data.notification.NotificationActionReceiver
 import com.davidp.simpleweeklyreminders.data.notification.ReminderWorker
@@ -73,19 +74,34 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
     )
 
     /**
-     * Active (non-archived) reminders — a filter of [reminders], not a second query.
-     * Combined with [now] so a reminder that lapses at midnight moves to the Archive on
-     * the next tick, not on the next unrelated DB write.
+     * [reminders] + today + which lapsed ones are held open (see [Reminder.isArchived]).
+     * Both lists below split this one snapshot, so a held-open reminder can't flash into the
+     * Archive between two separate computations.
+     * - Combined with [now] so a reminder that lapses at midnight moves on the next tick.
+     * - The tray isn't observable, so held-open is re-read each tick (one-shot, not a watcher).
+     * - Skipped unless something has lapsed, so the usual tick does no I/O.
      */
-    val allReminders: StateFlow<List<Reminder>?> = combine(reminders, now) { list, now ->
-        list?.filterNot { it.isArchived(now.toLocalDate()) }
+    private val archiveSnapshot: StateFlow<ArchiveSnapshot?> = combine(reminders, now) { list, now ->
+        val today = now.toLocalDate()
+        list ?: return@combine null
+        val heldOpen = if (list.any { it.archivedAt == null && it.hasLapsed(today) }) {
+            repository.openReminderIds(NotificationActionReceiver.shownLogIds(getApplication()))
+        } else {
+            emptySet()
+        }
+        ArchiveSnapshot(list, today, heldOpen)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIPTION_TIMEOUT_MS), null)
+
+    /** Active (non-archived) reminders — a filter of [reminders], not a second query. */
+    val allReminders: StateFlow<List<Reminder>?> = archiveSnapshot.map { s ->
+        s?.list?.filterNot { it.isArchived(s.today, s.heldOpen) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIPTION_TIMEOUT_MS), null)
 
     /** Archived reminders, most recently archived first — also a filter of [reminders]. */
-    val archivedReminders: StateFlow<List<Reminder>?> = combine(reminders, now) { list, now ->
-        val today = now.toLocalDate()
+    val archivedReminders: StateFlow<List<Reminder>?> = archiveSnapshot.map { s ->
         // archivedSince, not endDate: a manual archive keeps the user's end date (or none)
-        list?.filter { it.isArchived(today) }?.sortedByDescending { it.archivedSince(today) }
+        s?.list?.filter { it.isArchived(s.today, s.heldOpen) }
+            ?.sortedByDescending { it.archivedSince(s.today, s.heldOpen) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIPTION_TIMEOUT_MS), null)
 
     private val calendarWindow = MutableStateFlow(CalendarWindow(YearMonth.now(), LocalDate.now()))
@@ -185,6 +201,8 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
     fun updateRemindersOrder(reminders: List<Reminder>) = viewModelScope.launch {
         repository.updateRemindersOrder(reminders)
     }
+
+    private data class ArchiveSnapshot(val list: List<Reminder>, val today: LocalDate, val heldOpen: Set<Int>)
 
     private data class CalendarWindow(val month: YearMonth, val selectedDate: LocalDate)
 
