@@ -73,6 +73,12 @@ class FakeReminderLogDao : ReminderLogDao {
     override suspend fun getSnoozedLogsList(): List<ReminderLog> =
         logs.value.filter { it.snoozedUntil != null && !it.completed }
 
+    override suspend fun getOpenReminderIds(shownLogIds: List<Int>): List<Int> =
+        logs.value
+            .filter { !it.completed && (it.snoozedUntil != null || it.id in shownLogIds) }
+            .map { it.reminderId }
+            .distinct()
+
     override suspend fun clearSnoozesForReminder(reminderId: Int) {
         logs.value = logs.value.map { if (it.reminderId == reminderId) it.copy(snoozedUntil = null) else it }
     }
