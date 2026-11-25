@@ -38,7 +38,17 @@ import com.davidp.simpleweeklyreminders.ui.theme.appShapes
 import com.davidp.simpleweeklyreminders.ui.theme.reminderAccent
 import com.davidp.simpleweeklyreminders.ui.theme.reminderColors
 import com.davidp.simpleweeklyreminders.ui.theme.reminderWash
+import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+
+/**
+ * Snooze badge label. Adds the weekday only when the snooze lands on another day than the
+ * occurrence, so "12:20 AM" under an 11:50 PM entry can't read as earlier the same day.
+ */
+internal fun snoozeBadgeText(logDateTime: LocalDateTime, snoozedUntil: LocalDateTime, timePattern: String): String {
+    val pattern = if (snoozedUntil.toLocalDate() == logDateTime.toLocalDate()) timePattern else "EEE $timePattern"
+    return snoozedUntil.format(DateTimeFormatter.ofPattern(pattern))
+}
 
 @Composable
 fun ReminderEventItem(
@@ -129,7 +139,7 @@ fun ReminderEventItem(
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text(
-                text = snoozedUntil.format(DateTimeFormatter.ofPattern(timePattern)),
+                text = snoozeBadgeText(log.logDateTime, snoozedUntil, timePattern),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.tertiary
             )
